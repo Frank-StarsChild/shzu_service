@@ -43,6 +43,8 @@ const props = defineProps<{ activeBoard: string | null; activeSource: "tile" | "
 const emit = defineEmits<{
   (e: "marker-enter", board: string): void;
   (e: "marker-leave"): void;
+  (e: "canvas-enter", board: string): void;
+  (e: "canvas-leave"): void;
 }>();
 
 const router = useRouter();
@@ -133,6 +135,13 @@ async function initScene() {
     sceneHandle = handle;
     sceneStatus.value = "ready";
     touchHook({ status: "ready" });
+    // S7：画布悬停/点击（悬停→上层 activeBoard 以 canvas 来源联动，只高亮不动镜头）
+    handle.onHover((board) => {
+      if (board) emit("canvas-enter", board);
+      else emit("canvas-leave");
+    });
+    handle.onPick((board) => goBoard(board));
+    handle.setHighlight(props.activeBoard); // 若此刻已有联动高亮（tile/marker 来源）
     // S6：标记位置改为跟随场景投影（只在有渲染帧时更新；静止后停在原位）
     handle.onFrame(updateMarkerPos);
     updateMarkerPos();
@@ -334,10 +343,22 @@ onBeforeUnmount(() => {
 // 联动高亮写入调试钩子
 watch(
   () => props.activeBoard,
-  (b) => touchHook({ activeBoard: b })
+  (b) => {
+    touchHook({ activeBoard: b });
+    sceneHandle?.setHighlight(b); // 任何来源的 activeBoard 变化都调 setHighlight（S7 第 4 条）
+  }
 );
 
-/** 点击标记 = 点击对应板块按钮（PLAN S3 第 4 条）。 */
+// S7 无障碍：activeBoard 变化时写入 aria-live 区（楼名+板块，来自 meta，不写死）
+const liveText = computed(() => {
+  const b = props.activeBoard;
+  if (!b) return "";
+  const h = meta.value?.hotspots.find((x) => x.board === b);
+  if (!h) return "";
+  return `${h.label}（${h.note ?? ""}），对应板块：${h.board}`;
+});
+
+/** 点击标记/热点楼 = 点击对应板块按钮（PLAN S3/S7）。 */
 function goBoard(board: string) {
   router.push({ path: "/services", query: { board } });
 }
@@ -383,6 +404,7 @@ function goBoard(board: string) {
         <button type="button" class="btn-sm" data-testid="campus-retry" @click="retryScene">重试</button>
       </div>
     </div>
+    <div class="campus-sr" aria-live="polite" data-testid="campus-live">{{ liveText }}</div>
     <slot />
     <figcaption class="campus-caption tiny" data-testid="campus-caption">
       <span>{{ attribution }}</span>

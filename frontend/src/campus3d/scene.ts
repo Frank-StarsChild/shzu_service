@@ -54,6 +54,16 @@ interface Runtime {
   currentTarget: THREE.Vector3;
   move: MoveState | null;
   rafId: number | null;
+  // ---- S7 ----
+  hotspotMeshes: THREE.Mesh[];
+  hoverBoard: string | null;
+  highlightMesh: THREE.Mesh | null;
+  highlightOrigMat: THREE.Material | THREE.Material[] | null;
+  highlightClone: THREE.Material | null;
+  pointerBound: boolean;
+  downPos: { x: number; y: number } | null;
+  pointerPending: { x: number; y: number } | null;
+  pointerFrame: number;
 }
 
 export function createCampusScene(
@@ -110,6 +120,15 @@ export function createCampusScene(
       currentTarget,
       move: null,
       rafId: null,
+      hotspotMeshes: [],
+      hoverBoard: null,
+      highlightMesh: null,
+      highlightOrigMat: null,
+      highlightClone: null,
+      pointerBound: false,
+      downPos: null,
+      pointerPending: null,
+      pointerFrame: -1,
     };
     rt.resizeObs.observe(frame);
 
@@ -127,6 +146,8 @@ export function createCampusScene(
       hook.buildingCount = rt.buildings.size;
       hook.stop = rt.currentStop;
       hook.moving = rt.move !== null;
+      hook.hoveredBoard = rt.hoverBoard;
+      hook.highlightMaterials = rt.highlightClone !== null ? 1 : 0;
       hook.camera = {
         position: [camera.position.x, camera.position.y, camera.position.z],
         target: [rt.currentTarget.x, rt.currentTarget.y, rt.currentTarget.z],
@@ -141,6 +162,18 @@ export function createCampusScene(
       rt.frames += 1;
       hookInfo();
       for (const cb of rt.frameCbs) cb();
+    }
+
+    // 同一微任务内的多次状态变化（如 goTo+setHighlight）只渲一帧（S7：软件渲染下
+    // 一次全场景渲染 ~100ms，重复渲染会让即时路径超过 200ms 预算）
+    let renderQueued = false;
+    function scheduleRender() {
+      if (renderQueued || rt.disposed) return;
+      renderQueued = true;
+      queueMicrotask(() => {
+        renderQueued = false;
+        renderNow();
+      });
     }
 
     // ---- 按需渲染的动画循环：只在移动期间跑；到位即停 ----
@@ -186,7 +219,7 @@ export function createCampusScene(
         camera.position.set(stop.position[0], stop.position[1], stop.position[2]);
         rt.currentTarget.set(stop.target[0], stop.target[1], stop.target[2]);
         camera.lookAt(rt.currentTarget);
-        renderNow();
+        scheduleRender();
         return;
       }
       // 从当前实际位置出发（移动中途再次调用也不跳变）
@@ -215,6 +248,117 @@ export function createCampusScene(
       };
     }
 
+    // ---- S7 联动：高亮、拾取、点击 ----
+    const HIGHLIGHT_COLOR = new THREE.Color("#e2001a");
+    const raycaster = new THREE.Raycaster();
+    const ndc = new THREE.Vector2();
+
+    /** 板块 → 楼 Mesh（楼名/说明来自 meta，不写死）。视觉高亮态，多来源驱动。 */
+    function setHighlight(board: string | null) {
+      const buildingId = board
+        ? meta.hotspots.find((h) => h.board === board)?.buildingId ?? null
+        : null;
+      const mesh = buildingId ? rt.buildings.get(buildingId) ?? null : null;
+      if (mesh === rt.highlightMesh) return; // 幂等：早退（含两者都为空）
+
+      // 还原上一栋：换回原材质并释放克隆（highlightMaterials 永远 ≤ 1）
+      if (rt.highlightMesh && rt.highlightOrigMat) {
+        rt.highlightMesh.material = rt.highlightOrigMat;
+      }
+      if (rt.highlightClone) {
+        rt.highlightClone.dispose();
+        rt.highlightClone = null;
+      }
+      rt.highlightMesh = null;
+      rt.highlightOrigMat = null;
+
+      if (mesh) {
+        const orig = mesh.material;
+        // 高亮必须克隆材质，不能改共用的那个（模型里 B_ 共用同一材质）
+        const clone = (orig as THREE.MeshBasicMaterial).clone();
+        clone.color = HIGHLIGHT_COLOR;
+        mesh.material = clone;
+        rt.highlightMesh = mesh;
+        rt.highlightOrigMat = orig;
+        rt.highlightClone = clone;
+      }
+      hookInfo();
+      scheduleRender(); // 高亮刚变化 → 画一帧（与同 tick 的其它变化合并）
+    }
+
+    /** 只对 5 栋热点楼做射线检测；返回板块或 null。 */
+    function pickBoard(clientX: number, clientY: number): string | null {
+      const rect = canvas.getBoundingClientRect();
+      ndc.set(((clientX - rect.left) / rect.width) * 2 - 1, -(((clientY - rect.top) / rect.height) * 2) + 1);
+      raycaster.setFromCamera(ndc, camera);
+      const hits = raycaster.intersectObjects(rt.hotspotMeshes, false);
+      if (hits.length === 0) return null;
+      const id = rt.hotspotMeshes.indexOf(hits[0].object as THREE.Mesh);
+      return id >= 0 ? meta.hotspots[id].board : null;
+    }
+
+    function onPointerMove(e: PointerEvent) {
+      if (rt.disposed) return;
+      // 每帧最多处理一次（PLAN S7 第 2 条）
+      if (rt.frames !== rt.pointerFrame) {
+        rt.pointerFrame = rt.frames;
+        const board = pickBoard(e.clientX, e.clientY);
+        if (board !== rt.hoverBoard) {
+          // hoveredBoard 仅由画布驱动（4.3）；高亮经 onHover → 上层 activeBoard 联动
+          rt.hoverBoard = board;
+          canvas.style.cursor = board ? "pointer" : "";
+          hookInfo();
+          rt.onHoverCb(board);
+        }
+        rt.pointerPending = null;
+      } else {
+        rt.pointerPending = { x: e.clientX, y: e.clientY };
+      }
+    }
+
+    function onPointerLeave() {
+      if (rt.disposed) return;
+      if (rt.hoverBoard !== null) {
+        rt.hoverBoard = null;
+        canvas.style.cursor = "";
+        hookInfo();
+        rt.onHoverCb(null);
+      }
+      rt.pointerPending = null;
+    }
+
+    function onPointerDown(e: PointerEvent) {
+      rt.downPos = { x: e.clientX, y: e.clientY };
+    }
+
+    function onPointerUp(e: PointerEvent) {
+      const down = rt.downPos;
+      rt.downPos = null;
+      if (!down) return;
+      // 按下和抬起位置相差 < 5px 才算点击（拖动不算）
+      if (Math.hypot(e.clientX - down.x, e.clientY - down.y) >= 5) return;
+      const board = pickBoard(e.clientX, e.clientY);
+      if (board) rt.onPickCb(board);
+    }
+
+    function bindPointer() {
+      if (rt.pointerBound) return;
+      rt.pointerBound = true;
+      canvas.addEventListener("pointermove", onPointerMove);
+      canvas.addEventListener("pointerleave", onPointerLeave);
+      canvas.addEventListener("pointerdown", onPointerDown);
+      canvas.addEventListener("pointerup", onPointerUp);
+    }
+
+    function unbindPointer() {
+      if (!rt.pointerBound) return;
+      rt.pointerBound = false;
+      canvas.removeEventListener("pointermove", onPointerMove);
+      canvas.removeEventListener("pointerleave", onPointerLeave);
+      canvas.removeEventListener("pointerdown", onPointerDown);
+      canvas.removeEventListener("pointerup", onPointerUp);
+    }
+
     function disposeAll() {
       if (rt.disposed) return;
       rt.disposed = true;
@@ -223,6 +367,17 @@ export function createCampusScene(
         rt.rafId = null;
       }
       rt.move = null;
+      unbindPointer();
+      // 还原高亮状态（换回原材质、释放克隆），避免资源泄漏计入
+      if (rt.highlightMesh && rt.highlightOrigMat) {
+        rt.highlightMesh.material = rt.highlightOrigMat;
+      }
+      if (rt.highlightClone) {
+        rt.highlightClone.dispose();
+        rt.highlightClone = null;
+      }
+      rt.highlightMesh = null;
+      rt.highlightOrigMat = null;
       rt.resizeObs.disconnect();
       rt.frameCbs.clear();
       rt.scene.traverse((obj) => {
@@ -268,12 +423,15 @@ export function createCampusScene(
         });
         renderNow(); // 第一帧画完才 resolve
         hookInfo();
+        // S7：热点楼列表 + 画布交互绑定
+        rt.hotspotMeshes = meta.hotspots
+          .map((h) => rt.buildings.get(h.buildingId))
+          .filter((m): m is THREE.Mesh => !!m);
+        bindPointer();
 
         const handle: CampusSceneHandle = {
           goTo,
-          setHighlight(_board: string | null) {
-            // S7 实现：克隆材质高亮
-          },
+          setHighlight,
           onHover(cb: (board: string | null) => void) {
             rt.onHoverCb = cb;
           },

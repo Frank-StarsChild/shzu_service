@@ -432,8 +432,10 @@ input, textarea, select {
 .campus-frame picture,
 .campus-frame picture img { display: block; width: 100%; height: 100%; }
 
-/* 标记层与编号标记：22×22 红底白字方块（PLAN 4.5） */
-.campus-overlay { position: absolute; inset: 0; }
+/* 标记层与编号标记：22×22 红底白字方块（PLAN 4.5）。
+   标记层对指针透明，让 3D 画布可拾取；标记本体恢复可点。 */
+.campus-overlay { position: absolute; inset: 0; pointer-events: none; }
+.campus-overlay .campus-marker { pointer-events: auto; }
 
 .campus-marker {
   position: absolute;
@@ -533,6 +535,17 @@ input, textarea, select {
   border: 1px solid var(--line);
   border-top: none;
   border-left: none;
+}
+
+/* aria-live 无障碍播报区：视觉隐藏、屏幕阅读器可读（S7） */
+.campus-sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
 }
 
 /* 板块按钮远端联动高亮：与 :hover 同样式（PLAN 4.4） */

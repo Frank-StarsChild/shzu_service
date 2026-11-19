@@ -186,4 +186,55 @@ INTEGRATION.md；3.4 节 anchor/pick 几何从「40 像素间隔」改为「22 �
      事件到 stop 就绪计时（实测 ~18ms），仍能严格区分 900ms 过渡（动画则会 ≥900ms）。
 - 遗留问题：G1 待作者确认
 
+## S7 联动：高亮、拾取，点击 — 2026-11-20
+
+- 提交：`3d(S7): 联动高亮、拾取与点击`
+- 新增：
+  - `tests/e2e/interact.spec.ts`（7 条）：高亮像素统计（无高亮 <0.05% → 教务高亮
+    >0.3% 并截图 S7-jw.png）、画布悬停（hoveredBoard + 按钮高亮 + 镜头不动 + cursor=pointer）、
+    点击跳转 /services?board=…、空白角落无拾取、按下拖 30px 不算点击、五热点逐个拾取、
+    20 次轮换高亮后 highlightMaterials ≤1 且 geometries/textures 不变。
+- scene.ts：`setHighlight`（克隆材质着 #e2001a，**B_ 楼共用材质必须克隆不能改共享对象**；
+  还原时换回原材质并 dispose 克隆，highlightMaterials 恒 ≤1）；`pickBoard`（只对 5 热点
+  楼射线，viewport 坐标用画布自身 rect 换算 NDC）；pointerdown/up 位移 <5px 才算点击；
+  pointermove 每帧至多处理一次（`pointerFrame` 帧号去重 + `pointerPending`）；同微任务
+  多状态变化经 `scheduleRender`（queueMicrotask）合并渲一帧——软件渲染一次全场景 ~100ms，
+  goTo+setHighlight 连发若各渲一帧会让即时路径超 200ms 预算；dispose 还原高亮再走全量释放。
+- CampusHero：`onHover`→emit canvas-enter/leave（HomeView 以 `activeSource:"canvas"` 只
+  高亮不动镜头）、`onPick`→goBoard、ready 时同步 setHighlight(props.activeBoard)；
+  任何来源的 activeBoard 变化都调 setHighlight（watch）；新增 aria-live 播报区
+  `campus-live`（楼名+说明+板块，来自 meta，`.campus-sr` 视觉隐藏）。
+- swiss.css：`.campus-overlay { pointer-events:none }` + `.campus-marker { pointer-events:auto }`
+  ——标记层对指针透明否则挡死画布拾取，标记本体恢复可点。
+- verify：build ✓ / bundle ✓（three 块 155.8≤200 KB）/ unit **41 passed** / e2e **43 passed**
+  （baseline 4 + static 9 + gate 7 + scene 9 + camera 7 + interact 7；3.0m）。
+- 截图：`docs/3d/shots/S7-jw.png`（教务高亮时外框）。
+- 反向验证：HIGHLIGHT_COLOR 改 #ffffff → interact 第 1 条 *failed*（红色占比 0.00%<
+    0.3%，确认像素统计真测高亮色）→ 还原后 7 条全绿。
+- 途中修复（真实缺陷，4 条拾取用例超时的根因）：**interact.spec 用原始 mouse.move +
+  projectPoint 视口坐标，但沙盘在首屏折叠线以下（投影 y 907–1121 > 视口 900），鼠标落在
+  视口外，画布收不到指针事件**——不是 scene.ts 拾取或 overlay 的问题。修复：用例先
+  `scrollIntoView({block:'center'})` 再取坐标（locator 动作自带滚动，mouse.move 不带）。
+  临时调诊断脚本（zz-pick，elementFromPoint 验证 5 热点全命中）后确认，删除脚本。
+- 途中修复（S3 截图存档 flaky + 历史存档纠偏）：S3-desktop.png 存档偶发与提交版差
+  21.95%，排查后确认**提交版本身才是异常态**——与原始海报构图对照（沙盘横向居中、
+  四周留白均匀、底座横幅距底边 ~8%），工作区重生成版才是完整正确形态；S3–S6 时代稳定
+  复现的异常形态自本轮起不再出现（历史环境异态，成因未深究）。同时给截图存档加「海报
+  解码完成」守卫（img.complete && naturalWidth>0，手机海报切换后重等），消除偶发空白
+  抓拍。
+- 水印异常排查（结论：环境偶发，非代码/资产问题）：排查 S5-desktop.png 重生成差异时，
+  一次文件的右下角 (1141,474)-(1287,533) 出现 8660px「AI生成」位图水印块。其后所有
+  受控重跑（S6 代码 stash 重构建 ×1、S7 构建 ×多次、连续两次同代码 0px 字节一致）均
+  无法复现。已逐项排除：四资产 SHA-256 与清单一致、dist 与 public 一致、GLB 47 节点
+  （45 楼+ground+props）无水印板、两张 atlas webp 无水印、海报静态版右下角纯白、DOM 无
+  相关文本、src 无 fixed 元素。同日 S6/S7 构建产物存档截图 0px 一致，证明非 S7 引入。
+  唯一一次出现疑似外部/并发写入污染，留档待复现再深挖。
+- 与计划不一致的地方：
+  1. S3-desktop.png 与 S5-desktop.png 本次一并提交了内容更新：S3 为历史异常存档纠偏
+     （见上）；S5 为 671px 数字亚像素渲染差异（标记 boundingBox 复核完全一致，S6 代码
+     重构建对照同样 671px），定性为跨日环境字体渲染漂移，非本步行为变化，提交以反映
+     当前真实渲染。
+  2. interact 第 1 条的截图断言顺序调整：先取无高亮基线再 hover（写死在用例里）。
+- 遗留问题：G2 待作者确认
+
 > AI生成

@@ -127,12 +127,22 @@ test("9 截图存档（docs/3d/shots）", async ({ page }) => {
   });
   await page.goto("/");
   await expect(page.locator('[data-testid^="campus-marker-"]')).toHaveCount(5);
+  // 等海报解码完成再截（标记就绪≠图片画完，否则偶发截到空白海报）
+  await page.waitForFunction(() => {
+    const img = document.querySelector('[data-testid="campus-poster"]') as HTMLImageElement | null;
+    return !!img && img.complete && img.naturalWidth > 0;
+  });
   await page.locator('[data-testid="campus-hero"]').screenshot({
     path: "../docs/3d/shots/S3-desktop.png",
   });
 
   await page.setViewportSize({ width: 390, height: 844 });
   await page.waitForTimeout(150);
+  // 手机海报是另一张图，切换 <source> 后要重新等解码
+  await page.waitForFunction(() => {
+    const img = document.querySelector('[data-testid="campus-poster"]') as HTMLImageElement | null;
+    return !!img && img.complete && img.naturalWidth > 0;
+  });
   await page.locator('[data-testid="campus-hero"]').screenshot({
     path: "../docs/3d/shots/S3-mobile.png",
   });

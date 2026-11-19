@@ -25,6 +25,10 @@ function enterFromMarker(board: string) {
   activeBoard.value = board;
   activeSource.value = "marker";
 }
+function enterFromCanvas(board: string) {
+  activeBoard.value = board;
+  activeSource.value = "canvas"; // 画布来源：只高亮，不动镜头（PLAN 4.4）
+}
 function clearActive() {
   activeBoard.value = null;
   activeSource.value = null;
@@ -116,7 +120,8 @@ const samples = [
           <h2 class="h1">五大板块 · {{ ready ? ready.knowledge_evidence + " 条审定证据" : "加载中…" }}</h2>
         </div>
         <CampusHero :active-board="activeBoard" :active-source="activeSource"
-                    @marker-enter="enterFromMarker" @marker-leave="clearActive">
+                    @marker-enter="enterFromMarker" @marker-leave="clearActive"
+                    @canvas-enter="enterFromCanvas" @canvas-leave="clearActive">
           <div class="boards">
             <button v-for="b in boards" :key="b.id" type="button" class="board-tile"
                     :data-board="b.id"
