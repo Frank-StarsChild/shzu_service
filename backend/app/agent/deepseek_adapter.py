@@ -1,0 +1,129 @@
+# -*- coding: utf-8 -*-
+"""DeepSeek LangChain 适配器（对话图 6 章）。
+
+- 模型客户端：langchain_openai.ChatOpenAI（DeepSeek OpenAI 兼容接口），
+  由 graph.py 通过 bind_tools 以 LangChain 工具调用协议驱动。
+- 密钥与模型由环境变量配置：DEEPSEEK_API_KEY / DEEPSEEK_MODEL / DEEPSEEK_BASE_URL / DEEPSEEK_TIMEOUT
+- 未配置密钥时返回 None，对话图直接发布 model_config 技术错误（不再回退固定话术）
+- 错误分类（openai 异常 → code）：model_timeout / model_connection / model_auth /
+  model_balance / model_rate / model_response；模型输出未通过校验 → model_output
+"""
+import json
+import logging
+import os
+import time
+from dataclasses import dataclass
+from typing import Any, Dict, List, Optional
+
+logger = logging.getLogger("shzu.deepseek")
+
+DEFAULT_BASE_URL = "https://api.deepseek.com"
+# 单次请求超时：DeepSeek 工具调用响应含长目录/多轮检索时可能超过 8s，默认 12s
+REQUEST_TIMEOUT = float(os.environ.get("DEEPSEEK_TIMEOUT", "12.0"))
+# 单轮总预算（含 openai SDK 内部重试）；每轮模型调用次数上限见 graph.py
+TURN_BUDGET = float(os.environ.get("SHZU_TURN_BUDGET", "24.0"))
+
+
+def _cfg():
+    return {
+        "api_key": os.environ.get("DEEPSEEK_API_KEY", "").strip(),
+        "model": os.environ.get("DEEPSEEK_MODEL", "deepseek-chat").strip() or "deepseek-chat",
+        "base_url": os.environ.get("DEEPSEEK_BASE_URL", DEFAULT_BASE_URL).rstrip("/"),
+    }
+
+
+def is_configured() -> bool:
+    return bool(_cfg()["api_key"])
+
+
+@dataclass
+class ProviderError(Exception):
+    category: str
+    message: str
+
+    def __str__(self):
+        return f"[{self.category}] {self.message}"
+
+
+def _extract_json(text: str) -> dict:
+    """容忍 markdown 包裹的 JSON 提取；失败抛 ProviderError(invalid_output)。"""
+    raw = (text or "").strip()
+    if raw.startswith("```"):
+        raw = raw.strip("`")
+        if raw.lower().startswith("json"):
+            raw = raw[4:]
+        raw = raw.strip()
+    try:
+        return json.loads(raw)
+    except ValueError:
+        s, e = raw.find("{"), raw.rfind("}")
+        if s >= 0 and e > s:
+            try:
+                return json.loads(raw[s:e + 1])
+            except ValueError:
+                raise ProviderError("invalid_output", "模型输出不是合法 JSON")
+        raise ProviderError("invalid_output", "模型输出不是合法 JSON")
+
+
+def error_code(exc: Exception) -> str:
+    """openai SDK 异常 → 技术错误 code（发布层据此生成技术错误状态）。"""
+    try:
+        from openai import APIConnectionError, APIStatusError, APITimeoutError
+    except ImportError:  # pragma: no cover - openai 为 langchain_openai 依赖
+        return "model_connection"
+    if isinstance(exc, APITimeoutError):
+        return "model_timeout"
+    if isinstance(exc, APIConnectionError):
+        return "model_connection"
+    if isinstance(exc, APIStatusError):
+        if exc.status_code in (401, 403):
+            return "model_auth"
+        if exc.status_code == 402:
+            return "model_balance"
+        if exc.status_code == 429:
+            return "model_rate"
+    return "model_response"
+
+
+_MODEL = None
+_MODEL_AT = 0.0
+
+
+def create_chat_model():
+    """构造（并缓存）LangChain ChatOpenAI；未配置密钥时返回 None。
+
+    绑定工具由 graph.py 通过 model.bind_tools(...) 完成（LangChain 工具调用协议）。
+    单次请求超时默认 REQUEST_TIMEOUT；对话图按本轮剩余预算以 invoke(timeout=...) 覆盖。
+    """
+    global _MODEL, _MODEL_AT
+    cfg = _cfg()
+    if not cfg["api_key"]:
+        return None
+    now = time.time()
+    if _MODEL is not None and now - _MODEL_AT < 300:
+        return _MODEL
+    from langchain_openai import ChatOpenAI
+
+    _MODEL = ChatOpenAI(
+        model=cfg["model"],
+        api_key=cfg["api_key"],
+        base_url=cfg["base_url"],
+        temperature=0.2,
+        max_tokens=1100,
+        timeout=REQUEST_TIMEOUT,
+        max_retries=1,   # SDK 内部重试限制为 1 次（预算控制由对话图负责）
+    )
+    _MODEL_AT = now
+    logger.info("deepseek chat model ready (%s @ %s)", cfg["model"], cfg["base_url"])
+    return _MODEL
+
+
+def describe_config() -> Dict[str, Any]:
+    cfg = _cfg()
+    return {
+        "provider": "deepseek",
+        "configured": bool(cfg["api_key"]),
+        "model": cfg["model"] if cfg["api_key"] else None,
+        "note": "每轮先由 DeepSeek 理解消息并通过 LangChain 调用工具，再生成回复；"
+                "未配置 DEEPSEEK_API_KEY 时对话返回技术错误状态。",
+    }

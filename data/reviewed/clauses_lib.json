@@ -1,0 +1,202 @@
+{
+  "clauses": [
+    {
+      "clause_id": "lib-loan-c1",
+      "doc_id": "lib-loan",
+      "exact_text": "图书馆馆藏信息资源向所有读者开放，除期刊、报纸、工具书不外借，仅供馆内阅览，其它馆藏资料均可外借。工具书：书脊下方有粉红色标签标识的图书。",
+      "topic": "借阅范围",
+      "campus": null, "college": null, "student_type": null, "application_year": null,
+      "source_locator": "网页正文·一、借阅图书数量与期限",
+      "scope_status": "reviewed"
+    },
+    {
+      "clause_id": "lib-loan-c2",
+      "doc_id": "lib-loan",
+      "exact_text": "读者借阅数量与期限如下：教师 借阅总量20册，借期180天，续借次数1，续借30天；硕博生 借阅总量15册，借期90天，续借次数1，续借30天；本、专科生 借阅总量10册，借期60天，续借次数1，续借30天。",
+      "topic": "借阅数量与期限",
+      "campus": null, "college": null, "student_type": null, "application_year": null,
+      "source_locator": "网页正文·借阅数量与期限表（读者类型/借阅总量/借期/续借）",
+      "scope_status": "reviewed"
+    },
+    {
+      "clause_id": "lib-loan-c3",
+      "doc_id": "lib-loan",
+      "exact_text": "1.借阅期限遇节假日、寒暑假顺延。2.到期图书可续借一次。3.外出实习学生在保证文献资料妥善保管的前提下，以班为单位，向图书馆流通阅览部提交一份由系部学院开具的实习时间证明，然后由图书馆控制并设定归还日期，实习生按设定期限归还图书即可。如不提交申请，则按正常借阅期限处理。",
+      "topic": "借阅期限顺延与实习借阅",
+      "campus": null, "college": null, "student_type": null, "application_year": null,
+      "source_locator": "网页正文·一、借阅图书数量与期限（附注1—3）",
+      "scope_status": "reviewed"
+    },
+    {
+      "clause_id": "lib-loan-c4",
+      "doc_id": "lib-loan",
+      "exact_text": "图书借阅期满，应立即归还；如有需要，可在图书未到期前续借1次，续借时间为30天。续借手续可以在校园网/图书馆/读者登录自行办理或到图书馆自助服务区办理。",
+      "topic": "续借",
+      "campus": null, "college": null, "student_type": null, "application_year": null,
+      "source_locator": "网页正文·二、续借",
+      "scope_status": "reviewed"
+    },
+    {
+      "clause_id": "lib-loan-c5",
+      "doc_id": "lib-loan",
+      "exact_text": "（一）逾期处理 1.为了保障大多数读者的利益，加强图书流通，本馆对未能在规定日期之前归还图书的读者实行逾期免罚款制度。2.假期中到期图书，系统自动将还书时间顺延至开学以后。请读者留意还书日期，按时归还。（二）遗失赔偿 1.图书丢失必须赔偿。读者可以购买完全相同图书或同类同价值图书进行赔偿。",
+      "topic": "逾期与遗失赔偿",
+      "campus": null, "college": null, "student_type": null, "application_year": null,
+      "source_locator": "网页正文·三、借阅逾期、损坏及遗失书刊的处理",
+      "scope_status": "reviewed"
+    },
+    {
+      "clause_id": "lib-loan-c6",
+      "doc_id": "lib-loan",
+      "exact_text": "（三）未借书刊夹带出馆的处理 （1）对初犯者将登记其身份信息，严肃批评教育，并暂停其借书一个月。（2）再犯者将责令其写出书面检讨，暂停其借书半年；超过3次者，停借1年，并将处罚信息通知所属院系部。（3）情节严重者、态度恶劣者、屡教不改者，上报学校有关部门按规定处理。",
+      "topic": "未借书刊夹带出馆处理",
+      "campus": null, "college": null, "student_type": null, "application_year": null,
+      "source_locator": "网页正文·三、（三）未借书刊夹带出馆的处理",
+      "scope_status": "reviewed"
+    },
+    {
+      "clause_id": "lib-read-c1",
+      "doc_id": "lib-reading-rules",
+      "exact_text": "1.凭本人一卡通进入图书馆阅览图书、期刊资料。2.图书、期刊阅后放置阅览桌或相近的出纳台旁，请勿自行归架。3.复印书刊资料，可在一楼总服务台处自助复印。4.爱护书刊和图书馆内阅览设施。不得在书刊上乱写乱划，严禁撕页。5.图书馆的书刊资料未经借阅，不得擅自携出馆外，私自将书刊资料带出图书馆者，按相关规定处理。",
+      "topic": "阅览管理",
+      "campus": null, "college": null, "student_type": null, "application_year": null,
+      "source_locator": "网页正文",
+      "scope_status": "reviewed"
+    },
+    {
+      "clause_id": "lib-disc-c1",
+      "doc_id": "lib-discussion",
+      "exact_text": "一、讨论间需预约使用，仅限学习、研讨、会议使用，不得用于各种有偿服务。二、讨论间内请保持整洁、安静，不得出现喧哗、打闹、用餐、吃零食等不文明行为，不得开展打牌、下棋、玩游戏等娱乐活动。三、禁止在室内随地吐痰、吸烟、吃东西、乱扔纸屑杂物。四、讨论间内允许与插座连接的电器有：手机、平板电脑、笔记本，其余电器禁止使用，以免超出电源线路负荷造成事故。",
+      "topic": "讨论间使用",
+      "campus": null, "college": null, "student_type": null, "application_year": null,
+      "source_locator": "网页正文·一至四条",
+      "scope_status": "reviewed"
+    },
+    {
+      "clause_id": "lib-disc-c2",
+      "doc_id": "lib-discussion",
+      "exact_text": "六、若离开讨论间，请随身携带贵重物品，本馆不负责保管。使用结束，请即刻与工作人员联系，经确认场地设备完整后，方可离开。七、请遵守时间规定，经主管工作人员同意后，方可延时使用。九、讨论间内所有读者均需遵守本规定。如有违反，本馆将中止其使用权，并停止办理借用申请三至六个月。",
+      "topic": "讨论间使用",
+      "campus": null, "college": null, "student_type": null, "application_year": null,
+      "source_locator": "网页正文·六、七、九条",
+      "scope_status": "reviewed"
+    },
+    {
+      "clause_id": "lib-ext-c1",
+      "doc_id": "lib-extended-hours",
+      "exact_text": "当前正值期末、英语四六级等集中考试期，为更好服务读者复习考试，经图书馆馆务会研究，图书馆将从5月18日起延长开馆时间至考试周结束。1.图书馆于5月18日起延长中区图书馆2—4层楼的开放时间，由原10:00—23:30调整为09:00—00:30开放。其它区域时间不变。",
+      "topic": "临时开馆安排",
+      "campus": null, "college": null, "student_type": null, "application_year": 2026,
+      "source_locator": "网页正文",
+      "scope_status": "reviewed",
+      "time_condition": "仅适用于2026年5月18日起至考试周结束的集中考试期"
+    },
+    {
+      "clause_id": "lib-entry-c1",
+      "doc_id": "lib-entry-notes",
+      "exact_text": "一、凭本人校园卡入馆，严禁使用他人校园卡。二、严禁在图书馆内吸烟。四、保持室内安静。入馆时请将所有通讯工具改为静音状态；在馆内交谈要轻声，以免影响他人阅读。五、衣着整齐，举止文明礼貌。严禁穿拖鞋、凉拖、吊带衫、背心、内短裤入馆。六、请勿抢占座位。",
+      "topic": "入馆须知",
+      "campus": null, "college": null, "student_type": null, "application_year": null,
+      "source_locator": "网页正文·一、二、四、五、六条",
+      "scope_status": "reviewed"
+    },
+    {
+      "clause_id": "lib-offcampus-c1",
+      "doc_id": "lib-offcampus",
+      "exact_text": "一、校外访问系统CARSI平台：……师生无需复杂操作，在校外使用校园网账号登录，就能轻松访问图书馆的大部分电子资源……使用方法如下：1.打开石河子大学图书馆网页 http://lib.shzu.edu.cn/，点击校外访问 2.进入用户登录界面，查找石河子大学，点击登录 3.点击登陆后，跳转到统一身份认证登录系统。4.输入学工号、密码……6.根据需要点击相应的数据库进入（以中国知网为例）……说明：弹出的确认界面只需确认一次，下次再登陆校外访问系统时无需再次Accept。二、没有加入CARSI平台的数据库……（一）超星系列数据库……通过学习通扫码，或者输入学习通账号密码的方式登录使用。",
+      "topic": "校外访问电子资源",
+      "campus": null, "college": null, "student_type": null, "application_year": null,
+      "source_locator": "网页正文·一、二",
+      "scope_status": "reviewed"
+    },
+    {
+      "clause_id": "lib-ecom-c1",
+      "doc_id": "lib-ecomputer",
+      "exact_text": "4.读者使用电子阅览室的各类设备时：……4.每台电脑上均安装有还原卡，硬盘空间上非电脑自身文档将定期删除，读者在使用过程中须及时将个人文件存档，以免造成不必要的损失。（备注：C盘文档每次开机时清理，D盘文档每周清理）；5.贵重物品（如笔记本电脑）请随身携带，自行妥善保管；禁止用物品在电子阅览室内占座，离座半小时视自动放弃座位。三、自带笔记本电脑的读者可在电子阅览室内使用无线网；须采用学校统一的账号登录。",
+      "topic": "电子阅览室",
+      "campus": null, "college": null, "student_type": null, "application_year": null,
+      "source_locator": "网页正文·三、四条",
+      "scope_status": "reviewed"
+    },
+    {
+      "clause_id": "lib-fees-c1",
+      "doc_id": "lib-fees",
+      "exact_text": "自助打印复印收费标准 0.15元/张。查收查引收费标准：论文收录 60元/篇（通过SCI-E、SSCI、CPCI、PUBMed/MEDLINE、EI、CSCD、CSSCI、CNKI、万方等数据库检索收录）……科技查新收费标准：国内外查新 校内800元/校外1000元，6-12个工作日；国内查新 校内500元/校外600元，5-10个工作日；加急费100元/天。",
+      "topic": "图书馆收费",
+      "campus": null, "college": null, "student_type": null, "application_year": null,
+      "source_locator": "网页正文·查新/查收查引/相似性检测/自助打印复印收费标准",
+      "scope_status": "reviewed"
+    },
+    {
+      "clause_id": "lib-newyear-c1",
+      "doc_id": "lib-newyear2026",
+      "exact_text": "现将2026年1月1日至1月3日开馆时间安排如下：一、中区图书馆 1月1日，阅览区正常开放，开放时间：8:30——24:00。1月2日至3日，书库正常开放，开放时间：10:00——24:00。二、北区分馆闭馆。三、电子资源正常使用。",
+      "topic": "临时开馆安排",
+      "campus": null, "college": null, "student_type": null, "application_year": 2026,
+      "source_locator": "网页正文",
+      "scope_status": "reviewed",
+      "time_condition": "仅适用于2026年1月1日至1月3日"
+    },
+    {
+      "clause_id": "lib-summer-c1",
+      "doc_id": "lib-summer2026",
+      "exact_text": "现将7月7日至8月25日服务工作安排如下：一、中区图书馆一楼大厅（电子阅览室、自习区）：每天10:00——22:30。二、因暑期开展图书搬迁工作，中区图书馆二至五楼书库、北区分馆闭馆。三、电子资源正常开放。四、查新、查收、查引平台开放，正常提供服务。",
+      "topic": "临时开馆安排",
+      "campus": null, "college": null, "student_type": null, "application_year": 2026,
+      "source_locator": "网页正文",
+      "scope_status": "reviewed",
+      "time_condition": "仅适用于2026年7月7日至8月25日"
+    },
+    {
+      "clause_id": "lib-visitor-c1",
+      "doc_id": "lib-visitor",
+      "exact_text": "一、校外人员来本馆参观，须事先与馆长办公室联系，经同意后，方可在规定的时间和区域内进行参观。……三、参观人员在没有馆长办公室工作人员带领的情况下原则上不能进入各阅览室参观。",
+      "topic": "校外人员参观",
+      "campus": null, "college": null, "student_type": null, "application_year": null,
+      "source_locator": "网页正文·一、三",
+      "scope_status": "reviewed"
+    }
+  ],
+  "facts": [
+    { "fact_id": "lib-f-loan-ug", "subject": "本专科生", "predicate": "借阅总量", "value": 10, "unit": "册", "conditions": {}, "evidence_ids": ["lib-loan-c2"], "topic": "图书馆借阅", "label": "本、专科生借阅总量" },
+    { "fact_id": "lib-f-loan-ug-days", "subject": "本专科生", "predicate": "借期", "value": 60, "unit": "天", "conditions": {}, "evidence_ids": ["lib-loan-c2"], "topic": "图书馆借阅", "label": "本、专科生借期" },
+    { "fact_id": "lib-f-loan-pg", "subject": "硕博生", "predicate": "借阅总量", "value": 15, "unit": "册", "conditions": {}, "evidence_ids": ["lib-loan-c2"], "topic": "图书馆借阅", "label": "硕博生借阅总量" },
+    { "fact_id": "lib-f-loan-pg-days", "subject": "硕博生", "predicate": "借期", "value": 90, "unit": "天", "conditions": {}, "evidence_ids": ["lib-loan-c2"], "topic": "图书馆借阅", "label": "硕博生借期" },
+    { "fact_id": "lib-f-loan-teacher", "subject": "教师", "predicate": "借阅总量", "value": 20, "unit": "册", "conditions": {}, "evidence_ids": ["lib-loan-c2"], "topic": "图书馆借阅", "label": "教师借阅总量" },
+    { "fact_id": "lib-f-loan-teacher-days", "subject": "教师", "predicate": "借期", "value": 180, "unit": "天", "conditions": {}, "evidence_ids": ["lib-loan-c2"], "topic": "图书馆借阅", "label": "教师借期" },
+    { "fact_id": "lib-f-renew-count", "subject": "全部读者", "predicate": "续借次数", "value": 1, "unit": "次", "conditions": {}, "evidence_ids": ["lib-loan-c2", "lib-loan-c4"], "topic": "图书馆借阅", "label": "续借次数" },
+    { "fact_id": "lib-f-renew-days", "subject": "全部读者", "predicate": "续借天数", "value": 30, "unit": "天", "conditions": {}, "evidence_ids": ["lib-loan-c2", "lib-loan-c4"], "topic": "图书馆借阅", "label": "续借天数" },
+    { "fact_id": "lib-f-no-loan", "subject": "期刊、报纸、工具书", "predicate": "外借资格", "value": "不外借，仅供馆内阅览", "unit": null, "conditions": {}, "evidence_ids": ["lib-loan-c1"], "topic": "图书馆借阅", "label": "不外借馆藏" },
+    { "fact_id": "lib-f-overdue", "subject": "逾期还书", "predicate": "处理方式", "value": "逾期免罚款制度", "unit": null, "conditions": {}, "evidence_ids": ["lib-loan-c5"], "topic": "图书馆借阅", "label": "逾期处理" },
+    { "fact_id": "lib-f-lost", "subject": "图书丢失", "predicate": "赔偿方式", "value": "购买完全相同图书或同类同价值图书进行赔偿", "unit": null, "conditions": {}, "evidence_ids": ["lib-loan-c5"], "topic": "图书馆借阅", "label": "遗失赔偿" },
+    { "fact_id": "lib-f-ext-hours", "subject": "中区图书馆2—4层", "predicate": "考试期开放时间", "value": "09:00—00:30（原10:00—23:30）", "unit": null, "conditions": { "time": "2026-05-18起至考试周结束" }, "evidence_ids": ["lib-ext-c1"], "topic": "图书馆开放时间", "label": "考试期延长开放时间（临时）" },
+    { "fact_id": "lib-f-ext-scope", "subject": "延长开馆通知", "predicate": "适用期间", "value": "2026年5月18日起至考试周结束；其它区域时间不变", "unit": null, "conditions": {}, "evidence_ids": ["lib-ext-c1"], "topic": "图书馆开放时间", "label": "延长开馆适用期间（临时）" },
+    { "fact_id": "lib-f-ny-day1", "subject": "中区图书馆阅览区", "predicate": "2026年1月1日开放时间", "value": "8:30—24:00", "unit": null, "conditions": { "date": "2026-01-01" }, "evidence_ids": ["lib-newyear-c1"], "topic": "图书馆开放时间", "label": "元旦阅览区开放时间" },
+    { "fact_id": "lib-f-ny-day23", "subject": "中区图书馆书库", "predicate": "2026年1月2-3日开放时间", "value": "10:00—24:00", "unit": null, "conditions": { "date": "2026-01-02/03" }, "evidence_ids": ["lib-newyear-c1"], "topic": "图书馆开放时间", "label": "元旦书库开放时间" },
+    { "fact_id": "lib-f-ny-north", "subject": "北区分馆", "predicate": "2026年元旦安排", "value": "闭馆", "unit": null, "conditions": { "date": "2026-01-01/03" }, "evidence_ids": ["lib-newyear-c1"], "topic": "图书馆开放时间", "label": "元旦北区分馆闭馆" },
+    { "fact_id": "lib-f-summer-hall", "subject": "中区图书馆一楼大厅", "predicate": "暑期开放时间", "value": "每天10:00—22:30", "unit": null, "conditions": { "date": "2026-07-07/08-25" }, "evidence_ids": ["lib-summer-c1"], "topic": "图书馆开放时间", "label": "暑期一楼大厅开放时间" },
+    { "fact_id": "lib-f-summer-closed", "subject": "中区二至五楼书库、北区分馆", "predicate": "暑期安排", "value": "闭馆（图书搬迁）", "unit": null, "conditions": { "date": "2026-07-07/08-25" }, "evidence_ids": ["lib-summer-c1"], "topic": "图书馆开放时间", "label": "暑期书库与北区分馆闭馆" },
+    { "fact_id": "lib-f-disc-booking", "subject": "讨论间", "predicate": "使用方式", "value": "需预约使用，仅限学习、研讨、会议使用，不得用于各种有偿服务", "unit": null, "conditions": {}, "evidence_ids": ["lib-disc-c1"], "topic": "图书馆讨论间", "label": "讨论间预约与用途" },
+    { "fact_id": "lib-f-disc-power", "subject": "讨论间电器", "predicate": "允许范围", "value": "仅允许手机、平板电脑、笔记本连接插座", "unit": null, "conditions": {}, "evidence_ids": ["lib-disc-c1"], "topic": "图书馆讨论间", "label": "讨论间允许的电器" },
+    { "fact_id": "lib-f-disc-violation", "subject": "违反讨论间规定", "predicate": "后果", "value": "中止使用权，并停止办理借用申请三至六个月", "unit": null, "conditions": {}, "evidence_ids": ["lib-disc-c2"], "topic": "图书馆讨论间", "label": "违规使用讨论间的后果" },
+    { "fact_id": "lib-f-print", "subject": "图书馆自助打印复印", "predicate": "收费标准", "value": 0.15, "unit": "元/张", "conditions": {}, "evidence_ids": ["lib-fees-c1"], "topic": "图书馆收费", "label": "自助打印复印收费" },
+    { "fact_id": "lib-f-chashou", "subject": "论文收录检索（查收查引）", "predicate": "收费标准", "value": 60, "unit": "元/篇", "conditions": {}, "evidence_ids": ["lib-fees-c1"], "topic": "图书馆收费", "label": "论文收录检索费" },
+    { "fact_id": "lib-f-copy", "subject": "复印书刊资料", "predicate": "办理位置", "value": "一楼总服务台处自助复印", "unit": null, "conditions": {}, "evidence_ids": ["lib-read-c1"], "topic": "图书馆服务", "label": "自助复印位置" },
+    { "fact_id": "lib-f-entry-card", "subject": "入馆", "predicate": "凭证", "value": "凭本人校园卡（一卡通）入馆，严禁使用他人校园卡", "unit": null, "conditions": {}, "evidence_ids": ["lib-entry-c1", "lib-read-c1"], "topic": "图书馆入馆", "label": "入馆凭证" },
+    { "fact_id": "lib-f-ecom-save", "subject": "电子阅览室个人文件", "predicate": "清理规则", "value": "C盘文档每次开机时清理，D盘文档每周清理；离座半小时视自动放弃座位", "unit": null, "conditions": {}, "evidence_ids": ["lib-ecom-c1"], "topic": "图书馆电子阅览室", "label": "电子阅览室文件清理与占座规则" },
+    { "fact_id": "lib-f-offcampus", "subject": "校外访问电子资源", "predicate": "主要途径", "value": "CARSI平台（图书馆网页→校外访问→统一身份认证，输入学工号密码）；未加入CARSI的数据库按指南使用超星系列/NSTL等", "unit": null, "conditions": {}, "evidence_ids": ["lib-offcampus-c1"], "topic": "图书馆电子资源", "label": "校外访问途径" },
+    { "fact_id": "lib-f-visitor", "subject": "校外人员参观图书馆", "predicate": "办理方式", "value": "须事先与馆长办公室联系，经同意后在规定时间和区域内参观；无工作人员带领原则上不能进入各阅览室", "unit": null, "conditions": {}, "evidence_ids": ["lib-visitor-c1"], "topic": "图书馆参观", "label": "校外人员参观规定" }
+  ],
+  "qa_topics": [
+    { "topic_id": "lib-loan", "triggers": ["借书", "借阅", "能借几本", "借几本书", "借多长时间", "借期", "图书借阅规定", "一次能借", "不能外借", "外借", "馆藏"], "title": "图书借阅数量与期限", "summary": "借阅数量与期限按读者类型区分（同一身份改变，答案随依据改变）：", "fact_ids": ["lib-f-no-loan", "lib-f-loan-ug", "lib-f-loan-ug-days", "lib-f-loan-pg", "lib-f-loan-pg-days", "lib-f-loan-teacher", "lib-f-loan-teacher-days"] },
+    { "topic_id": "lib-renew", "triggers": ["续借", "到期怎么办", "还书"], "title": "续借与归还", "summary": "关于续借与归还的官方规定：", "fact_ids": ["lib-f-renew-count", "lib-f-renew-days"] },
+    { "topic_id": "lib-overdue", "triggers": ["逾期", "超期", "罚款", "书丢了", "丢失", "赔偿"], "title": "逾期与遗失赔偿", "summary": "关于逾期与遗失的官方规定：", "fact_ids": ["lib-f-overdue", "lib-f-lost"] },
+    { "topic_id": "lib-disc", "triggers": ["讨论间", "研讨间", "预约讨论"], "title": "图书馆讨论间", "summary": "图书馆讨论间使用要点：", "fact_ids": ["lib-f-disc-booking", "lib-f-disc-power", "lib-f-disc-violation"] },
+    { "topic_id": "lib-entry", "triggers": ["入馆", "进图书馆", "一卡通", "校园卡进图书馆", "入馆须知"], "title": "入馆须知", "summary": "入馆相关要求：", "fact_ids": ["lib-f-entry-card"] },
+    { "topic_id": "lib-fee", "triggers": ["复印", "查收查引", "论文收录", "查新", "收费", "多少钱一张"], "title": "图书馆收费", "summary": "图书馆相关收费标准：", "fact_ids": ["lib-f-print", "lib-f-chashou"] },
+    { "topic_id": "lib-openhours", "triggers": ["开馆", "闭馆", "关门", "几点开", "几点关", "开放时间", "开门"], "title": "开馆时间", "summary": "库内开馆时间资料为带适用期间的临时安排（延长开馆/节假日/暑期），请先确认您问的时间段：", "fact_ids": ["lib-f-ext-hours", "lib-f-ext-scope"] },
+    { "topic_id": "lib-ecom", "triggers": ["电子阅览室", "机房图书馆", "占座"], "title": "电子阅览室", "summary": "电子阅览室使用要点：", "fact_ids": ["lib-f-ecom-save"] },
+    { "topic_id": "lib-offcampus", "triggers": ["校外访问", "知网", "校外看文献", "电子资源", "CARSI"], "title": "校外访问电子资源", "summary": "校外访问图书馆电子资源的途径：", "fact_ids": ["lib-f-offcampus"] },
+    { "topic_id": "lib-visitor", "triggers": ["校外人员参观", "参观图书馆", "家长能进图书馆吗", "家长能进", "游客进馆", "家长", "参观"], "title": "校外人员参观", "summary": "校外人员参观图书馆的规定：", "fact_ids": ["lib-f-visitor"] }
+  ]
+}

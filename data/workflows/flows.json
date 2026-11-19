@@ -1,0 +1,125 @@
+{
+  "flows": [
+    {
+      "flow_id": "national_inspirational_2025",
+      "name": "国家励志奖学金申请（2025年度历史演示）",
+      "version": "2025-historical-demo",
+      "demo_mode": true,
+      "demo_notice": "本流程为2025年度历史案例演示，不可用于当前年度申报；2026年申报须以当年正式通知为准，当前资料不足项由系统明确标出。",
+      "applicable_scope": {
+        "student_type": ["undergraduate", "associate"],
+        "education_level": "本专科（含第二学士学位）",
+        "grade_min": 2,
+        "application_year": 2025
+      },
+      "award_type": "national_inspirational",
+      "steps": [
+        { "step": 1, "key": "policy", "name": "事项与政策确认", "desc": "确认申请国家励志奖学金、学生层次与申报年度（2025历史演示）", "evidence_ids": ["xg-lz-c1", "xg-lz-c2", "xg-cj181-c1"] },
+        { "step": 2, "key": "conditions", "name": "条件对照", "desc": "按规则逐项核对年级、困难认定、双排名，输出三态结果", "evidence_ids": ["xg-lz-c1", "xg-lz-c2"] },
+        { "step": 3, "key": "materials", "name": "材料清单", "desc": "生成已准备/待准备/需确认的材料清单", "evidence_ids": ["xg-lz-c6"] },
+        { "step": 4, "key": "document", "name": "文书生成", "desc": "按2025年学校申请表结构生成可编辑申请表，签名与审核栏留白", "evidence_ids": ["xg-lzform-c1", "xg-lz-c5"] },
+        { "step": 5, "key": "export", "name": "预览与导出", "desc": "导出Word/PDF，附填写依据与办理提示", "evidence_ids": ["xg-lz-c5", "xg-lz-c6"] }
+      ],
+      "required_slots": [
+        { "key": "name", "label": "姓名", "type": "text", "required": false, "personal": true, "note": "演示使用虚构信息；正式使用可留空线下填写" },
+        { "key": "student_type", "label": "学生层次", "type": "choice", "options": ["本科", "专科"], "required": true },
+        { "key": "grade", "label": "当前年级", "type": "choice", "options": ["一年级", "二年级", "三年级", "四年级"], "required": true },
+        { "key": "college", "label": "学院", "type": "text", "required": false },
+        { "key": "major_class", "label": "专业与班级", "type": "text", "required": false },
+        { "key": "difficulty_confirmed", "label": "本学年是否已通过家庭经济困难认定", "type": "choice", "options": ["是", "否", "不确定"], "required": true },
+        { "key": "study_rank", "label": "学习成绩排名（名次）", "type": "number", "required": true },
+        { "key": "study_total", "label": "学习成绩排名总人数", "type": "number", "required": true },
+        { "key": "zongce_rank", "label": "综合测评排名（名次）", "type": "number", "required": true },
+        { "key": "zongce_total", "label": "综合测评排名总人数", "type": "number", "required": true },
+        { "key": "national_scholarship_this_year", "label": "本学年是否已获/拟申请国家奖学金", "type": "choice", "options": ["是", "否"], "required": true },
+        { "key": "aid_applied", "label": "是否同时申请国家助学金", "type": "choice", "options": ["是", "否"], "required": false },
+        { "key": "reason", "label": "申请理由（仅使用您确认的真实事实）", "type": "textarea", "required": false, "note": "官方表格未对励志申请表设置强制字数要求；不虚构奖项、家庭情况或经历，缺省保留填写项" }
+      ],
+      "rule_ids": ["lz-r1-year", "lz-r2-grade", "lz-r3-difficulty", "lz-r4-study-rank", "lz-r5-zongce-rank", "lz-r6-conflict"],
+      "materials": [
+        { "name": "《本专科生国家励志奖学金申请表》（纸质版，一式一份）", "status": "generated", "submit_or_keep": "提交", "evidence_ids": ["xg-lz-c6"] },
+        { "name": "学生成绩单（学院审核通过）", "status": "to_prepare", "submit_or_keep": "学院留存备查", "evidence_ids": ["xg-lz-c6"] },
+        { "name": "获奖证书等相关证明材料", "status": "to_prepare", "submit_or_keep": "学院留存备查", "evidence_ids": ["xg-lz-c6"] },
+        { "name": "家庭经济困难认定相关证明材料", "status": "no_action", "submit_or_keep": "认定环节已存档，不需重复存档", "evidence_ids": ["xg-lz-c6"] }
+      ],
+      "timeline": [
+        { "owner": "学生", "action": "学院确定推荐名单后，进入企业微信—工作台—智慧学工—应用—本科学工—资助—奖学金申报", "evidence_ids": ["xg-lz-c5"] },
+        { "owner": "学院", "action": "2025年10月22日前完成励志奖学金系统提交、材料报送和学院归档（学生个人收件截止日须由学院确认）", "evidence_ids": ["xg-lz-c5"] },
+        { "owner": "学校/兵团", "action": "学院公示不少于3个工作日→资助中心汇总→学校领导小组研究→全校公示不少于5个工作日→报兵团审定", "evidence_ids": ["xg-lz-c4"] }
+      ],
+      "unknown_fields_2026": ["2026年度通知正文", "2026年学校申请表模板确认", "2026年学院学生个人收件截止日"],
+      "contact": { "person": "杨广锐（学生资助管理中心）", "phone": "0993-2057301", "email": "zdzx@shzu.edu.cn", "evidence_ids": ["xg-lz-c8"] },
+      "template_id": "tpl-lizhi-2025"
+    },
+    {
+      "flow_id": "leave_request",
+      "name": "课程请假（生命科学学院模板）",
+      "version": "skxy-v1",
+      "applicable_scope": {
+        "college": "生命科学学院",
+        "note": "其他学院未取得对应模板，将使用明确标识的通用准备稿，不称为该学院正式表格"
+      },
+      "steps": [
+        { "step": 1, "key": "scope", "name": "确认学院与事项", "desc": "确认所在学院；生命科学学院使用官方请假条模板", "evidence_ids": ["sk-leave-c1"] },
+        { "step": 2, "key": "form", "name": "填写请假信息", "desc": "专业班级、事由、天数（节）、起止时间、联系方式", "evidence_ids": ["sk-leave-c1"] },
+        { "step": 3, "key": "address", "name": "回家或超3天补充", "desc": "请假回家或超过3天需填写家庭住址", "evidence_ids": ["sk-leave-c1"] },
+        { "step": 4, "key": "document", "name": "生成请假条", "desc": "按官方格式生成请假条（含存根联），意见栏与签章栏留白", "evidence_ids": ["sk-leave-c1"] },
+        { "step": 5, "key": "export", "name": "预览与导出", "desc": "导出Word/PDF，线下送班主任/辅导员/学办审批签字" }
+      ],
+      "required_slots": [
+        { "key": "college", "label": "所在学院", "type": "text", "required": true },
+        { "key": "major", "label": "专业", "type": "text", "required": true },
+        { "key": "grade", "label": "年级", "type": "text", "required": true },
+        { "key": "cls", "label": "班级", "type": "text", "required": true },
+        { "key": "name", "label": "姓名", "type": "text", "required": false, "personal": true },
+        { "key": "reason", "label": "请假事由", "type": "textarea", "required": true },
+        { "key": "days_or_sections", "label": "请假天数（节）", "type": "text", "required": true },
+        { "key": "start_date", "label": "开始日期", "type": "date", "required": true },
+        { "key": "start_time", "label": "开始时间", "type": "time", "required": true },
+        { "key": "end_date", "label": "结束日期", "type": "date", "required": true },
+        { "key": "end_time", "label": "结束时间", "type": "time", "required": true },
+        { "key": "going_home", "label": "是否请假回家或超过3天", "type": "choice", "options": ["是", "否"], "required": true },
+        { "key": "home_address", "label": "家庭住址（回家或超3天必填）", "type": "text", "required": false, "personal": true },
+        { "key": "parent_phone", "label": "家长电话", "type": "tel", "required": false, "personal": true, "note": "演示可留空，下载后线下填写" },
+        { "key": "personal_phone", "label": "个人电话", "type": "tel", "required": false, "personal": true }
+      ],
+      "rule_ids": ["qj-r1-home-address"],
+      "materials": [
+        { "name": "课程请假条（含存根联）", "status": "generated", "submit_or_keep": "提交学办，存根留存" },
+        { "name": "超3天/回家补充：家庭住址", "status": "conditional", "submit_or_keep": "按模板要求填写" }
+      ],
+      "template_id": "tpl-leave-skxy"
+    },
+    {
+      "flow_id": "venue_borrow",
+      "name": "教学场所临时借用",
+      "version": "jwc-flow-v1",
+      "applicable_scope": {
+        "scope": "全校在校生及教职工",
+        "note": "学生借用教室可通过班主任、辅导员在教务系统进行借用"
+      },
+      "steps": [
+        { "step": 1, "key": "apply", "name": "教务系统网上申请", "desc": "提前1-2天申请：教学服务→我的课表→教室借用申请", "evidence_ids": ["jw-venue-c1", "jw-venue-c2"] },
+        { "step": 2, "key": "branch_venue", "name": "按场地类型确认归口", "desc": "室内体育馆/机房/多媒体教室对应实验设备处、体育学院场馆中心、教务处教务科（电话2058577）", "evidence_ids": ["jw-venue-c2"] },
+        { "step": 3, "key": "print", "name": "打印借用单并盖章", "desc": "使用者打印教室借用单并按活动性质选择审核盖章部门", "evidence_ids": ["jw-venue-c2"] },
+        { "step": 4, "key": "branch_activity", "name": "按活动性质选择盖章部门", "desc": "非教学活动（班会、党团活动等）由学院使用部门（团委、学办等）审核盖章；课表外教学活动（科研训练、学科竞赛等）由学院教科办审核盖章", "evidence_ids": ["jw-venue-c2"] },
+        { "step": 5, "key": "deliver", "name": "送达审批单", "desc": "将审批单送达博学楼C238中控室（电话2057552）", "evidence_ids": ["jw-venue-c2"] }
+      ],
+      "required_slots": [
+        { "key": "applicant_type", "label": "申请身份", "type": "choice", "options": ["学生", "教职工"], "required": true },
+        { "key": "venue_type", "label": "场地类型", "type": "choice", "options": ["多媒体教室", "机房", "室内体育馆", "普通教室"], "required": true },
+        { "key": "activity_type", "label": "活动性质", "type": "choice", "options": ["非教学活动（班会、党团活动等）", "课表外教学活动（科研训练、学科竞赛等）"], "required": true },
+        { "key": "use_date", "label": "使用日期", "type": "date", "required": true },
+        { "key": "use_time", "label": "使用时间段", "type": "text", "required": true }
+      ],
+      "rule_ids": ["vg-r1-advance", "vg-r2-stamp", "vg-r3-deliver"],
+      "materials": [
+        { "name": "教室借用单（教务系统打印）", "status": "generated" },
+        { "name": "审核盖章（按活动性质：团委/学办 或 教科办）", "status": "to_prepare" },
+        { "name": "审批单送达博学楼C238中控室", "status": "to_prepare" }
+      ],
+      "flow_notice": "原流程图含场地类型与活动性质两类分支，审批部门按分支确定；图文提取顺序不代表严格串行，以原图为准。",
+      "template_id": "tpl-venue-checklist"
+    }
+  ]
+}
