@@ -29,11 +29,12 @@ declare global {
 </script>
 
 <script setup lang="ts">
-// PLAN S3 静态版：海报 + 5 个编号标记 + 说明文字。
-// 不引入 three（S5 起才加载）；meta 请求或校验失败时只显示海报，不抛未捕获异常。
+// PLAN S3 静态版 + S4 能力判定：海报 + 5 个编号标记 + 说明文字 + 3D 开关。
+// 不引入 three（S5 起才懒加载）；meta 请求或校验失败时只显示海报，不抛未捕获异常。
 import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { useRouter } from "vue-router";
 import { parseMeta, type CampusMeta, type Hotspot } from "@/campus3d/meta";
+import { decideMode, readGateInput, type GateInput, type GateResult } from "@/campus3d/gate";
 
 const props = defineProps<{ activeBoard: string | null }>();
 const emit = defineEmits<{
@@ -45,6 +46,40 @@ const router = useRouter();
 const meta = ref<CampusMeta | null>(null);
 const mobile = ref(false);
 let mq: MediaQueryList | null = null;
+
+// ---- S4 能力判定 ----
+const LS_KEY = "shzu.campus3d";
+const gate = ref<GateResult>({ mode: "static", reason: "not-ready", canEnable: false });
+/** 本次访问内用户点了「仅看静态图」（即使地址栏带 ?3d=1 也立即静态） */
+const userOff = ref(false);
+let lastInput: GateInput | null = null;
+
+const effectiveMode = computed<GateResult>(() =>
+  userOff.value ? { mode: "static", reason: "user-off", canEnable: true } : gate.value
+);
+
+/** 开关文案：scene→「仅看静态图」；static 且可开启→「开启 3D 沙盘」；其余不显示 */
+const toggleLabel = computed<string | null>(() => {
+  const m = effectiveMode.value;
+  if (m.mode === "scene") return "仅看静态图";
+  if (m.canEnable) return "开启 3D 沙盘";
+  return null;
+});
+
+function onToggle() {
+  if (effectiveMode.value.mode === "scene") {
+    localStorage.setItem(LS_KEY, "off");
+    userOff.value = true;
+    touchHook({ mode: "static", reason: "user-off" });
+  } else {
+    localStorage.removeItem(LS_KEY);
+    userOff.value = false;
+    // 按地址栏 ?3d=1 重新判定（PLAN S4 第 3 条）
+    const r = decideMode({ ...(lastInput as GateInput), query3d: "1", storedPref: null });
+    gate.value = r;
+    touchHook({ mode: r.mode, reason: r.reason });
+  }
+}
 
 const hotspots = computed<Hotspot[]>(() => meta.value?.hotspots ?? []);
 const attribution = computed(() => meta.value?.attribution ?? "");
@@ -95,6 +130,12 @@ onMounted(async () => {
     camera: { position: [0, 0, 0], target: [0, 0, 0], fov: 30 },
     projectPoint: () => ({ x: 0, y: 0, visible: false }),
   };
+
+  // S4 判定一次，写进钩子（此时 3D 还没做，mode 是 scene 时画面仍是静态版）
+  lastInput = readGateInput();
+  gate.value = decideMode(lastInput);
+  touchHook({ mode: effectiveMode.value.mode, reason: effectiveMode.value.reason });
+
   mq = window.matchMedia("(max-width: 720px)");
   mobile.value = mq.matches;
   mq.addEventListener("change", onMediaChange);
@@ -163,6 +204,13 @@ function goBoard(board: string) {
     <slot />
     <figcaption class="campus-caption tiny" data-testid="campus-caption">
       <span>{{ attribution }}</span>
+      <button
+        v-if="toggleLabel"
+        type="button"
+        class="btn-sm"
+        data-testid="campus-toggle"
+        @click="onToggle"
+      >{{ toggleLabel }}</button>
     </figcaption>
   </figure>
 </template>

@@ -99,4 +99,26 @@ INTEGRATION.md；3.4 节 anchor/pick 几何从「40 像素间隔」改为「22 �
      做静态解析，文件名写错在 build 阶段即失败，效果等价（管道必红）。
 - 遗留问题：G1 待作者确认（不影响继续 S4+，均为逻辑/3D 代码）。
 
+## S4 能力判定 — 2026-11-19
+
+- 提交：`3d(S4): 能力判定`
+- 新增：`src/campus3d/gate.ts`（decideMode 纯函数 + readGateInput；软件渲染正则照抄：`/swiftshader|llvmpipe|softpipe|lavapipe|software|basic render/i`）、
+  `tests/unit/gate.test.ts`（18 条：规则 10 行逐条 + 优先级 4 条 + 显卡名 4 条）、
+  `tests/e2e/gate.spec.ts`（7 条：/?3d=0、/?3d=1、/ 默认 software-gl+开关、视口 390、
+  reduced-motion、localStorage 预置、点开关切换）
+- CampusHero：挂载时判定一次写 `__campus3d.mode/reason`；caption 右端渲染 `campus-toggle`
+  （scene→「仅看静态图」写 localStorage 并本次访问强制静态（含 ?3d=1）；
+  static+canEnable→「开启 3D 沙盘」删 localStorage 按 query3d='1' 重判）。
+  mode 是 scene 时画面仍是静态版（S5 起才有 3D），只是钩子值不同 ✓
+- verify：build 通过 / unit **36 passed** / e2e **20 passed**（baseline 4 + static 9 + gate 7）
+- 反向验证：规则 5 的 900 临时改 100 → unit **2 failed**（规则 5 与优先级「390 优先」）、
+  e2e 视口 390 用例 **failed**（reason 变成 software-gl）；还原后 verify 全绿（exit 0）。
+  （e2e 第一次直接 `npx playwright test` 忘了先 build、dist 里还是 900 而"假绿"，
+  重新 `npm run build` 后正确变红——再次踩到 PLAN.S1 把 test:e2e 定义成先 build 再测的原因。）
+- 途中修复：gate 首跑 1 条 flaky（evaluate 在 HomeView 懒加载挂载前执行 →
+  `__campus3d undefined`）。修复方式是给全部用例加 `waitForFunction` 等钩子就绪
+  （消除竞态，断言不变）。
+- 与计划不一致的地方：无
+- 遗留问题：G1 待作者确认
+
 > AI生成
