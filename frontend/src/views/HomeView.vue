@@ -3,12 +3,32 @@ import { ref, onMounted } from "vue";
 import { useRouter } from "vue-router";
 import { useKbMeta, useGo } from "@/composables";
 import { api } from "@/api/client";
+import CampusHero from "@/components/CampusHero.vue";
 
 const router = useRouter();
 const { ready } = useKbMeta();
 const { ask, openWorkflow } = useGo();
 
 const q = ref("");
+
+// 校园沙盘联动状态（PLAN 4.4）：HomeView 是唯一来源。
+// activeSource 记录谁触发的：tile（板块按钮）| marker（编号标记）| canvas（3D 画布）。
+// 只有来源是 tile 时镜头才移动（S6 起）；标记/楼跟随镜头，镜头一动会从鼠标下移开。
+const activeBoard = ref<string | null>(null);
+const activeSource = ref<"tile" | "marker" | "canvas" | null>(null);
+
+function enterFromTile(board: string) {
+  activeBoard.value = board;
+  activeSource.value = "tile";
+}
+function enterFromMarker(board: string) {
+  activeBoard.value = board;
+  activeSource.value = "marker";
+}
+function clearActive() {
+  activeBoard.value = null;
+  activeSource.value = null;
+}
 
 const boards = [
   { no: "01", id: "学工", name: "学工 · 资助", desc: "奖助学金、困难认定、学生证补办" },
@@ -95,14 +115,21 @@ const samples = [
           <p class="index">01 — 服务板块</p>
           <h2 class="h1">五大板块 · {{ ready ? ready.knowledge_evidence + " 条审定证据" : "加载中…" }}</h2>
         </div>
-        <div class="boards">
-          <button v-for="b in boards" :key="b.id" type="button" class="board-tile"
-                  @click="router.push({ path: '/services', query: { board: b.id } })">
-            <span class="no">{{ b.no }}</span>
-            <strong>{{ b.name }}</strong>
-            <span class="tiny">{{ b.desc }}</span>
-          </button>
-        </div>
+        <CampusHero :active-board="activeBoard"
+                    @marker-enter="enterFromMarker" @marker-leave="clearActive">
+          <div class="boards">
+            <button v-for="b in boards" :key="b.id" type="button" class="board-tile"
+                    :data-board="b.id"
+                    :class="{ 'is-active': activeBoard === b.id && activeSource !== 'tile' }"
+                    @mouseenter="enterFromTile(b.id)" @mouseleave="clearActive"
+                    @focus="enterFromTile(b.id)" @blur="clearActive"
+                    @click="router.push({ path: '/services', query: { board: b.id } })">
+              <span class="no">{{ b.no }}</span>
+              <strong>{{ b.name }}</strong>
+              <span class="tiny">{{ b.desc }}</span>
+            </button>
+          </div>
+        </CampusHero>
       </section>
 
       <!-- 办事向导 -->

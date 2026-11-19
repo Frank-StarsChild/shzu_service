@@ -412,3 +412,98 @@ input, textarea, select {
   body { background: #fff; }
   .box, .box-soft, .box-fill, button, input, textarea, select, .brand-mark, .cite-list, .rules-table { box-shadow: none !important; }
 }
+
+/* ============================================================
+   校园沙盘（docs/3d/PLAN.md S3 起）
+   外框直角 1px 边框；底边不画线——与下方板块按钮的上边共用一条线
+   ============================================================ */
+
+.campus-hero { margin: 0; }
+
+.campus-frame {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 12 / 5;            /* 图片没到时也不塌成 0 高 */
+  border: 1px solid var(--line);
+  border-bottom: none;             /* 与 .board-tile 的上边共用一条线，避免双线 */
+  background: var(--paper);
+  overflow: hidden;
+}
+.campus-frame picture,
+.campus-frame picture img { display: block; width: 100%; height: 100%; }
+
+/* 标记层与编号标记：22×22 红底白字方块（PLAN 4.5） */
+.campus-overlay { position: absolute; inset: 0; }
+
+.campus-marker {
+  position: absolute;
+  transform: translate(-50%, -50%);   /* 标记中心对准 posterDesktop/posterMobile 坐标 */
+  width: 22px;
+  height: 22px;
+  min-height: 0;
+  min-width: 0;
+  padding: 0;
+  background: var(--red);
+  border: none;
+  border-radius: 0;
+  color: #fff;
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: none;                   /* 覆写拟物按钮层的阴影与位移 */
+  transition: none;
+}
+.campus-marker:hover,
+.campus-marker:active {
+  background: var(--red);
+  border: none;
+  color: #fff;
+  transform: translate(-50%, -50%);
+  box-shadow: none;
+}
+
+/* is-active：右侧展开标签（白底、1px 黑边、12px；第一行楼名粗体、第二行 note 灰） */
+.campus-marker .marker-card {
+  display: none;
+  position: absolute;
+  left: calc(100% + 4px);
+  top: 50%;
+  transform: translateY(-50%);
+  background: var(--paper);
+  border: 1px solid var(--ink);
+  padding: 3px 8px;
+  white-space: nowrap;
+  text-align: left;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 1.5;
+  color: var(--ink);
+  box-shadow: none;
+}
+.campus-marker.is-active .marker-card { display: block; }
+.campus-marker .marker-card strong { display: block; font-weight: 700; }
+.campus-marker .marker-card em { display: block; font-style: normal; color: var(--ink-2); }
+
+/* 数据说明行（沙盘外框下方；右端为 3D 开关，S4 起渲染） */
+.campus-caption {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: var(--gap-4);
+  margin-top: var(--gap-2);
+}
+
+/* 板块按钮远端联动高亮：与 :hover 同样式（PLAN 4.4） */
+.board-tile.is-active { background: var(--ink); color: #fff; }
+.board-tile.is-active .tiny { color: #bbb; }
+.board-tile.is-active .no { color: #ff8f9e; }
+
+@media (max-width: 720px) {
+  .campus-frame { aspect-ratio: 4 / 3; }   /* 手机海报 1200×900 */
+}

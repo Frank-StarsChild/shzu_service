@@ -71,4 +71,32 @@ INTEGRATION.md；3.4 节 anchor/pick 几何从「40 像素间隔」改为「22 �
 - 与计划不一致的地方：无
 - 遗留问题：无
 
+## S3 静态版 — 2026-11-19
+
+- 提交：`3d(S3): 静态版沙盘`
+- 新增：`src/components/CampusHero.vue`（海报 picture + 5 编号标记 + caption + slot 承接板块按钮；
+  `window.__campus3d` 钩子 declare global 正常声明，mode/reason/status=static/not-ready/static）；
+  swiss.css 追加沙盘样式段（外框直角、12/5→4/3 断点、22×22 标记、展开卡片、板块按钮 is-active 同 :hover）；
+  `tests/e2e/static.spec.ts`（9 条）+ `tests/e2e/fixtures/hook.d.ts`（钩子类型，仅测试用）
+- HomeView：联动状态唯一来源（activeBoard/activeSource：tile/marker/canvas），板块按钮加
+  `data-board`、远端联动 is-active、mouse/focus 处理；.boards 移入 CampusHero 默认插槽
+- 布局决策（据 4.5「下边与板块按钮的上边共用一条线」推得）：外框 border-bottom:none，
+  由紧随其后的 .board-tile 上边框补线（零间隙）实现"共用一条线"；caption 行位于 boards 之后
+  （外框下方 = 板块按钮行之下，即整个沙盘单元最底部）——见提交内注释
+- verify：build 通过 / unit 18 passed / e2e **13 passed**（baseline 4 + static 9，39.1s）
+  截图自动产出：`docs/3d/shots/S3-desktop.png`（469 KB）、`S3-mobile.png`（91 KB）
+- 反向验证：把海报 src 临时写成 `poster-desktop-WRONG.jpg` → `npm run build`
+  **构建红线**（Rollup 无法解析 public 资源路径，test:e2e 管道必然失败，比单测变红更强）；
+  还原后 `npm run verify` 全绿（exit 0）。
+  附注：第一次直跑 `npx playwright test` 未先 build，测的是旧 dist（绿）——再次印证计划把
+  `test:e2e` 定义为"先 build 再测"的必要性；已按正确流程重跑。
+- 视觉自查（image understanding）：S3-desktop.png 呈白色卡纸建筑 + 木底座沙盘，5 个红色编号
+  标记（01–05）精确锚在模型楼顶细杆顶端（v1 资产 anchor 图钉结构），无裁切、无变形。
+- **G1 人工验收：待作者确认**（把 docs/3d/shots/ 的两张截图发给协助方对照参考渲染图。
+  按 PLAN「G1 通过后再往下」，S4 起的步骤在 G1 未确认前先行开发，若 G1 发现问题再回修）。
+- 与计划不一致的地方：
+  1. 反向验证的失败形态是"构建失败"而非"测试 1 变红"——vite 对模板里的 public 资源路径
+     做静态解析，文件名写错在 build 阶段即失败，效果等价（管道必红）。
+- 遗留问题：G1 待作者确认（不影响继续 S4+，均为逻辑/3D 代码）。
+
 > AI生成
