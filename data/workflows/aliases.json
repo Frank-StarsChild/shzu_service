@@ -1,0 +1,33 @@
+{
+  "aliases": [
+    { "alias": "生科院", "target": "生命科学学院", "status": "verified", "note": "来自官方域名 skxy 与常用简称；保留来源与歧义项" },
+    { "alias": "信科院", "target": "信息科学与技术学院", "status": "verified", "note": "学院官网新闻发布者署名『信科院管理员』（2026-09-05）；官网域名为 cs.shzu.edu.cn" },
+    { "alias": "学工部", "target": "党委学生工作部（学生处）", "status": "verified" },
+    { "alias": "学生处", "target": "党委学生工作部（学生处）", "status": "verified" },
+    { "alias": "资助中心", "target": "学生资助管理中心", "status": "verified" },
+    { "alias": "教务处", "target": "教务处", "status": "verified" },
+    { "alias": "后勤处", "target": "后勤管理处", "status": "verified" },
+    { "alias": "保卫处", "target": "党委保卫部（武装部、综合治理办公室）", "status": "verified" },
+    { "alias": "保卫部", "target": "党委保卫部（武装部、综合治理办公室）", "status": "verified" },
+    { "alias": "一卡通", "target": "校园卡", "status": "verified", "note": "图书馆规定中『一卡通』即本人校园卡" },
+    { "alias": "励志奖学金", "target": "国家励志奖学金", "status": "verified" },
+    { "alias": "国奖", "target": "国家奖学金", "status": "verified" },
+    { "alias": "国助金", "target": "国家助学金", "status": "verified" },
+    { "alias": "小绿", "target": null, "status": "unverified", "clarify": "『小绿』为校内别名，当前官方资料中未核实其含义，请确认您指的是哪个事项（如校车、共享单车或其他）" },
+    { "alias": "发规处", "target": "发展规划处（官方机构名称待核对）", "status": "unverified", "clarify": "当前知识库未收录发展规划处办事指南" },
+    { "alias": "补办卡", "target": null, "status": "ambiguous", "clarify": "请问是补办校园卡还是银行卡？如是学生证补办，请直接说『补办学生证』", "routes": { "学生证": "学生证补办（学生事务管理办公室 0993-2058029）", "校园卡": "校园卡补办（当前资料不足，建议咨询一卡通服务点）", "银行卡": "银行卡补办属于个人金融事务，超出校园官方资料范围，请联系发卡银行办理" } },
+    { "alias": "补办银行卡", "target": null, "status": "ambiguous", "clarify": "请问是补办校园卡还是银行卡？", "routes": { "学生证": "学生证补办（学生事务管理办公室 0993-2058029）", "校园卡": "校园卡补办（当前资料不足，建议咨询一卡通服务点）", "银行卡": "银行卡补办属于个人金融事务，超出校园官方资料范围，请联系发卡银行办理" } },
+    { "alias": "补卡", "target": null, "status": "ambiguous", "clarify": "请问是补办校园卡还是银行卡？如是学生证补办，请直接说『补办学生证』", "routes": { "学生证": "学生证补办（学生事务管理办公室 0993-2058029）", "校园卡": "校园卡补办（当前资料不足，建议咨询一卡通服务点）", "银行卡": "银行卡补办属于个人金融事务，超出校园官方资料范围，请联系发卡银行办理" } }
+  ],
+  "identity_options": {
+    "student_type": [
+      { "key": "undergraduate", "label": "本科生" },
+      { "key": "associate", "label": "专科生" },
+      { "key": "graduate_master", "label": "硕士生" },
+      { "key": "graduate_doctor", "label": "博士生" }
+    ],
+    "clarify_question": "请选择您的身份，以便给出对应的官方依据：本科生 / 专科生 / 硕士生 / 博士生？"
+  },
+  "scope_note": "本系统仅回答学工、教务、后勤、保卫、图书馆五大板块的官方资料问题；超出范围时明确说明并引导回校园业务。",
+  "sensitive_aliases_blocked": ["身份证号", "银行卡号", "学号+密码"]
+}

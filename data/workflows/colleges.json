@@ -1,0 +1,32 @@
+{
+  "colleges": [
+    { "official": "临床医学院", "aliases": ["临床"] },
+    { "official": "体育学院", "aliases": ["体院"] },
+    { "official": "信息科学与技术学院", "aliases": ["信科院", "网络空间安全学院", "信息学院", "计算机学院"] },
+    { "official": "公共卫生学院", "aliases": [] },
+    { "official": "兵团教育学院", "aliases": ["教育学院"] },
+    { "official": "农学院", "aliases": [] },
+    { "official": "动物科技学院", "aliases": ["动科院", "动科"] },
+    { "official": "化学化工学院", "aliases": ["化工学院", "化学院"] },
+    { "official": "医学院", "aliases": ["医学校"] },
+    { "official": "商学院", "aliases": [] },
+    { "official": "城市与环境学院", "aliases": ["城建学院", "城环学院"] },
+    { "official": "外国语学院", "aliases": ["外语学院", "外院"] },
+    { "official": "孔子学院", "aliases": [] },
+    { "official": "师范学院", "aliases": ["师范"] },
+    { "official": "护理学院（筹）", "aliases": ["护理学院"] },
+    { "official": "文学艺术学院（新闻传播学院）", "aliases": ["文学艺术学院", "文学与艺术学院", "文艺术学院", "文学院", "艺术学院", "新闻传播学院", "文艺术学院（新闻传播学院）"] },
+    { "official": "机械电气工程学院", "aliases": ["机电学院", "机电机"] },
+    { "official": "水利建筑工程学院", "aliases": ["水建学院", "水利学院"] },
+    { "official": "法学院", "aliases": ["法学"] },
+    { "official": "理学院", "aliases": [] },
+    { "official": "生命科学学院", "aliases": ["生科院"] },
+    { "official": "经济与管理学院", "aliases": ["经管学院", "经管"] },
+    { "official": "继续教育学院", "aliases": [] },
+    { "official": "能源与材料学院", "aliases": ["能材学院"] },
+    { "official": "药学院", "aliases": [] },
+    { "official": "食品学院", "aliases": [] },
+    { "official": "马克思主义学院", "aliases": ["马院"] }
+  ],
+  "note": "官方名称来自 08_各学院官网 采集目录（27 个学院单位）；别名为常用简称，命中最长名称优先。新增学院资料入库时请在此登记。"
+}

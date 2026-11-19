@@ -1,0 +1,12 @@
+services:
+  shzu-agent:
+    build:
+      context: ..
+      dockerfile: deployment/Dockerfile
+    ports:
+      - "8300:8300"
+    environment:
+      - SHZU_PLATFORM_MODE=local-stub
+    volumes:
+      - ../data/artifacts:/app/data/artifacts
+    restart: unless-stopped

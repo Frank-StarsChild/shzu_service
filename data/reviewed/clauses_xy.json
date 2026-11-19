@@ -1,0 +1,312 @@
+{
+  "clauses": [
+    {
+      "clause_id": "xy-cs-c1",
+      "doc_id": "xy-cs-intro",
+      "exact_text": "石河子大学信息科学与技术学院（网络空间安全学院）始建于1984年，其前身是原石河子农学院系统科学系。1996年石河子大学正式合并，1999年4月成立了信息工程系，2001年4月发展为信息工程学院（2004年更名为信息科学与技术学院）。2019年10月，学校为进一步优化学科布局，加强网络空间安全学科专业建设，挂牌成立了网络空间安全学院。",
+      "topic": "学院概况",
+      "campus": null,
+      "college": "信息科学与技术学院",
+      "student_type": null,
+      "application_year": null,
+      "source_locator": "网页正文·学院简介",
+      "scope_status": "reviewed"
+    },
+    {
+      "clause_id": "xy-cs-c2",
+      "doc_id": "xy-cs-intro",
+      "exact_text": "目前，学院下设党委行政办公室、教学与科研办公室、研究生管理与学科建设办公室、学生工作办公室（团委）4个办公室，计算机科学与技术系、软件工程系、网络空间安全系、数据科学系和计算机教学实验中心5个系部。现有计算机科学与技术、软件工程（软件工程（NIIT））、数据科学与大数据技术、网络空间安全4个本科专业。其中，计算机科学与技术专业于2020年获批国家级一流本科专业建设点，2022年在全疆高校计算机类专业中率先通过国际工程教育专业认证，软件工程专业于2023年获批省级一流本科专业建设点。",
+      "topic": "学院概况",
+      "campus": null,
+      "college": "信息科学与技术学院",
+      "student_type": null,
+      "application_year": null,
+      "source_locator": "网页正文·学院简介",
+      "scope_status": "reviewed"
+    },
+    {
+      "clause_id": "xy-cs-c3",
+      "doc_id": "xy-cs-intro",
+      "exact_text": "现有“农业信息化技术及应用”交叉学科博士点1个；“网络空间安全”一级学科硕士学位授权点1个；“电子信息”和“图书情报”2个专业学位类别硕士学位授权点。目前在校生人数为2210人，其中本科生1809人，研究生401人。",
+      "topic": "学院概况",
+      "campus": null,
+      "college": "信息科学与技术学院",
+      "student_type": null,
+      "application_year": null,
+      "source_locator": "网页正文·学院简介",
+      "time_condition": "在校生数字为学院官网简介页口径（页面标注数据截至2026年11月）",
+      "scope_status": "reviewed"
+    },
+    {
+      "clause_id": "xy-cs-c4",
+      "doc_id": "xy-cs-intro",
+      "exact_text": "学院现拥有教职员工92人（专任教师76人）。专任教师队伍中高级职称：51人，教授8人，副教授36人，实验系列7人；硕士生导师59人，博士生导师9人，已取得博士学位34人，博士化率44.73%；高级职称比例67.10%，在读博士研究生14人。国家级高层次人才3人，省部级人才11人。",
+      "topic": "学院概况",
+      "campus": null,
+      "college": "信息科学与技术学院",
+      "student_type": null,
+      "application_year": null,
+      "source_locator": "网页正文·学院简介",
+      "time_condition": "师资数字为学院官网简介页口径（页面标注数据截至2026年11月）",
+      "scope_status": "reviewed"
+    },
+    {
+      "clause_id": "xy-cs-c5",
+      "doc_id": "xy-cs-intro",
+      "exact_text": "未来新校区信息与大数据学院大楼建筑面积达22000平米，将为学院发展提供广阔空间与优质设施。",
+      "topic": "学院位置",
+      "campus": null,
+      "college": "信息科学与技术学院",
+      "student_type": null,
+      "application_year": null,
+      "source_locator": "网页正文·学院简介（末段）",
+      "time_condition": "未来规划（新校区大楼尚未建成，不代表当前校区位置）；学院当前所在校区/办公楼的官方文件尚未采集入库，不能据本条推断现址",
+      "scope_status": "reviewed"
+    },
+    {
+      "clause_id": "xy-art-c1",
+      "doc_id": "xy-art-intro",
+      "exact_text": "学院现有教职工173人，高级职称105人，其中享受国务院政府特殊津贴专家1人，国家级人才1人、“兵团英才”4人，自治区级人才2人，自治区“天池英才”8人，兵团高等学校教学名师1人，获批自治区科技创新平台人才团队1个。",
+      "topic": "师资规模",
+      "campus": null,
+      "college": "文学艺术学院（新闻传播学院）",
+      "student_type": null,
+      "application_year": null,
+      "source_locator": "网页正文·学院简介",
+      "scope_status": "reviewed"
+    },
+    {
+      "clause_id": "xy-art-c2",
+      "doc_id": "xy-art-intro",
+      "exact_text": "学院党委立足“为党育人、为国育才”使命，以“四有三化”为抓手全面加强党支部建设，发挥战斗堡垒作用成效显著，获评兵团优秀基层党组织、第十批全国民族团结进步示范单位。",
+      "topic": "学院概况",
+      "campus": null,
+      "college": "文学艺术学院（新闻传播学院）",
+      "student_type": null,
+      "application_year": null,
+      "source_locator": "网页正文·学院简介",
+      "scope_status": "reviewed"
+    },
+    {
+      "clause_id": "xy-art-c3",
+      "doc_id": "xy-art-intro",
+      "exact_text": "学院有文学、艺术学、历史学3大学科门类，建有中国语言文学、艺术学2个一级学科硕士学位授权点和国际中文教育、新闻与传播、音乐、美术与书法、设计、学科教学（语文、历史、音乐、美术）9个专业学位授权类别（领域）。现有汉语言文学、中国少数民族语言文学、新闻学、音乐学、舞蹈教育、美术学、环境设计、历史学8个本科专业面向全国招生。其中，汉语言文学、美术学为国家一流本科专业，音乐学、新闻学为兵团一流本科专业。",
+      "topic": "本科专业设置",
+      "campus": null,
+      "college": "文学艺术学院（新闻传播学院）",
+      "student_type": null,
+      "application_year": null,
+      "source_locator": "网页正文·学院简介",
+      "scope_status": "reviewed"
+    },
+    {
+      "clause_id": "xy-art-c4",
+      "doc_id": "xy-art-intro",
+      "exact_text": "目前，学院在读本科生1609人，硕士生398人，留学生33人。学生积极参与各类学科比赛，在新疆高校师范生教学技能竞赛、全国大学生广告艺术大赛、高校数字艺术设计大赛和中国好创意暨全国数字艺术设计大赛等赛事中斩获佳绩。",
+      "topic": "在校生规模",
+      "campus": null,
+      "college": "文学艺术学院（新闻传播学院）",
+      "student_type": null,
+      "application_year": null,
+      "source_locator": "网页正文·学院简介",
+      "scope_status": "reviewed"
+    },
+    {
+      "clause_id": "xy-art-c5",
+      "doc_id": "xy-art-intro",
+      "exact_text": "学院与兵团党委宣传部共建新闻传播学院，建有自治区重点文科基地“新疆非物质文化遗产研究中心”、兵团文化润疆研究中心、兵团国际传播基地三个省级科研平台。近5年立项各级各类科研项目135项，科研经费达1300余万元，其中获省部级科研奖励10余项，发表各类论文370余篇。",
+      "topic": "科研平台与成果",
+      "campus": null,
+      "college": "文学艺术学院（新闻传播学院）",
+      "student_type": null,
+      "application_year": null,
+      "source_locator": "网页正文·学院简介",
+      "scope_status": "reviewed"
+    },
+    {
+      "clause_id": "xy-art-c6",
+      "doc_id": "xy-art-intro",
+      "exact_text": "学院致力于开展教育、文化事业服务，在国家通用语言文字推广，中小学教师“岗位能力提升”、继续教育，顶岗支教，非遗研培，文艺下乡，乡村振兴等方面做出很大贡献。",
+      "topic": "对外交流与社会服务",
+      "campus": null,
+      "college": "文学艺术学院（新闻传播学院）",
+      "student_type": null,
+      "application_year": null,
+      "source_locator": "网页正文·学院简介",
+      "scope_status": "reviewed"
+    },
+    {
+      "clause_id": "xy-art-c7",
+      "doc_id": "xy-art-intro",
+      "exact_text": "学院积极与对口支援高校建立联系，通过专家讲学、教师进修、本科生插班学习、科研互助等方式，加强国内交流与合作；通过国际中文教育专业学位授权点建设、向孔子学院选派师资、教师参加国家留学基金委项目攻读博士学位等方式加强国际交流。",
+      "topic": "对外交流与社会服务",
+      "campus": null,
+      "college": "文学艺术学院（新闻传播学院）",
+      "student_type": null,
+      "application_year": null,
+      "source_locator": "网页正文·学院简介",
+      "scope_status": "reviewed"
+    }
+  ],
+  "facts": [
+    {
+      "fact_id": "xy-cs-f-history",
+      "subject": "信息科学与技术学院（网络空间安全学院）",
+      "predicate": "沿革",
+      "value": "始建于1984年（前身原石河子农学院系统科学系）；2004年定名信息科学与技术学院；2019年10月挂牌网络空间安全学院",
+      "unit": null,
+      "conditions": {},
+      "evidence_ids": [
+        "xy-cs-c1"
+      ],
+      "topic": "学院概况",
+      "label": "学院沿革"
+    },
+    {
+      "fact_id": "xy-cs-f-majors",
+      "subject": "信息科学与技术学院",
+      "predicate": "本科专业设置",
+      "value": "计算机科学与技术、软件工程（软件工程（NIIT））、数据科学与大数据技术、网络空间安全，共4个本科专业",
+      "unit": null,
+      "conditions": {},
+      "evidence_ids": [
+        "xy-cs-c2"
+      ],
+      "topic": "学院概况",
+      "label": "本科专业设置"
+    },
+    {
+      "fact_id": "xy-cs-f-honors",
+      "subject": "信息科学与技术学院专业建设",
+      "predicate": "建设成果",
+      "value": "计算机科学与技术：2020年获批国家级一流本科专业建设点、2022年全疆高校计算机类专业中率先通过国际工程教育专业认证；软件工程：2023年获批省级一流本科专业建设点",
+      "unit": null,
+      "conditions": {},
+      "evidence_ids": [
+        "xy-cs-c2"
+      ],
+      "topic": "学院概况",
+      "label": "专业建设成果"
+    },
+    {
+      "fact_id": "xy-cs-f-degree",
+      "subject": "信息科学与技术学院",
+      "predicate": "学科与学位点",
+      "value": "农业信息化技术及应用交叉学科博士点1个；“网络空间安全”一级学科硕士点1个；“电子信息”“图书情报”专业学位硕士类别2个",
+      "unit": null,
+      "conditions": {},
+      "evidence_ids": [
+        "xy-cs-c3"
+      ],
+      "topic": "学院概况",
+      "label": "学科与学位点"
+    },
+    {
+      "fact_id": "xy-cs-f-students",
+      "subject": "信息科学与技术学院",
+      "predicate": "在校生规模",
+      "value": "2210人（本科生1809人、研究生401人）",
+      "unit": null,
+      "conditions": {
+        "data_as_of": "2026-11"
+      },
+      "evidence_ids": [
+        "xy-cs-c3"
+      ],
+      "topic": "学院概况",
+      "label": "在校生规模"
+    },
+    {
+      "fact_id": "xy-cs-f-staff",
+      "subject": "信息科学与技术学院",
+      "predicate": "师资规模",
+      "value": "教职员工92人（专任教师76人）；教授8人、副教授36人；博士生导师9人、硕士生导师59人",
+      "unit": null,
+      "conditions": {
+        "data_as_of": "2026-11"
+      },
+      "evidence_ids": [
+        "xy-cs-c4"
+      ],
+      "topic": "学院概况",
+      "label": "师资规模"
+    },
+    {
+      "fact_id": "xy-art-f-师资规模",
+      "subject": "文学艺术学院（新闻传播学院）",
+      "predicate": "师资规模",
+      "value": "学院现有教职工173人，高级职称105人，其中享受国务院政府特殊津贴专家1人，国家级人才1人、“兵团英才”4人，自治区级人才2人，自治区“天池英才”8人，兵团高等学校教学名师1人，获批自治区科技创新平台人才团队1个。",
+      "unit": null,
+      "conditions": {},
+      "evidence_ids": [
+        "xy-art-c1"
+      ],
+      "topic": "师资规模",
+      "label": "师资规模"
+    },
+    {
+      "fact_id": "xy-art-f-本科专业设置",
+      "subject": "文学艺术学院（新闻传播学院）",
+      "predicate": "本科专业设置",
+      "value": "学院有文学、艺术学、历史学3大学科门类，建有中国语言文学、艺术学2个一级学科硕士学位授权点和国际中文教育、新闻与传播、音乐、美术与书法、设计、学科教学（语文、历史、音乐、美术）9个专业学位授权类别（领域）。现有汉语言文学、中国少数民族语言文学、新闻学、音乐学、舞蹈教育、美术学、环境设计、历史学8个本科专业面向全国招生。其中，汉语言文学、美术学为国家一流本科专业，音乐学、新闻学为兵团一流本科专业。",
+      "unit": null,
+      "conditions": {},
+      "evidence_ids": [
+        "xy-art-c3"
+      ],
+      "topic": "本科专业设置",
+      "label": "本科专业设置"
+    },
+    {
+      "fact_id": "xy-art-f-在校生规模",
+      "subject": "文学艺术学院（新闻传播学院）",
+      "predicate": "在校生规模",
+      "value": "目前，学院在读本科生1609人，硕士生398人，留学生33人。学生积极参与各类学科比赛，在新疆高校师范生教学技能竞赛、全国大学生广告艺术大赛、高校数字艺术设计大赛和中国好创意暨全国数字艺术设计大赛等赛事中斩获佳绩。",
+      "unit": null,
+      "conditions": {},
+      "evidence_ids": [
+        "xy-art-c4"
+      ],
+      "topic": "在校生规模",
+      "label": "在校生规模"
+    }
+  ],
+  "qa_topics": [
+    {
+      "topic_id": "cs-intro",
+      "object_college": "信息科学与技术学院",
+      "triggers": [
+        "信息科学与技术学院简介",
+        "信息科学与技术学院概况",
+        "网络空间安全学院简介"
+      ],
+      "title": "信息科学与技术学院（网络空间安全学院）概况",
+      "summary": "信息科学与技术学院（网络空间安全学院）概况要点：",
+      "fact_ids": [
+        "xy-cs-f-history",
+        "xy-cs-f-majors",
+        "xy-cs-f-honors",
+        "xy-cs-f-degree",
+        "xy-cs-f-students",
+        "xy-cs-f-staff"
+      ],
+      "note": "学院名不再作为独立触发词（防止机构名吞掉位置/请假等具体问题）；学院问法由 route() 学院分流（object_college + 意图词）进入本主题。"
+    },
+    {
+      "topic_id": "cs-art",
+      "object_college": "文学艺术学院（新闻传播学院）",
+      "triggers": [
+        "文学艺术学院（新闻传播学院）简介",
+        "文学艺术学院（新闻传播学院）概况"
+      ],
+      "title": "文学艺术学院（新闻传播学院）概况",
+      "summary": "文学艺术学院（新闻传播学院）概况要点：",
+      "fact_ids": [
+        "xy-art-f-师资规模",
+        "xy-art-f-本科专业设置",
+        "xy-art-f-在校生规模"
+      ],
+      "note": "由学院官网简介导入；问法经 colleges.json 对象归一 + intent 分流进入本主题。"
+    }
+  ]
+}

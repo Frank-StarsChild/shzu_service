@@ -1,0 +1,172 @@
+{
+  "clauses": [
+    {
+      "clause_id": "jw-venue-c1",
+      "doc_id": "jw-venue-flow",
+      "exact_text": "一、适用范围 适用于全校在校生及教职工。学生借用教室可通过班主任、辅导员在教务系统进行借用。",
+      "topic": "教学场所借用",
+      "campus": null, "college": null, "student_type": null, "application_year": null,
+      "source_locator": "附件PDF·第1页·业务描述",
+      "scope_status": "reviewed"
+    },
+    {
+      "clause_id": "jw-venue-c2",
+      "doc_id": "jw-venue-flow",
+      "exact_text": "登录教务管理系统，使用者网上申请教室（提前1-2天申请）：教学服务→我的课表→教室借用申请进行临时借用申请。室内体育馆、机房、多媒体教室对应实验设备处、体育学院场馆中心、教务处教务科（电话：2058577）等归口。使用者打印教室借用单并盖章（使用单位）：非教学活动（班会、党团活动等）使用教室的，由学院使用部门（团委、学办等）审核盖章；课表外教学活动（科研训练、学科竞赛等）使用教室的，由学院教科办审核盖章。使用者将审批单送达博学楼C238中控室（电话：2057552）。",
+      "topic": "教学场所借用",
+      "campus": null, "college": null, "student_type": null, "application_year": null,
+      "source_locator": "附件PDF·第1页·业务流程（按原图文字核对，含分支）",
+      "scope_status": "reviewed"
+    },
+    {
+      "clause_id": "jw-hk-c1",
+      "doc_id": "jw-huankao",
+      "exact_text": "一、适用范围 具体详见《石河子大学普通本科学生课程补考、缓考、重修、补修和免修实施细则》石大校办发〔2020〕24号。二、申请时间 缓考申请和办理除考试当场突发疾病等情况外，必须在考试前完成。三、申请材料 1.缓考由学生本人申请，上传相应的证明材料，由学生所在学院主管教学工作的院长签署意见后，方可进行缓考处理。2.因病申请缓考（上传三甲医院等以上医院诊断证明附件）。3.因事/因考试冲突需（上传班主任确认说明及意见）。",
+      "topic": "缓考",
+      "campus": null, "college": null, "student_type": "本科生", "application_year": null,
+      "source_locator": "附件PDF·第1页·业务描述",
+      "scope_status": "reviewed"
+    },
+    {
+      "clause_id": "jw-hk-c2",
+      "doc_id": "jw-huankao",
+      "exact_text": "业务流程：学生登录教务管理系统→考试报名（我的申请）→缓考申请（考试课程）→因病申请缓考（上传三甲医院等以上医院诊断证明附件）或因事/因考试冲突（上传班主任确认说明及意见）→学生所在学院教办审批→缓考审批通过办理完成（或审批不通过，缓考办理流程终止）→获准缓考课程跟随下学期补考进行考核。",
+      "topic": "缓考",
+      "campus": null, "college": null, "student_type": "本科生", "application_year": null,
+      "source_locator": "附件PDF·第1页·业务流程",
+      "scope_status": "reviewed"
+    },
+    {
+      "clause_id": "jw-cjd-c1",
+      "doc_id": "jw-transcript-current",
+      "exact_text": "一、适用范围 在校生因出国，找工作等，需在校期间课程成绩单。二、申请时间 个人申请。三、申请材料 1.在校生登陆手机微门户，在“一站式服务大厅”-“办事服务”-点击“在校本专科生成绩单打印申请”，核对信息无误，填写申请原因后，点击下一步，然后在5分钟后可在行政楼一楼大厅或者博学楼B区自助打印机自行打印盖教务处公章成绩单。2.在校生登陆教务系统，在“学籍成绩”-“我的成绩”-“课程成绩查询”中，开课学期选择全部学期，查询后导出进行打印。",
+      "topic": "成绩单打印",
+      "campus": null, "college": null, "student_type": "在校生", "application_year": null,
+      "source_locator": "附件PDF·第1页",
+      "scope_status": "reviewed"
+    },
+    {
+      "clause_id": "jw-cjd-grad-c1",
+      "doc_id": "jw-transcript-grad",
+      "exact_text": "一、适用范围 已毕业学生因出国，找工作等，需出具在校期间课程成绩单。三、申请材料 1.中文成绩单从石河子大学档案馆调取或者从个人档案中调取。2.英文成绩单（自行找翻译机构翻译）。业务流程：网页搜索“石河子大学档案馆”在服务指南中查看《石河子大学档案预约查询系统使用指南》，通过“档案预约查询系统”线上预约调取档案成绩单；学生自行找翻译机构翻译成英文成绩单，附带中文成绩单复印件；教务处审核盖章。",
+      "topic": "成绩单打印",
+      "campus": null, "college": null, "student_type": "毕业生", "application_year": null,
+      "source_locator": "附件PDF·第1页",
+      "scope_status": "reviewed"
+    },
+    {
+      "clause_id": "jw-xw-c1",
+      "doc_id": "jw-degree-reissue",
+      "exact_text": "根据《石河子大学普通本专科学生管理规定》第六十八条，“学历证书和学位证书遗失或者损坏，经本人申请，学校核实后出具相应的证明书。证明书与原证书具有同等效力”。办理时间：申请人提交材料后，每周三集中办理。材料：（1）毕业证书或毕业证明书原件和复印件1份；（2）身份证原件及复印件，他人代办的，需提供授权委托书、委托人身份证复印件、被委托人的身份证原件及复印件；（3）近期两寸免冠蓝底照片2张；（4）《石河子大学学位证明书申请表》。流程：申请人提交材料到教务处教务科→教务处教务科查档核实学位信息→工作人员登记补办证明书信息，制作证明书并盖章→申请人/被委托人核对后领取证书。",
+      "topic": "学位证明书补办",
+      "campus": null, "college": null, "student_type": null, "application_year": null,
+      "source_locator": "附件PDF·第1页",
+      "scope_status": "reviewed"
+    },
+    {
+      "clause_id": "jw-xx-c1",
+      "doc_id": "jw-xiuxue",
+      "exact_text": "一、适用范围 因离校创业、身体因素、服兵役（境/国外学生）等原因需离校，具体详见《石河子大学普通本专科学生管理规定》（石大校发〔2022〕26号）。二、申请时间 每学期开学4周内（病休不受该时间限制），供申请、审批和办理离校手续。三、申请材料 1.办理休学均需提供家长知情同意书（家长签字）。2.因身体原因休学的，附二级甲等及以上医院证明复印件（近一个月内的疾病诊断证明书，需加盖医院公章）。3.因离校创业休学的，申请人为创业企业法人代表的需提供《企业法人营业执照》副本复印件，申请人为合伙创业的（非法人代表），需提供工商部门盖章的公司章程复印件。4.因特殊困难等原因需中途停学，无法继续学习的，附个人情况说明。",
+      "topic": "休学",
+      "campus": null, "college": null, "student_type": "本专科生", "application_year": null,
+      "source_locator": "附件PDF·第1页",
+      "scope_status": "reviewed"
+    },
+    {
+      "clause_id": "jw-fx-c1",
+      "doc_id": "jw-fuxue",
+      "exact_text": "一、适用范围 学生休学或保留学籍期满，应提出复学申请。二、申请时间 每学期开学第一周内，办理申请、审批复学手续。三、申请材料 1.办理复学均需提供家长知情同意书（家长签字）。2.因身体原因休学的，须附二级甲等及以上医院出具的健康证明。3.因精神障碍或心理问题休学的，申请复学时须附精神专科治疗记录、相关证明，以及二级甲等及以上医院出具的健康证明。4.参军退役的学生持退役相关证明材料办理复学手续。",
+      "topic": "复学",
+      "campus": null, "college": null, "student_type": "本专科生", "application_year": null,
+      "source_locator": "附件PDF·第1页",
+      "scope_status": "reviewed"
+    },
+    {
+      "clause_id": "jw-zzy-c1",
+      "doc_id": "jw-zhuanzye",
+      "exact_text": "二、申请时间 每学期开学后1周内，办理申请手续。三、申请材料 个人按照转入学院本科生转专业实施细则及每学期本科生转专业工作实施方案中申请材料准备：转专业申请书、父母知情同意书、转出学院出具的思想品行鉴定意见、入学以来原始成绩单、高考综合成绩和单科成绩、全国大学生英语（俄语等）四六级成绩单、与转入专业相关的获奖证书和发表论文等相关支撑材料。",
+      "topic": "转专业",
+      "campus": null, "college": null, "student_type": "本专科生", "application_year": null,
+      "source_locator": "附件PDF·第1页",
+      "scope_status": "reviewed"
+    },
+    {
+      "clause_id": "jw-lj-c1",
+      "doc_id": "jw-liuji",
+      "exact_text": "一、适用范围 在籍学生按学生管理规定须予以留级处理或者自愿留级的。二、申请时间 留级审批手续于开学后2周内完成。三、申请材料 1.家长知情同意书（家长签字）。业务流程：填写留级申请表，学生家长签字同意→学院主管领导签署意见并加盖公章，报教务处学籍科→学籍科审核后报教务处领导签署意见→学籍科办理学生留级处理并出具通知单→学生持通知单到学院教办办理留级后课程补退选工作→教务处学籍科在学信网对留级学生予以标注。",
+      "topic": "留级",
+      "campus": null, "college": null, "student_type": "本专科生", "application_year": null,
+      "source_locator": "附件PDF·第1页",
+      "scope_status": "reviewed"
+    },
+    {
+      "clause_id": "jw-xk-c1",
+      "doc_id": "jw-xuanke",
+      "exact_text": "二、申请时间 每学期选课设置三轮，第一轮共12天，每个年级三天，且高年级优先；第二轮共7天，无优先次序；第三轮14天，0-1周。业务流程：预选（第一轮16-17周）→正选（第二轮18周）→第三轮（0-1周）→补退选（2-4周）；通选课<15人由上课学院根据选课人数决定是否开课；通选课不做补退选。附件1：《石河子大学普通本科生选课管理办法》石大教发[2024]4号。",
+      "topic": "选课",
+      "campus": null, "college": null, "student_type": "本科生", "application_year": null,
+      "source_locator": "附件PDF·第1页",
+      "scope_status": "reviewed"
+    },
+    {
+      "clause_id": "jw-cal-c1",
+      "doc_id": "jw-calendar-2627",
+      "exact_text": "第一学期（2026.8.24-2027.2.28）：2026级新生报到、在校生注册 8月29日至8月30日；上课：在校本科生8月31日，2026级本科新生9月14日，研究生（含新生）9月7日；中秋节9月25日至27日放假共3天；国庆节10月1日至7日放假调休共7天（9月20日、10月10日上班）；考试周1月4日至1月7日；学生寒假1月8日至2月28日。第二学期（2027.2.22-2027.8.22）：学生注册2月27日至28日，上课3月1日；考试周6月28日至7月1日；学生暑假7月2日至8月22日；毕业典礼暨学士学位授予仪式6月16日至17日。",
+      "topic": "校历",
+      "campus": null, "college": null, "student_type": null, "application_year": 2026,
+      "source_locator": "附件PDF·第2页·第一学期/第二学期说明",
+      "scope_status": "reviewed"
+    },
+    {
+      "clause_id": "sk-leave-c1",
+      "doc_id": "sk-leave-form",
+      "exact_text": "生命科学学院学生请假条：尊敬的老师：我是____院____专业____级____班学生，因________需请假____天（节），自____月____日____时至____月____日____时，请假期间，安全责任由本人负责。请假回家或超3天，需填家庭住址。家长电话、个人电话；班主任意见、辅导员意见；学办（盖章）、院领导意见；请假人签字；时间。",
+      "topic": "请假",
+      "campus": null, "college": "生命科学学院", "student_type": null, "application_year": null,
+      "source_locator": "网页正文·生命科学学院学生请假条（页面完整版）",
+      "scope_status": "reviewed",
+      "note": "页面另含存根联：专业/班级/事由/天数/起止时间/家长电话/个人电话/批假人/请假人/时间/销假签字。模板采用页面完整请假条版本并保留存根联；仅限生命科学学院使用。"
+    }
+  ],
+  "facts": [
+    { "fact_id": "jw-f-venue-scope", "subject": "教学场所临时借用", "predicate": "适用范围", "value": "全校在校生及教职工；学生借用教室可通过班主任、辅导员在教务系统进行借用", "unit": null, "conditions": {}, "evidence_ids": ["jw-venue-c1"], "topic": "场地借用", "label": "教学场所借用适用范围" },
+    { "fact_id": "jw-f-venue-advance", "subject": "教室借用申请", "predicate": "提前时间", "value": "提前1-2天在教务系统申请", "unit": null, "conditions": {}, "evidence_ids": ["jw-venue-c2"], "topic": "场地借用", "label": "提前1-2天申请" },
+    { "fact_id": "jw-f-venue-path", "subject": "教室借用申请入口", "predicate": "系统路径", "value": "教务管理系统：教学服务→我的课表→教室借用申请", "unit": null, "conditions": {}, "evidence_ids": ["jw-venue-c2"], "topic": "场地借用", "label": "教务系统申请路径" },
+    { "fact_id": "jw-f-venue-stamp-nonteaching", "subject": "非教学活动借用教室", "predicate": "审核盖章部门", "value": "学院使用部门（团委、学办等）审核盖章", "unit": null, "conditions": { "activity_type": "非教学活动（班会、党团活动等）" }, "evidence_ids": ["jw-venue-c2"], "topic": "场地借用", "label": "非教学活动盖章部门" },
+    { "fact_id": "jw-f-venue-stamp-teaching", "subject": "课表外教学活动借用教室", "predicate": "审核盖章部门", "value": "学院教科办审核盖章", "unit": null, "conditions": { "activity_type": "课表外教学活动（科研训练、学科竞赛等）" }, "evidence_ids": ["jw-venue-c2"], "topic": "场地借用", "label": "课表外教学活动盖章部门" },
+    { "fact_id": "jw-f-venue-deliver", "subject": "教室借用审批单", "predicate": "送达地点", "value": "博学楼C238中控室（电话：2057552）", "unit": null, "conditions": {}, "evidence_ids": ["jw-venue-c2"], "topic": "场地借用", "label": "审批单送达地点" },
+    { "fact_id": "jw-f-venue-venue-depts", "subject": "室内体育馆/机房/多媒体教室", "predicate": "归口部门", "value": "实验设备处、体育学院场馆中心、教务处教务科（电话：2058577）", "unit": null, "conditions": {}, "evidence_ids": ["jw-venue-c2"], "topic": "场地借用", "label": "场地归口部门" },
+    { "fact_id": "jw-f-hk-deadline", "subject": "缓考申请", "predicate": "申请时间", "value": "必须在考试前完成（考试当场突发疾病等情况除外）", "unit": null, "conditions": {}, "evidence_ids": ["jw-hk-c1"], "topic": "缓考", "label": "缓考申请时间" },
+    { "fact_id": "jw-f-hk-materials", "subject": "缓考申请材料", "predicate": "材料清单", "value": "因病：三甲医院等以上医院诊断证明；因事/考试冲突：班主任确认说明及意见；学院主管教学院长签署意见", "unit": null, "conditions": {}, "evidence_ids": ["jw-hk-c1"], "topic": "缓考", "label": "缓考申请材料" },
+    { "fact_id": "jw-f-hk-result", "subject": "获准缓考课程", "predicate": "考核安排", "value": "跟随下学期补考进行考核", "unit": null, "conditions": {}, "evidence_ids": ["jw-hk-c2"], "topic": "缓考", "label": "缓考后考核安排" },
+    { "fact_id": "jw-f-cjd-way", "subject": "在校生成绩单打印", "predicate": "办理途径", "value": "微门户一站式服务大厅→办事服务→在校本专科生成绩单打印申请，5分钟后在行政楼一楼大厅或博学楼B区自助打印机打印（盖教务处公章）；或教务系统导出后学院教办、教务处盖章", "unit": null, "conditions": { "student_status": "在校生" }, "evidence_ids": ["jw-cjd-c1"], "topic": "成绩单", "label": "在校生成绩单打印途径" },
+    { "fact_id": "jw-f-cjd-grad", "subject": "毕业生成绩单", "predicate": "办理途径", "value": "中文成绩单从档案馆线上预约调取或从个人档案调取；英文成绩单自行找翻译机构翻译，附带中文成绩单复印件；教务处审核盖章", "unit": null, "conditions": { "student_status": "已毕业" }, "evidence_ids": ["jw-cjd-grad-c1"], "topic": "成绩单", "label": "毕业生成绩单办理" },
+    { "fact_id": "jw-f-xw-time", "subject": "学位证明书补办", "predicate": "办理时间", "value": "申请人提交材料后，每周三集中办理", "unit": null, "conditions": {}, "evidence_ids": ["jw-xw-c1"], "topic": "学位证明书", "label": "学位证明书办理时间" },
+    { "fact_id": "jw-f-xw-materials", "subject": "学位证明书补办", "predicate": "材料清单", "value": "毕业证书或毕业证明书原件及复印件1份；身份证原件及复印件（代办需授权委托书等）；近期两寸免冠蓝底照片2张；《石河子大学学位证明书申请表》", "unit": null, "conditions": {}, "evidence_ids": ["jw-xw-c1"], "topic": "学位证明书", "label": "学位证明书材料" },
+    { "fact_id": "jw-f-xx-time", "subject": "休学（保留学籍）申请", "predicate": "申请时间", "value": "每学期开学4周内（病休不受该时间限制）", "unit": null, "conditions": {}, "evidence_ids": ["jw-xx-c1"], "topic": "休学", "label": "休学申请时间" },
+    { "fact_id": "jw-f-xx-materials", "subject": "休学申请材料", "predicate": "材料清单", "value": "家长知情同意书（家长签字）；因病附二甲及以上医院证明（近一个月内诊断证明，加盖医院公章）；因创业附营业执照副本或公司章程复印件；特殊困难附个人情况说明", "unit": null, "conditions": {}, "evidence_ids": ["jw-xx-c1"], "topic": "休学", "label": "休学申请材料" },
+    { "fact_id": "jw-f-fx-time", "subject": "复学申请", "predicate": "申请时间", "value": "每学期开学第一周内", "unit": null, "conditions": {}, "evidence_ids": ["jw-fx-c1"], "topic": "复学", "label": "复学申请时间" },
+    { "fact_id": "jw-f-fx-materials", "subject": "复学申请材料", "predicate": "材料清单", "value": "家长知情同意书；因病休学附二甲及以上医院健康证明；因精神障碍或心理问题休学附精神专科治疗记录及相关证明；参军退役持退役相关证明", "unit": null, "conditions": {}, "evidence_ids": ["jw-fx-c1"], "topic": "复学", "label": "复学申请材料" },
+    { "fact_id": "jw-f-zzy-time", "subject": "转专业申请", "predicate": "申请时间", "value": "每学期开学后1周内", "unit": null, "conditions": {}, "evidence_ids": ["jw-zzy-c1"], "topic": "转专业", "label": "转专业申请时间" },
+    { "fact_id": "jw-f-xk-rounds", "subject": "本科选课", "predicate": "轮次安排", "value": "三轮：第一轮12天（16-17周，高年级优先）；第二轮7天（18周）；第三轮14天（0-1周）；补退选2-4周；通选课不做补退选", "unit": null, "conditions": {}, "evidence_ids": ["jw-xk-c1"], "topic": "选课", "label": "选课三轮时间" },
+    { "fact_id": "jw-f-cal-start", "subject": "2026-2027学年第一学期", "predicate": "上课时间", "value": "在校本科生8月31日；2026级本科新生9月14日；研究生（含新生）9月7日", "unit": null, "conditions": { "year": "2026-2027学年" }, "evidence_ids": ["jw-cal-c1"], "topic": "校历", "label": "第一学期上课时间" },
+    { "fact_id": "jw-f-cal-exam", "subject": "2026-2027学年考试周", "predicate": "时间", "value": "第一学期1月4日至1月7日；第二学期6月28日至7月1日", "unit": null, "conditions": { "year": "2026-2027学年" }, "evidence_ids": ["jw-cal-c1"], "topic": "校历", "label": "考试周时间" },
+    { "fact_id": "jw-f-cal-holiday", "subject": "2026-2027学年第一学期假期", "predicate": "安排", "value": "中秋节9月25-27日放假3天；国庆节10月1-7日放假调休7天（9月20日、10月10日上班）；寒假1月8日至2月28日", "unit": null, "conditions": { "year": "2026-2027学年" }, "evidence_ids": ["jw-cal-c1"], "topic": "校历", "label": "第一学期假期安排" },
+    { "fact_id": "jw-f-cal-exams", "subject": "2026-2027学年国家级考试", "predicate": "时间", "value": "9月12日中小学教师资格考试（笔试）；9月19-20日全国计算机等级考试；11月14-15日大学英语四六级口试；12月5-6日教资面试；12月12日四六级笔试", "unit": null, "conditions": { "year": "2026-2027学年" }, "evidence_ids": ["jw-cal-c1"], "topic": "校历", "label": "国家级考试时间" },
+    { "fact_id": "sk-f-leave-scope", "subject": "课程请假条（线上模板）", "predicate": "适用学院", "value": "生命科学学院（其他学院未取得对应模板，使用明确标识的通用准备稿）", "unit": null, "conditions": { "college": "生命科学学院" }, "evidence_ids": ["sk-leave-c1"], "topic": "请假", "label": "请假模板适用范围" },
+    { "fact_id": "sk-f-leave-fields", "subject": "生命科学学院请假条", "predicate": "需填写字段", "value": "院/专业/年级/班、请假事由、请假天数（节）、起止时间、家庭住址（请假回家或超3天）、家长电话、个人电话、班主任意见、辅导员意见、学办盖章、院领导意见、请假人签字", "unit": null, "conditions": { "college": "生命科学学院" }, "evidence_ids": ["sk-leave-c1"], "topic": "请假", "label": "请假条填写字段" },
+    { "fact_id": "sk-f-leave-duty", "subject": "请假期间安全责任", "predicate": "责任约定", "value": "请假期间，安全责任由本人负责（原文表述）", "unit": null, "conditions": { "college": "生命科学学院" }, "evidence_ids": ["sk-leave-c1"], "topic": "请假", "label": "安全责任表述" }
+  ],
+  "qa_topics": [
+    { "topic_id": "venue-flow", "triggers": ["教室借用", "场地借用", "借教室", "借用教室", "教学场所", "教室怎么借", "盖章"], "title": "教学场所临时借用", "summary": "教学场所临时借用要点（依据教务处流程图）：", "fact_ids": ["jw-f-venue-scope", "jw-f-venue-advance", "jw-f-venue-path", "jw-f-venue-deliver", "jw-f-venue-stamp-nonteaching", "jw-f-venue-stamp-teaching"], "wizard_flow": "venue_borrow" },
+    { "topic_id": "huankao", "triggers": ["缓考", "延期考试", "缓试"], "title": "本科生缓考申请", "fact_ids": ["jw-f-hk-deadline", "jw-f-hk-materials", "jw-f-hk-result"] },
+    { "topic_id": "chengjidan", "triggers": ["成绩单", "打印成绩", "盖章", "公章"], "title": "成绩单打印", "summary": "成绩单打印与盖章：", "fact_ids": ["jw-f-cjd-way", "jw-f-cjd-grad"] },
+    { "topic_id": "xuewei", "triggers": ["学位证明书", "学位证补办", "补办学位证"], "title": "学位证明书补办", "fact_ids": ["jw-f-xw-time", "jw-f-xw-materials"] },
+    { "topic_id": "xiuxue", "triggers": ["休学", "保留学籍"], "title": "休学办理", "fact_ids": ["jw-f-xx-time", "jw-f-xx-materials"] },
+    { "topic_id": "fuxue", "triggers": ["复学"], "title": "复学办理", "fact_ids": ["jw-f-fx-time", "jw-f-fx-materials"] },
+    { "topic_id": "zhuanzye", "triggers": ["转专业"], "title": "转专业申请", "fact_ids": ["jw-f-zzy-time"] },
+    { "topic_id": "xuanke", "triggers": ["选课", "补退选", "退课"], "title": "选课与补退选", "fact_ids": ["jw-f-xk-rounds"] },
+    { "topic_id": "xiaoli", "triggers": ["校历", "开学时间", "什么时候开学", "放假安排", "考试周", "四六级", "寒假", "暑假", "什么时候放假"], "title": "校历", "summary": "2026-2027学年校历要点：", "fact_ids": ["jw-f-cal-start", "jw-f-cal-exam", "jw-f-cal-holiday", "jw-f-cal-exams"] },
+    { "topic_id": "qingjia", "triggers": ["请假", "请假条", "请 假", "请假流程"], "title": "课程请假", "summary": "课程请假与模板（已入库模板限生命科学学院）：", "fact_ids": ["sk-f-leave-scope", "sk-f-leave-fields"], "wizard_flow": "leave_request" }
+  ]
+}

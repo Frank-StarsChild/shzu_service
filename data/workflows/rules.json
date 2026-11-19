@@ -1,0 +1,130 @@
+{
+  "rules": [
+    {
+      "rule_id": "lz-r1-year",
+      "flow_id": "national_inspirational_2025",
+      "name": "申报年度核对",
+      "required_fact": "application_year",
+      "operator": "eq",
+      "expected_value": 2025,
+      "on_fail": "本流程为2025年度历史演示；当前年度申报须以2026年正式通知为准，现资料不足，列出待核实项。",
+      "exception_conditions": {},
+      "evidence_ids": ["xg-lz-c1", "xg-lz-c3"],
+      "review_state": "reviewed"
+    },
+    {
+      "rule_id": "lz-r2-grade",
+      "flow_id": "national_inspirational_2025",
+      "name": "年级要求",
+      "required_fact": "grade_index",
+      "operator": "gte",
+      "expected_value": 2,
+      "on_fail": "国家励志奖学金面向全日制本专科（含第二学士学位）二年级以上（含二年级）在籍在校生，一年级暂不符合年级要求。",
+      "on_unknown": "请确认当前年级，以便核对年级要求。",
+      "exception_conditions": {},
+      "evidence_ids": ["xg-lz-c1"],
+      "review_state": "reviewed"
+    },
+    {
+      "rule_id": "lz-r3-difficulty",
+      "flow_id": "national_inspirational_2025",
+      "name": "家庭经济困难认定",
+      "required_fact": "difficulty_confirmed",
+      "operator": "eq",
+      "expected_value": "是",
+      "on_fail": "申请人须为家庭经济困难学生（生活俭朴）。若本学年尚未通过困难认定，请先联系学院完成认定；困难认定材料在认定环节存档，不需重复存档。",
+      "on_unknown": "困难认定状态未知。按通知要求申请人应为家庭经济困难学生，请确认本学年认定结果。",
+      "exception_conditions": {},
+      "evidence_ids": ["xg-lz-c2", "xg-lz-c6"],
+      "review_state": "reviewed"
+    },
+    {
+      "rule_id": "lz-r4-study-rank",
+      "flow_id": "national_inspirational_2025",
+      "name": "学习成绩排名前30%",
+      "required_fact": "study_rank_ratio",
+      "operator": "lte",
+      "expected_value": 0.30,
+      "on_fail": "学习成绩排名未进入前30%，暂不满足通知要求（本人排名÷参加排名总人数）。",
+      "on_unknown": "请提供学习成绩排名及参评总人数，系统按『本人排名÷参加排名总人数』计算比例后与原文『前30%』对照。",
+      "exception_conditions": { "note": "『无人满足基本条件时每次同步放宽1个名次』属学院层面例外，单个用户不能启动该规则，系统标记为需学院处理" },
+      "evidence_ids": ["xg-lz-c2"],
+      "review_state": "reviewed"
+    },
+    {
+      "rule_id": "lz-r5-zongce-rank",
+      "flow_id": "national_inspirational_2025",
+      "name": "综合测评排名前30%",
+      "required_fact": "zongce_rank_ratio",
+      "operator": "lte",
+      "expected_value": 0.30,
+      "on_fail": "综合测评排名未进入前30%，暂不满足通知要求（双排名须均在前30%）。",
+      "on_unknown": "请提供综合测评排名及参评总人数，系统计算比例后对照。",
+      "exception_conditions": { "note": "同上，放宽规则由学院层面执行" },
+      "evidence_ids": ["xg-lz-c2"],
+      "review_state": "reviewed"
+    },
+    {
+      "rule_id": "lz-r6-conflict",
+      "flow_id": "national_inspirational_2025",
+      "name": "与国家奖学金互斥",
+      "required_fact": "national_scholarship_this_year",
+      "operator": "eq",
+      "expected_value": "否",
+      "on_fail": "同一学年内，申请国家励志奖学金的学生不能同时获得本专科生国家奖学金；可同时申请并获得国家助学金。",
+      "exception_conditions": {},
+      "evidence_ids": ["xg-lz-c1"],
+      "review_state": "reviewed"
+    },
+    {
+      "rule_id": "qj-r1-home-address",
+      "flow_id": "leave_request",
+      "name": "回家或超3天需填家庭住址",
+      "required_fact": "home_address_required",
+      "operator": "eq",
+      "expected_value": "provided",
+      "on_fail": "按模板要求，请假回家或超过3天需填写家庭住址，请补充。",
+      "on_unknown": "",
+      "exception_conditions": { "when": "going_home != 是 且 请假天数 <= 3" },
+      "evidence_ids": ["sk-leave-c1"],
+      "review_state": "reviewed"
+    },
+    {
+      "rule_id": "vg-r1-advance",
+      "flow_id": "venue_borrow",
+      "name": "提前1-2天申请",
+      "required_fact": "advance_days",
+      "operator": "between",
+      "expected_value": [1, 2],
+      "on_fail": "按流程要求应提前1-2天在教务系统申请教室借用，请调整申请时间。",
+      "exception_conditions": {},
+      "evidence_ids": ["jw-venue-c2"],
+      "review_state": "reviewed"
+    },
+    {
+      "rule_id": "vg-r2-stamp",
+      "flow_id": "venue_borrow",
+      "name": "按活动性质确定盖章部门",
+      "required_fact": "stamp_department",
+      "operator": "derived",
+      "expected_value": { "非教学活动（班会、党团活动等）": "学院使用部门（团委、学办等）审核盖章", "课表外教学活动（科研训练、学科竞赛等）": "学院教科办审核盖章" },
+      "on_fail": "",
+      "on_unknown": "请选择活动性质，以确定审核盖章部门。",
+      "exception_conditions": {},
+      "evidence_ids": ["jw-venue-c2"],
+      "review_state": "reviewed"
+    },
+    {
+      "rule_id": "vg-r3-deliver",
+      "flow_id": "venue_borrow",
+      "name": "审批单送达",
+      "required_fact": "deliver_location",
+      "operator": "const",
+      "expected_value": "博学楼C238中控室（电话：2057552）",
+      "on_fail": "",
+      "exception_conditions": {},
+      "evidence_ids": ["jw-venue-c2"],
+      "review_state": "reviewed"
+    }
+  ]
+}

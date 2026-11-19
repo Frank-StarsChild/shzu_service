@@ -1,0 +1,197 @@
+{
+  "clauses": [
+    {
+      "clause_id": "hq-venue-c1",
+      "doc_id": "hq-venue-form",
+      "exact_text": "下载附件：会务场地内部使用申请单.doc（后勤管理处办事表格；校内会务场地使用需填写该申请单）",
+      "topic": "会务场地",
+      "campus": null, "college": null, "student_type": null, "application_year": null,
+      "source_locator": "网页正文+附件",
+      "scope_status": "reviewed"
+    },
+    {
+      "clause_id": "hq-wx-c1",
+      "doc_id": "hq-weixiu",
+      "exact_text": "维修中心是后勤服务中心下设的专门负责学校维修工程项目的科室……维修工程范围主要承担校内各类维修改造、装饰、拆除、修缮、绿化补植等基础设施维护和改造工程。……联系电话：0993-2058790，0993-2057615",
+      "topic": "维修服务",
+      "campus": null, "college": null, "student_type": null, "application_year": null,
+      "source_locator": "网页正文",
+      "scope_status": "reviewed"
+    },
+    {
+      "clause_id": "hq-sd-c1",
+      "doc_id": "hq-shuidian",
+      "exact_text": "物业中心（水电）……全面负责校区内水电暖基础设施设备日常维护保障……下设5个维修班组：水暖维修班组、电照维修班组、上下水维修班组、收费班组、质检班组。……负责全校区水、电、暖公共设施设备的日常管理、维护保障和公共建筑内零星水电暖设备的日常维修及相关服务保障工作，报修及时响应并修复。",
+      "topic": "水电服务",
+      "campus": null, "college": null, "student_type": null, "application_year": null,
+      "source_locator": "网页正文",
+      "scope_status": "reviewed"
+    },
+    {
+      "clause_id": "hq-ys-c1",
+      "doc_id": "hq-yinshi",
+      "exact_text": "饮食中心……主要负责全校师生员工的伙食保障、学生餐厅及附属生活超市的日常管理、学校食品卫生安全等工作。……下辖10个学生餐厅（方圆、绿苑、会泽、杏林、知味苑一、知味苑二、东苑餐厅、明德食府、面食广场、怡华餐厅）、1个特色餐厅（学术交流中心餐厅）。",
+      "topic": "饮食服务",
+      "campus": null, "college": null, "student_type": null, "application_year": null,
+      "source_locator": "网页正文",
+      "scope_status": "reviewed"
+    },
+    {
+      "clause_id": "hq-wy-c1",
+      "doc_id": "hq-wuye",
+      "exact_text": "物业中心……主要职能是为学校提供校园绿化养护、校园室内外保洁、共享单车管理、快递物流服务、楼宇内安保及家属区管理服务。……联系电话：0993-2058789，0993-2058618，0993-2058651 家属区联系电话：0993-2055666",
+      "topic": "物业服务",
+      "campus": null, "college": null, "student_type": null, "application_year": null,
+      "source_locator": "网页正文",
+      "scope_status": "reviewed"
+    },
+    {
+      "clause_id": "hq-hw-c1",
+      "doc_id": "hq-huiwu",
+      "exact_text": "会务中心隶属于石河子大学后勤服务中心，是学校举行各类大型工作会议、科研学术交流、文艺演出等活动的重要场所和窗口单位。联系电话：0993-2057390",
+      "topic": "会务场地",
+      "campus": null, "college": null, "student_type": null, "application_year": null,
+      "source_locator": "网页正文",
+      "scope_status": "reviewed"
+    },
+    {
+      "clause_id": "bw-gate-c1",
+      "doc_id": "bw-gate",
+      "exact_text": "第六条 人员出入管理（一）办理校园卡的人员，通过人脸识别查验或持校园卡出入；（二）校友凭电子校友卡或相关有效证明出入；（三）新生及陪同家长凭录取通知书出入；（四）来访人员通过审批后，持有效证件出入；（五）参加考试、比赛、会议及学校其他活动的人员，凭准考证、参赛证、工作证、代表证等出入；（六）社会公众线上预约成功后，持有效证件出入（仅限步行）。",
+      "topic": "校门管理",
+      "campus": null, "college": null, "student_type": null, "application_year": null,
+      "source_locator": "附件PDF·第2—3页·第六条",
+      "scope_status": "reviewed"
+    },
+    {
+      "clause_id": "bw-gate-c2",
+      "doc_id": "bw-gate",
+      "exact_text": "第九条 所有人员、车辆出入校门均应主动配合门卫的检查和管理。符合入校条件的电动自行车出入校门时，须推车步行通过闸机。第十条 执行紧急任务的警车、消防车、救护车、工程抢险车等特种车辆，经核验后优先通行。……第十二条 入校人员应自觉遵守国家法律法规和学校相关规定，不得影响、扰乱校园秩序。有下列行为之一的，禁止进入校园：（一）使用假冒、伪造证件（证明）、冒用他人身份的；（二）未经许可携带管制刀具、易燃易爆等危险物品的；（三）携带宠物、放生物的；（四）拟进校摆摊设点、兜售商品、散发张贴广告、自媒体直播、商业性拍摄及进行其它未经许可活动的；……",
+      "topic": "校门管理",
+      "campus": null, "college": null, "student_type": null, "application_year": null,
+      "source_locator": "附件PDF·第3—4页·第九至十二条",
+      "scope_status": "reviewed"
+    },
+    {
+      "clause_id": "bw-gate-c3",
+      "doc_id": "bw-gate",
+      "exact_text": "第五条 学校校门管理由党委保卫部（武装部、综合治理办公室）具体负责，人员、车辆出入校门实行闸机自动识别与门卫人工查验相结合的方式。……第十六条 本规定自发布之日起施行。（石大保卫发〔2026〕2号，2026年7月6日印发）",
+      "topic": "校门管理",
+      "campus": null, "college": null, "student_type": null, "application_year": null,
+      "source_locator": "附件PDF·第2页·第五条；第5页·第十六条",
+      "scope_status": "reviewed"
+    },
+    {
+      "clause_id": "bw-tr-c1",
+      "doc_id": "bw-traffic",
+      "exact_text": "第十二条 机动车校园内行驶时速不得超过30公里，地下通道行驶时速不得超过10公里。机动车在校园内禁止鸣笛；……第十九条 电动自行车必须到公安机关交通管理部门登记，取得非机动车号牌，到保卫部指定地点领取校园通行证后，方可进入校园，无牌车辆保卫部不予登记。第二十一条 非机动车在校园内行驶时速不得超过15公里，行驶途中不得搭载他人。进出校门或上下坡时应主动下车推行……第二十三条 电动自行车应在学校设立的固定点充电，不得私拉电线或利用应急照明插座充电，不得在房间或楼道内充电。",
+      "topic": "校园交通",
+      "campus": null, "college": null, "student_type": null, "application_year": null,
+      "source_locator": "附件PDF·第6—8页·第十二/十九/二十一/二十三条",
+      "scope_status": "reviewed"
+    },
+    {
+      "clause_id": "bw-tr-c2",
+      "doc_id": "bw-traffic",
+      "exact_text": "第九条 摩托车（含电动摩托车）、农用车、教练车、无牌车辆严禁入校；出租车、共享车、网约车等服务类车辆（除紧急情况外）不得入校。……第十条（一）学校公务车辆以及教职工自用车辆，通过“一站式服务平台-机动车辆出入门禁申请”，如实填写完毕并征得本单位审批通过后，方可进出校园。（三）临时外来车辆（包括施工车辆、商超车辆、临时办事车辆等）需由联系单位通过OA审批报备方可进出校园。",
+      "topic": "校园交通",
+      "campus": null, "college": null, "student_type": null, "application_year": null,
+      "source_locator": "附件PDF·第5—6页·第九、十条",
+      "scope_status": "reviewed"
+    },
+    {
+      "clause_id": "bw-eb-c1",
+      "doc_id": "bw-ebike",
+      "exact_text": "第七条 对校园自购电动自行车严格实行“一人一车一牌一码”实名制管理，人、车、牌、码信息绑定。“一人一车”即每名师生员工（含编制外聘用人员）名下仅可登记一辆符合要求的电动自行车；“一牌”即经公安机关交管部门注册登记核发的号牌；“一码”即由党委保卫部统一注册登记核发的校园通行牌号码（实物号牌）。……第十一条 申请办理校园通行牌的师生员工（含编制外聘用人员），需在“车辆安全管理系统”中注册登记。并持本人身份证件（如学生证、研究生证、教工证、身份证等）和与整车编码相一致的出厂合格证明、购车发票等有效材料原件，到党委保卫部指定地点办理校园通行牌。",
+      "topic": "电动自行车",
+      "campus": null, "college": null, "student_type": null, "application_year": null,
+      "source_locator": "附件PDF·第4—5页·第七、十一条",
+      "scope_status": "reviewed"
+    },
+    {
+      "clause_id": "bw-eb-c2",
+      "doc_id": "bw-ebike",
+      "exact_text": "第十七条 电动自行车驾驶人应当年满16周岁，且无法律、法规规定的妨碍安全驾驶的身体缺陷情形。第十八条 行驶时电动自行车驾驶人、乘坐人应按规定佩戴符合国家标准的安全头盔。第十九条 电动自行车应在非机动车道内行驶，最高时速不超过15km/h。第二十一条 通过校门、人行横道时应下车推行。……第二十九条 电动自行车须在共享充电桩等集中充电装置点充电……严禁在建筑物内为电动自行车或蓄电池充电。……第十二条 校园通行牌实行差异化的有效期管理：在校学生：学籍存续期间有效。教职工（含离退休）：长期有效。其他人员：合同（服务协议）存续期内有效。",
+      "topic": "电动自行车",
+      "campus": null, "college": null, "student_type": null, "application_year": null,
+      "source_locator": "附件PDF·第6—8页·第十七至十九、二十一、二十九条；第5页·第十二条",
+      "scope_status": "reviewed"
+    },
+    {
+      "clause_id": "bw-eb-c3",
+      "doc_id": "bw-ebike",
+      "exact_text": "第十四条 校园通行牌如丢失或损毁，需本人如实填写补办申请表（附件1、2），并向党委保卫部报备。党委保卫部审核通过后，在3个工作日内发放补办的校园通行牌。……第三十三条 电动自行车所有人在一个记分周期内记分达到6分未满12分，通报所在单位进行教育……记分达到12分，暂停校园通行权限，须参加不少于24小时的线下交通志愿活动（每天不得超过2小时）……考核成绩合格后……恢复校园通行牌授权。",
+      "topic": "电动自行车",
+      "campus": null, "college": null, "student_type": null, "application_year": null,
+      "source_locator": "附件PDF·第6、10—11页·第十四条、第三十三条",
+      "scope_status": "reviewed"
+    },
+    {
+      "clause_id": "bw-ph-c1",
+      "doc_id": "bw-phones",
+      "exact_text": "1.校内报警电话：0993-2057110 2.入伍征兵咨询电话：0993-2057033 3.治安交通咨询电话：0993-2057057 4.消防动火咨询电话：0993-2057059 5.车辆门禁办理咨询电话：0993-2058026 6.视频监控调阅咨询电话：0993-2055099 7.户籍迁移办理咨询电话：0993-2058027 8.大学派出所户籍科咨询电话：0993-2055811",
+      "topic": "值班电话",
+      "campus": null, "college": null, "student_type": null, "application_year": null,
+      "source_locator": "网页正文",
+      "scope_status": "reviewed"
+    },
+    {
+      "clause_id": "bw-jk-c1",
+      "doc_id": "bw-monitor-form",
+      "exact_text": "视频监控调阅申请表：申请人应填写单位及个人信息、调阅位置、时段、事由；调阅时段及位置填写尽量详细，以便于查找录像。审批链：申请单位领导意见（注：1000元以下物品由部门/学办主任签字，大于1000元物品由部门/院领导签字）→保卫部意见→大学派出所意见→监控中心值班员填写调取结果→申请人确认签字。",
+      "topic": "视频监控调阅",
+      "campus": null, "college": null, "student_type": null, "application_year": null,
+      "source_locator": "网页正文（申请表内容）",
+      "scope_status": "reviewed"
+    },
+    {
+      "clause_id": "bw-veh-c1",
+      "doc_id": "bw-vehicle-form",
+      "exact_text": "石河子大学车辆门禁系统申请表：申请人姓名、单位、联系电话、车主姓名、车辆型号、车牌号码、颜色；单位审核意见（单位盖章、经办人、联系电话）；身份证复印件粘贴处；行驶证复印件粘贴处。",
+      "topic": "车辆门禁",
+      "campus": null, "college": null, "student_type": null, "application_year": null,
+      "source_locator": "附件PDF·第1页",
+      "scope_status": "reviewed"
+    }
+  ],
+  "facts": [
+    { "fact_id": "hq-f-venue-form", "subject": "校内会务场地使用", "predicate": "申请材料", "value": "《会务场地内部使用申请单》（后勤管理处办事表格下载）", "unit": null, "conditions": {}, "evidence_ids": ["hq-venue-c1"], "topic": "会务场地", "label": "会务场地申请单" },
+    { "fact_id": "hq-f-huiwu-phone", "subject": "会务中心", "predicate": "联系电话", "value": "0993-2057390", "unit": null, "conditions": {}, "evidence_ids": ["hq-hw-c1"], "topic": "会务场地", "label": "会务中心电话" },
+    { "fact_id": "hq-f-weixiu-phone", "subject": "维修中心", "predicate": "联系电话", "value": "0993-2058790、0993-2057615", "unit": null, "conditions": {}, "evidence_ids": ["hq-wx-c1"], "topic": "维修服务", "label": "维修中心电话" },
+    { "fact_id": "hq-f-wuye-phone", "subject": "物业中心", "predicate": "联系电话", "value": "0993-2058789、0993-2058618、0993-2058651；家属区0993-2055666", "unit": null, "conditions": {}, "evidence_ids": ["hq-wy-c1"], "topic": "物业服务", "label": "物业中心电话" },
+    { "fact_id": "hq-f-shuidian-scope", "subject": "水电暖报修", "predicate": "责任部门", "value": "物业中心（水电），下设水暖、电照、上下水、收费、质检5个维修班组；公共建筑内零星水电暖设备报修及时响应并修复", "unit": null, "conditions": {}, "evidence_ids": ["hq-sd-c1"], "topic": "水电服务", "label": "水电暖报修部门" },
+    { "fact_id": "hq-f-canteens", "subject": "学生餐厅", "predicate": "数量与名单", "value": "10个学生餐厅（方圆、绿苑、会泽、杏林、知味苑一、知味苑二、东苑餐厅、明德食府、面食广场、怡华餐厅）及1个特色餐厅（学术交流中心餐厅）", "unit": null, "conditions": {}, "evidence_ids": ["hq-ys-c1"], "topic": "饮食服务", "label": "学生餐厅名单" },
+    { "fact_id": "hq-f-wuye-scope", "subject": "物业中心", "predicate": "服务范围", "value": "校园绿化养护、室内外保洁、共享单车管理、快递物流服务、楼宇内安保及家属区管理服务", "unit": null, "conditions": {}, "evidence_ids": ["hq-wy-c1"], "topic": "物业服务", "label": "物业中心服务范围" },
+    { "fact_id": "hq-f-weixiu-scope", "subject": "维修中心", "predicate": "工程范围", "value": "校内各类维修改造、装饰、拆除、修缮、绿化补植等基础设施维护和改造工程", "unit": null, "conditions": {}, "evidence_ids": ["hq-wx-c1"], "topic": "维修服务", "label": "维修中心工程范围" },
+    { "fact_id": "bw-f-gate-freshman", "subject": "新生及陪同家长", "predicate": "入校凭证", "value": "凭录取通知书出入", "unit": null, "conditions": {}, "evidence_ids": ["bw-gate-c1"], "topic": "校门管理", "label": "新生入校凭证" },
+    { "fact_id": "bw-f-gate-visitor", "subject": "来访人员", "predicate": "入校方式", "value": "通过审批后，持有效证件出入；社会公众线上预约成功后持有效证件出入（仅限步行）", "unit": null, "conditions": {}, "evidence_ids": ["bw-gate-c1"], "topic": "校门管理", "label": "来访人员入校" },
+    { "fact_id": "bw-f-gate-ebike", "subject": "电动自行车出校门", "predicate": "通行要求", "value": "须推车步行通过闸机", "unit": null, "conditions": {}, "evidence_ids": ["bw-gate-c2"], "topic": "校门管理", "label": "电动车过闸机要求" },
+    { "fact_id": "bw-f-gate-owner", "subject": "校门管理", "predicate": "归口部门", "value": "党委保卫部（武装部、综合治理办公室）；闸机自动识别与门卫人工查验相结合", "unit": null, "conditions": {}, "evidence_ids": ["bw-gate-c3"], "topic": "校门管理", "label": "校门管理归口" },
+    { "fact_id": "bw-f-car-speed", "subject": "机动车校内行驶", "predicate": "限速", "value": "校园道路不超过30公里/小时；地下通道不超过10公里/小时", "unit": null, "conditions": {}, "evidence_ids": ["bw-tr-c1"], "topic": "校园交通", "label": "机动车校内限速" },
+    { "fact_id": "bw-f-eb-speed", "subject": "非机动车（含电动自行车）校内行驶", "predicate": "限速", "value": "不超过15公里/小时；行驶途中不得搭载他人；进出校门或上下坡下车推行", "unit": null, "conditions": {}, "evidence_ids": ["bw-tr-c1"], "topic": "校园交通", "label": "非机动车校内限速" },
+    { "fact_id": "bw-f-eb-charge", "subject": "电动自行车充电", "predicate": "充电要求", "value": "在学校设立的固定点（共享充电桩等集中充电装置点）充电；不得私拉电线、飞线充电，不得在房间或楼道内/建筑物内充电", "unit": null, "conditions": {}, "evidence_ids": ["bw-tr-c1", "bw-eb-c2"], "topic": "电动自行车", "label": "电动车充电要求" },
+    { "fact_id": "bw-f-eb-register", "subject": "电动自行车校园通行牌", "predicate": "办理方式", "value": "先取得交管部门号牌，在“车辆安全管理系统”注册登记，持身份证件、出厂合格证明、购车发票原件到党委保卫部指定地点办理；实行“一人一车一牌一码”", "unit": null, "conditions": {}, "evidence_ids": ["bw-eb-c1"], "topic": "电动自行车", "label": "电动车通行牌办理" },
+    { "fact_id": "bw-f-eb-validity", "subject": "校园通行牌有效期", "predicate": "有效期", "value": "在校学生：学籍存续期间有效；教职工（含离退休）：长期有效；其他人员：合同存续期内有效", "unit": null, "conditions": {}, "evidence_ids": ["bw-eb-c2"], "topic": "电动自行车", "label": "通行牌有效期" },
+    { "fact_id": "bw-f-eb-reissue", "subject": "校园通行牌补办", "predicate": "办理时限", "value": "填写补办申请表并向党委保卫部报备，审核通过后3个工作日内发放", "unit": null, "conditions": {}, "evidence_ids": ["bw-eb-c3"], "topic": "电动自行车", "label": "通行牌补办时限" },
+    { "fact_id": "bw-f-eb-helmet", "subject": "电动自行车驾驶人", "predicate": "头盔要求", "value": "驾驶人、乘坐人应按规定佩戴符合国家标准的安全头盔；驾驶人应当年满16周岁", "unit": null, "conditions": {}, "evidence_ids": ["bw-eb-c2"], "topic": "电动自行车", "label": "佩戴头盔要求" },
+    { "fact_id": "bw-f-eb-score", "subject": "电动自行车违规记分", "predicate": "记分规则", "value": "以学年为记分周期（当年9月1日至次年8月31日），12分制；6分未满12分通报教育；达12分暂停通行权限，须参加不少于24小时线下交通志愿活动并通过考核后恢复", "unit": null, "conditions": {}, "evidence_ids": ["bw-eb-c3"], "topic": "电动自行车", "label": "电动车记分制" },
+    { "fact_id": "bw-f-no-entry", "subject": "摩托车、农用车、教练车、无牌车", "predicate": "入校资格", "value": "严禁入校；出租车、共享车、网约车等服务类车辆（除紧急情况外）不得入校", "unit": null, "conditions": {}, "evidence_ids": ["bw-tr-c2"], "topic": "校园交通", "label": "禁止入校车辆" },
+    { "fact_id": "bw-f-apply", "subject": "教职工车辆入校", "predicate": "申请方式", "value": "通过“一站式服务平台-机动车辆出入门禁申请”填写并经本单位审批；临时外来车辆由联系单位通过OA审批报备", "unit": null, "conditions": {}, "evidence_ids": ["bw-tr-c2"], "topic": "车辆门禁", "label": "车辆入校申请" },
+    { "fact_id": "bw-f-alarm", "subject": "校内报警电话", "predicate": "电话", "value": "0993-2057110", "unit": null, "conditions": {}, "evidence_ids": ["bw-ph-c1"], "topic": "值班电话", "label": "校内报警电话" },
+    { "fact_id": "bw-f-phone-traffic", "subject": "治安交通咨询", "predicate": "电话", "value": "0993-2057057", "unit": null, "conditions": {}, "evidence_ids": ["bw-ph-c1"], "topic": "值班电话", "label": "治安交通咨询电话" },
+    { "fact_id": "bw-f-phone-fire", "subject": "消防动火咨询", "predicate": "电话", "value": "0993-2057059", "unit": null, "conditions": {}, "evidence_ids": ["bw-ph-c1"], "topic": "值班电话", "label": "消防动火咨询电话" },
+    { "fact_id": "bw-f-phone-vehicle", "subject": "车辆门禁办理咨询", "predicate": "电话", "value": "0993-2058026", "unit": null, "conditions": {}, "evidence_ids": ["bw-ph-c1"], "topic": "值班电话", "label": "车辆门禁咨询电话" },
+    { "fact_id": "bw-f-phone-monitor", "subject": "视频监控调阅咨询", "predicate": "电话", "value": "0993-2055099", "unit": null, "conditions": {}, "evidence_ids": ["bw-ph-c1"], "topic": "值班电话", "label": "监控调阅咨询电话" },
+    { "fact_id": "bw-f-phone-huji", "subject": "户籍迁移办理咨询", "predicate": "电话", "value": "0993-2058027（大学派出所户籍科：0993-2055811）", "unit": null, "conditions": {}, "evidence_ids": ["bw-ph-c1"], "topic": "值班电话", "label": "户籍咨询电话" },
+    { "fact_id": "bw-f-monitor-approval", "subject": "视频监控调阅", "predicate": "审批链", "value": "申请单位领导意见→保卫部意见→大学派出所意见→监控中心填写调取结果→申请人确认签字；1000元以下由部门/学办主任签字，大于1000元由部门/院领导签字", "unit": null, "conditions": {}, "evidence_ids": ["bw-jk-c1"], "topic": "视频监控调阅", "label": "监控调阅审批链" },
+    { "fact_id": "bw-f-vehicle-form", "subject": "车辆门禁系统申请表", "predicate": "材料要求", "value": "填写申请人/车主/车辆信息并经单位盖章审核，粘贴身份证复印件、行驶证复印件", "unit": null, "conditions": {}, "evidence_ids": ["bw-veh-c1"], "topic": "车辆门禁", "label": "车辆门禁申请表要求" }
+  ],
+  "qa_topics": [
+    { "topic_id": "gate", "triggers": ["校门", "进出学校", "进门", "入校", "门禁", "访客", "来访", "进校", "外来人员"], "title": "校门管理", "summary": "校门出入管理要点：", "fact_ids": ["bw-f-gate-freshman", "bw-f-gate-visitor", "bw-f-gate-owner"] },
+    { "topic_id": "jiaotong", "triggers": ["电动车", "电动自行车", "自行车", "校园交通", "限速", "充电", "通行牌", "机动车", "过闸机", "推车", "严禁入校", "禁止入校", "哪些车辆", "车辆"], "title": "校园交通与电动自行车", "summary": "校园交通与电动自行车管理要点：", "fact_ids": ["bw-f-eb-register", "bw-f-eb-speed", "bw-f-eb-charge", "bw-f-car-speed", "bw-f-gate-ebike", "bw-f-eb-validity", "bw-f-no-entry"] },
+    { "topic_id": "dianhua", "triggers": ["报警电话", "保卫处电话", "值班电话", "监控调阅", "户籍"], "title": "保卫部值班电话", "fact_ids": ["bw-f-alarm", "bw-f-phone-traffic", "bw-f-phone-vehicle"] },
+    { "topic_id": "weixiu", "triggers": ["维修", "报修", "水电", "宿舍维修", "灯坏了", "水管", "维修中心", "物业", "漏水", "断电", "停电", "断网"], "title": "报修与水电服务", "summary": "报修与水电暖服务归口：", "fact_ids": ["hq-f-shuidian-scope", "hq-f-weixiu-phone", "hq-f-wuye-phone", "hq-f-weixiu-scope", "hq-f-wuye-scope"] },
+    { "topic_id": "canteen", "triggers": ["餐厅", "食堂", "吃饭", "饮食"], "title": "学生餐厅", "fact_ids": ["hq-f-canteens"] },
+    { "topic_id": "huiwu", "triggers": ["会堂", "会务场地", "礼堂", "活动场地申请"], "title": "会务场地", "fact_ids": ["hq-f-venue-form", "hq-f-huiwu-phone"] }
+  ]
+}
