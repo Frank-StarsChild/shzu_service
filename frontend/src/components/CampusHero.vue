@@ -39,7 +39,7 @@ import { parseMeta, type CampusMeta, type Hotspot } from "@/campus3d/meta";
 import { decideMode, readGateInput, type GateInput, type GateResult } from "@/campus3d/gate";
 import type { CampusSceneHandle } from "@/campus3d/scene"; // 仅类型，构建时擦除
 
-const props = defineProps<{ activeBoard: string | null }>();
+const props = defineProps<{ activeBoard: string | null; activeSource: "tile" | "marker" | "canvas" | null }>();
 const emit = defineEmits<{
   (e: "marker-enter", board: string): void;
   (e: "marker-leave"): void;
@@ -133,6 +133,14 @@ async function initScene() {
     sceneHandle = handle;
     sceneStatus.value = "ready";
     touchHook({ status: "ready" });
+    // S6：标记位置改为跟随场景投影（只在有渲染帧时更新；静止后停在原位）
+    handle.onFrame(updateMarkerPos);
+    updateMarkerPos();
+    // S6：若此刻已有板块被悬停，立即移动镜头到位
+    if (props.activeBoard && props.activeSource === "tile") {
+      const h = meta.value?.hotspots.find((x) => x.board === props.activeBoard);
+      if (h) handle.goTo(h.stop, { immediate: false });
+    }
   } catch {
     if (!canvasEl || sceneStatus.value !== "loading") return; // 中途已切静态/已失败
     sceneHandle = null;
@@ -185,6 +193,50 @@ watch([() => meta.value, sceneStatus], () => {
   if (wantScene.value) void initScene();
 });
 
+// ---- S6 镜头联动：仅来源是板块按钮（tile）时镜头才移动；
+// 来源是标记/画布时只高亮（标记和楼跟随镜头，镜头一动会从鼠标下移开，画面会抖）
+let returnTimer: number | null = null;
+watch(
+  () => [props.activeBoard, props.activeSource] as const,
+  ([board, source]) => {
+    if (returnTimer !== null) {
+      window.clearTimeout(returnTimer);
+      returnTimer = null;
+    }
+    if (board && source === "tile") {
+      const h = meta.value?.hotspots.find((x) => x.board === board);
+      if (h) sceneHandle?.goTo(h.stop);
+    } else if (!board && sceneHandle) {
+      // 鼠标在按钮之间移动时不来回抽动：静止 600ms 才回全景
+      returnTimer = window.setTimeout(() => {
+        returnTimer = null;
+        if (!props.activeBoard) sceneHandle?.goTo("overview");
+      }, 600);
+    }
+  }
+);
+
+// 3D 就绪后 5 个标记的位置（场景坐标经 project 换算的归一化坐标）
+const markerPos = ref<Record<string, { x: number; y: number; visible: boolean }>>({});
+
+function updateMarkerPos() {
+  const handle = sceneHandle;
+  const m = meta.value;
+  const frameEl = canvasEl?.parentElement;
+  if (!handle || !m || !frameEl) return;
+  const rect = frameEl.getBoundingClientRect();
+  const next: Record<string, { x: number; y: number; visible: boolean }> = {};
+  for (const h of m.hotspots) {
+    const p = handle.project(h.anchor);
+    next[h.no] = {
+      x: (p.x - rect.left) / rect.width,
+      y: (p.y - rect.top) / rect.height,
+      visible: p.visible,
+    };
+  }
+  markerPos.value = next;
+}
+
 // ---- 静态版：海报坐标与标记 ----
 const hotspots = computed<Hotspot[]>(() => meta.value?.hotspots ?? []);
 const attribution = computed(() => meta.value?.attribution ?? "");
@@ -201,7 +253,17 @@ function coordsOf(h: Hotspot): [number, number] {
   return mobile.value ? h.posterMobile : h.posterDesktop;
 }
 
-function markerStyle(h: Hotspot) {
+/** 标记定位：3D 就绪且已有投影数据时用投影，否则用海报坐标（静态版/加载中）。 */
+function markerStyle(h: Hotspot): Record<string, string> {
+  const dyn = sceneStatus.value === "ready" ? markerPos.value[h.no] : undefined;
+  if (dyn) {
+    const base: Record<string, string> = {
+      left: `${(dyn.x * 100).toFixed(4)}%`,
+      top: `${(dyn.y * 100).toFixed(4)}%`,
+    };
+    if (!dyn.visible) base.visibility = "hidden";
+    return base;
+  }
   const [x, y] = coordsOf(h);
   return { left: `${(x * 100).toFixed(4)}%`, top: `${(y * 100).toFixed(4)}%` };
 }
@@ -260,6 +322,7 @@ onMounted(async () => {
 
 onBeforeUnmount(() => {
   mq?.removeEventListener("change", onMediaChange);
+  if (returnTimer !== null) window.clearTimeout(returnTimer);
   // 释放 3D 场景（含 WebGL 上下文）
   if (sceneHandle || canvasMounted.value) {
     sceneHandle?.dispose();

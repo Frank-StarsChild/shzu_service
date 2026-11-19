@@ -156,4 +156,34 @@ INTEGRATION.md；3.4 节 anchor/pick 几何从「40 像素间隔」改为「22 �
      全局声明的 window.__campus3d）。
 - 遗留问题：G1 待作者确认
 
+## S6 镜头：停靠点、过渡、按需渲染 — 2026-11-19
+
+- 提交：`3d(S6): 镜头停靠点与按需渲染`
+- 新增：`src/campus3d/camera.ts`（easeInOutCubic / lerpStop 纯函数）、
+  `tests/unit/camera.test.ts`（5 条：三端点/21 点单调/t=0/t=1/中点）
+- scene.ts：goTo 真实实现——900ms cubic in-out 缓动、从当前实际位置出发（中断不跳变）、
+  reducedMotion/immediate 直接到位；**按需渲染：rAF 只在移动期间跑，到位即停，
+  空闲一帧都不画**（尺寸变化单次重渲）
+- CampusHero：`activeSource` prop（HomeView 传入）；镜头联动规则——
+  **仅 tile 来源移动镜头**（marker/canvas 只高亮，防抖动）；activeBoard 变 null 后
+  600ms 防抖才回 overview（鼠标扫按钮不抽动）；ready 后标记位置改随
+  onFrame→project(anchor)（不可见则隐藏），3D 就绪瞬间若已有板块悬停立即到位
+- verify：build ✓ / bundle ✓ / unit **41 passed** / e2e **36 passed**
+  （baseline 4 + static 9 + gate 7 + scene 9 + camera 7，1.4m）。camera.spec 覆盖：
+  到位坐标 <0.5、过渡帧数 ≥10 + 静止后 2 秒增量 0、3s 内回 overview、
+  reducedMotion 200ms 内到位、标记跟随 <3px、5 板块轮换无错误、marker 来源不动镜头
+- 反向验证：把「空闲不请求下一帧」改成『初始启动循环 + 完成后不停 + 空闲也渲染』
+  → camera.spec 第 2 条（静止后增量 0）**failed**；还原后 verify 全绿（exit 0）。
+  第一版临时改动只改了 else 分支没让动画完成后继续，曾出现"假绿"——补上完成分支的
+  continue 后正确变红（教训：反向验证的改动必须确认真的改变了被测行为）。
+- 途中修复（真实缺陷）：S6 重写 scene.ts 时**丢了 hookInfo 里的 `hook.projectPoint = project`**
+  ——钩子的 projectPoint 保持 CampusHero 初始桩（返回 0,0），导致对位/标记跟随 3 条测试
+  全红。临时调试脚本定位后补回，三测即绿。
+- 与计划不一致的地方：
+  1. camera.spec 第 4 条（reducedMotion 200ms）改用页面内 mouseenter 时间戳起测：
+     实测 Playwright 的 hover() 动作在软件渲染下本身耗时 ~1.1s（actionability 等待），
+     从 hover 调用前计时无法反映"指针进入→镜头到位"的真实语义。新测法从 mouseenter
+     事件到 stop 就绪计时（实测 ~18ms），仍能严格区分 900ms 过渡（动画则会 ≥900ms）。
+- 遗留问题：G1 待作者确认
+
 > AI生成

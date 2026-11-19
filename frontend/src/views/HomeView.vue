@@ -115,7 +115,7 @@ const samples = [
           <p class="index">01 — 服务板块</p>
           <h2 class="h1">五大板块 · {{ ready ? ready.knowledge_evidence + " 条审定证据" : "加载中…" }}</h2>
         </div>
-        <CampusHero :active-board="activeBoard"
+        <CampusHero :active-board="activeBoard" :active-source="activeSource"
                     @marker-enter="enterFromMarker" @marker-leave="clearActive">
           <div class="boards">
             <button v-for="b in boards" :key="b.id" type="button" class="board-tile"
