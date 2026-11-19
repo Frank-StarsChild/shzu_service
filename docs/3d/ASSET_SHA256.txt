@@ -1,0 +1,6 @@
+# 资产包的校验值，由协助方随资产包一起给出。不要手改；资产包更新时这个文件会一起更新。
+# campus.meta.json 不校验哈希（换行符在不同系统上可能不同），只校验里面的 version。
+version v1
+3d948680e22750dc62a255c89f8e5f90352ae4e6f585648938296b294faf529f  campus.glb
+c4871526a60571afbdfcf3382794393399ae767591bf153532392cb3c55eb1d2  poster-desktop.jpg
+b74b0ac82e90cc092cbfb14e9e28a0b23062afa300e5dd5d62b50512482ae81c  poster-mobile.jpg
