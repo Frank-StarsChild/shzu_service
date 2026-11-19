@@ -29,12 +29,15 @@ declare global {
 </script>
 
 <script setup lang="ts">
-// PLAN S3 静态版 + S4 能力判定：海报 + 5 个编号标记 + 说明文字 + 3D 开关。
-// 不引入 three（S5 起才懒加载）；meta 请求或校验失败时只显示海报，不抛未捕获异常。
-import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
+// PLAN S3 静态版 + S4 能力判定 + S5 三维加载：
+// 海报 + 5 编号标记 + 说明文字 + 3D 开关 + 加载条 + 失败重试。
+// scene.ts 通过动态 import() 懒加载（文件顶部不许静态 import 它）；
+// three 对象不进 Vue 响应式（sceneHandle 存普通变量）。
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { useRouter } from "vue-router";
 import { parseMeta, type CampusMeta, type Hotspot } from "@/campus3d/meta";
 import { decideMode, readGateInput, type GateInput, type GateResult } from "@/campus3d/gate";
+import type { CampusSceneHandle } from "@/campus3d/scene"; // 仅类型，构建时擦除
 
 const props = defineProps<{ activeBoard: string | null }>();
 const emit = defineEmits<{
@@ -70,6 +73,7 @@ function onToggle() {
   if (effectiveMode.value.mode === "scene") {
     localStorage.setItem(LS_KEY, "off");
     userOff.value = true;
+    teardownScene("static");
     touchHook({ mode: "static", reason: "user-off" });
   } else {
     localStorage.removeItem(LS_KEY);
@@ -81,6 +85,107 @@ function onToggle() {
   }
 }
 
+// ---- S5 三维场景（状态机：static → loading → ready / error） ----
+const sceneStatus = ref<"static" | "loading" | "ready" | "error">("static");
+const progress = ref(0);
+const canvasMounted = ref(false);
+const canvasRef = ref<HTMLCanvasElement | null>(null);
+let sceneHandle: CampusSceneHandle | null = null; // three 对象不进响应式
+let canvasEl: HTMLCanvasElement | null = null;
+
+/** 场景是否应该初始化：scene 模式 + meta 就绪 + 当前是静态可加载状态 */
+const wantScene = computed(
+  () => effectiveMode.value.mode === "scene" && !!meta.value && sceneStatus.value === "static"
+);
+
+async function initScene() {
+  if (!wantScene.value) return;
+  const m = meta.value;
+  if (!m) return;
+  sceneStatus.value = "loading";
+  progress.value = 0;
+  touchHook({ status: "loading" });
+  canvasMounted.value = true;
+  await nextTick();
+  canvasEl = canvasRef.value;
+  if (!canvasEl) {
+    sceneStatus.value = "error";
+    touchHook({ status: "error" });
+    canvasMounted.value = false;
+    return;
+  }
+  canvasEl.addEventListener("webglcontextlost", onContextLost);
+  try {
+    const { createCampusScene } = await import("@/campus3d/scene");
+    if (!canvasEl) return; // 等待期间已被卸载
+    const handle = await createCampusScene(canvasEl, m, {
+      glbUrl: `/campus3d/campus.glb?v=${m.version}`,
+      reducedMotion: lastInput?.reducedMotion === true,
+      onProgress: (p) => {
+        progress.value = p;
+      },
+    });
+    if (!canvasEl) {
+      // 等待期间已被卸载：立即释放
+      handle.dispose();
+      return;
+    }
+    sceneHandle = handle;
+    sceneStatus.value = "ready";
+    touchHook({ status: "ready" });
+  } catch {
+    if (!canvasEl || sceneStatus.value !== "loading") return; // 中途已切静态/已失败
+    sceneHandle = null;
+    sceneStatus.value = "error";
+    touchHook({ status: "error" });
+    removeCanvas();
+  }
+}
+
+function removeCanvas() {
+  canvasMounted.value = false;
+  if (canvasEl) {
+    canvasEl.removeEventListener("webglcontextlost", onContextLost);
+    canvasEl = null;
+  }
+}
+
+function teardownScene(nextStatus: "static" | "error") {
+  sceneHandle?.dispose();
+  sceneHandle = null;
+  removeCanvas();
+  sceneStatus.value = nextStatus;
+  touchHook({ status: nextStatus });
+}
+
+function onContextLost(e: Event) {
+  e.preventDefault();
+  sceneHandle?.dispose();
+  sceneHandle = null;
+  removeCanvas();
+  sceneStatus.value = "error";
+  touchHook({ status: "error" });
+}
+
+function retryScene() {
+  if (sceneStatus.value !== "error") return;
+  sceneStatus.value = "static";
+  touchHook({ status: "static" });
+  void initScene();
+}
+
+watch(effectiveMode, (m) => {
+  if (m.mode === "static") {
+    if (sceneHandle || canvasMounted.value) teardownScene("static");
+  } else if (wantScene.value) {
+    void initScene();
+  }
+});
+watch([() => meta.value, sceneStatus], () => {
+  if (wantScene.value) void initScene();
+});
+
+// ---- 静态版：海报坐标与标记 ----
 const hotspots = computed<Hotspot[]>(() => meta.value?.hotspots ?? []);
 const attribution = computed(() => meta.value?.attribution ?? "");
 const altText = computed(() =>
@@ -131,7 +236,7 @@ onMounted(async () => {
     projectPoint: () => ({ x: 0, y: 0, visible: false }),
   };
 
-  // S4 判定一次，写进钩子（此时 3D 还没做，mode 是 scene 时画面仍是静态版）
+  // S4 判定一次，写进钩子
   lastInput = readGateInput();
   gate.value = decideMode(lastInput);
   touchHook({ mode: effectiveMode.value.mode, reason: effectiveMode.value.reason });
@@ -155,6 +260,12 @@ onMounted(async () => {
 
 onBeforeUnmount(() => {
   mq?.removeEventListener("change", onMediaChange);
+  // 释放 3D 场景（含 WebGL 上下文）
+  if (sceneHandle || canvasMounted.value) {
+    sceneHandle?.dispose();
+    sceneHandle = null;
+    removeCanvas();
+  }
 });
 
 // 联动高亮写入调试钩子
@@ -177,6 +288,8 @@ function goBoard(board: string) {
         <img data-testid="campus-poster" src="/campus3d/poster-desktop.jpg"
              width="1920" height="800" :alt="altText" />
       </picture>
+      <canvas v-if="canvasMounted" ref="canvasRef" data-testid="campus-canvas"
+              class="campus-canvas" :class="{ 'is-ready': sceneStatus === 'ready' }"></canvas>
       <div v-if="hotspots.length" class="campus-overlay" data-testid="campus-overlay">
         <button
           v-for="h in hotspots"
@@ -199,6 +312,12 @@ function goBoard(board: string) {
             <em v-if="h.note">{{ h.note }}</em>
           </span>
         </button>
+      </div>
+      <div v-if="sceneStatus === 'loading'" class="campus-progress"
+           data-testid="campus-progress" :style="{ width: `${Math.round(progress * 100)}%` }"></div>
+      <div v-if="sceneStatus === 'error'" class="campus-error-box">
+        <span class="tiny" data-testid="campus-error">3D 加载失败，已显示静态图</span>
+        <button type="button" class="btn-sm" data-testid="campus-retry" @click="retryScene">重试</button>
       </div>
     </div>
     <slot />

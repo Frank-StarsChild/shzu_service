@@ -121,4 +121,39 @@ INTEGRATION.md；3.4 节 anchor/pick 几何从「40 像素间隔」改为「22 �
 - 与计划不一致的地方：无
 - 遗留问题：G1 待作者确认
 
+## S5 三维场景：加载到第一帧 — 2026-11-19
+
+- 提交：`3d(S5): 三维场景加载到第一帧`
+- 依赖：`three@0.187.0`（dependencies）、`@types/three@0.187.0`（devDependencies，均 --save-exact）
+- 新增：
+  - `src/campus3d/scene.ts`：整个 src 唯一 import three 的文件。WebGLRenderer
+    （antialias、SRGBColorSpace、NoToneMapping、pixelRatio≤2、背景色取 meta）；
+    **不加灯、不开阴影**；相机 fov/near/far 取 meta、位置取 stops.overview；
+    ResizeObserver 跟随外框；B_ Mesh 收「楼号→Mesh」表；`project()` 场景坐标→视口坐标；
+    15s 加载超时（超时/出错时内部 dispose 再 reject）；dispose 全量（RAF/观察器/几何/贴图/
+    材质/renderer/forceContextLoss）；goTo/setHighlight 为 S6/S7 预留空实现（接口不变）
+  - `scripts/check-bundle.mjs`（verify 在 build 之后执行）：index 不含 WebGLRenderer ✓、
+    index gzip 40.9≤44 ✓、HomeView gzip 6.8≤9 ✓、含 WebGLRenderer 的块仅 1 个合计
+    **154.3≤200 KB**（与 PLAN §8 预估 158 接近）✓、src 里只有 scene.ts import three ✓、
+    tests 无 skip/only/fixme ✓
+  - `tests/e2e/scene.spec.ts`（9 条）
+- CampusHero：scene 模式下 `await import("@/campus3d/scene")` 动态加载
+  （类型用 `import type`，构建时擦除）；canvas 盖海报 400ms 淡入；加载条 2px 红线跟随进度；
+  失败（加载错/15s/webglcontextlost）→ status=error、移除画布、`campus-error` +
+  `campus-retry`（重试真实重跑）；three handle 存普通变量不进响应式；卸载与切静态时 dispose；
+  竞态守卫：加载期间被切静态/失败不再覆盖状态
+- verify：build ✓ / check:bundle ✓ / unit **36 passed** / e2e **29 passed**（baseline 4 +
+  static 9 + gate 7 + scene 9；软件渲染下全绿，46.4s）。scene.spec 覆盖：20s ready+45 楼+5 热点、
+  像素统计非空（差异像素>15%、亮度σ>5）、**海报对位 <0.02（相机装对的铁证）**、淡入后
+  opacity 1+海报保留、glb 拦截→error+重试成功、3d=0 下无 WebGLRenderer 无 glb、
+  6 次进出无上下文耗尽、1100 宽对位仍 <0.02
+- 截图：`docs/3d/shots/S5-desktop.png`（404 KB）
+- 反向验证：相机 fov 临时 +10 → scene.spec 第 3 条（对位）**failed（exit 1）**；还原后
+  verify 全绿（exit 0）
+- 与计划不一致的地方：
+  1. 场景首轮构建报了两处错并已修复：dispose 块编辑残留的重复行（TS1005）；
+     `(window as Window & {...})` 与 CampusHero 的 declare global 冲突（TS2352，改为直接引用
+     全局声明的 window.__campus3d）。
+- 遗留问题：G1 待作者确认
+
 > AI生成
