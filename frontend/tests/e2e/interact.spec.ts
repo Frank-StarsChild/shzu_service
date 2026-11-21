@@ -55,7 +55,7 @@ test.beforeEach(async ({ page }) => {
 });
 
 test("1 高亮像素统计：无高亮 <0.05% → 教务高亮 >0.3%", async ({ page }) => {
-  await page.goto("/?3d=1");
+  await page.goto("/classic?3d=1");
   await waitReady(page);
   await hideOverlay(page);
 
@@ -79,7 +79,7 @@ test("1 高亮像素统计：无高亮 <0.05% → 教务高亮 >0.3%", async ({ 
 });
 
 test("2 画布拾取：指向图书馆楼 → hoveredBoard + 按钮高亮 + 镜头不动 + cursor", async ({ page }) => {
-  await page.goto("/?3d=1");
+  await page.goto("/classic?3d=1");
   await waitReady(page);
   await scrollToSandbox(page);
 
@@ -103,7 +103,7 @@ test("2 画布拾取：指向图书馆楼 → hoveredBoard + 按钮高亮 + 镜�
 });
 
 test("3 点击图书馆楼 → /services?board=图书馆", async ({ page }) => {
-  await page.goto("/?3d=1");
+  await page.goto("/classic?3d=1");
   await waitReady(page);
   await scrollToSandbox(page);
 
@@ -119,7 +119,7 @@ test("3 点击图书馆楼 → /services?board=图书馆", async ({ page }) => {
 });
 
 test("4 空白画布角落：hoveredBoard 为空、无按钮高亮", async ({ page }) => {
-  await page.goto("/?3d=1");
+  await page.goto("/classic?3d=1");
   await waitReady(page);
   await scrollToSandbox(page);
 
@@ -134,7 +134,7 @@ test("4 空白画布角落：hoveredBoard 为空、无按钮高亮", async ({ pa
 });
 
 test("5 按下后拖 30px 再抬起：不触发点击（地址不变）", async ({ page }) => {
-  await page.goto("/?3d=1");
+  await page.goto("/classic?3d=1");
   await waitReady(page);
   await scrollToSandbox(page);
 
@@ -147,11 +147,11 @@ test("5 按下后拖 30px 再抬起：不触发点击（地址不变）", async 
   await page.mouse.move(p.x + 30, p.y + 30, { steps: 4 });
   await page.mouse.up();
   await page.waitForTimeout(400);
-  expect(new URL(page.url()).pathname).toBe("/");
+  expect(new URL(page.url()).pathname).toBe("/classic");
 });
 
 test("6 五个热点逐个拾取都命中（pick 点可点性）", async ({ page }) => {
-  await page.goto("/?3d=1");
+  await page.goto("/classic?3d=1");
   await waitReady(page);
   await scrollToSandbox(page);
 
@@ -167,7 +167,7 @@ test("6 五个热点逐个拾取都命中（pick 点可点性）", async ({ page
 });
 
 test("7 轮换高亮 20 次后：highlightMaterials ≤1，geometries/textures 不变", async ({ page }) => {
-  await page.goto("/?3d=1");
+  await page.goto("/classic?3d=1");
   await waitReady(page);
 
   const before = await page.evaluate(() => ({

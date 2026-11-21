@@ -54,6 +54,34 @@ export function decideMode(input: GateInput): GateResult {
   return { mode: "scene", reason: "ok", canEnable: false };
 }
 
+export type IntroInput = {
+  /** 地址栏 ?intro= 的值 */
+  queryIntro: "1" | "0" | null;
+  /** sessionStorage 的 shzu.campus3d.intro 是否为 '1' */
+  played: boolean;
+  reducedMotion: boolean;
+  /** 模型里有没有这个片段 */
+  hasClip: boolean;
+};
+
+export type IntroResult = { play: boolean; reason: string };
+
+/** N4：要不要播开场动画。从上到下命中第一条。 */
+export function decideIntro(input: IntroInput): IntroResult {
+  if (!input.hasClip) return { play: false, reason: "no-clip" };
+  if (input.reducedMotion) return { play: false, reason: "reduced-motion" };
+  if (input.queryIntro === "0") return { play: false, reason: "query-off" };
+  if (input.queryIntro === "1") return { play: true, reason: "query-on" };
+  if (input.played) return { play: false, reason: "played" };
+  return { play: true, reason: "first-visit" };
+}
+
+/** 读 ?intro= 与 sessionStorage（纯判定交给 decideIntro）。 */
+export function readIntroQuery(): "1" | "0" | null {
+  const q = new URLSearchParams(window.location.search).get("intro");
+  return q === "1" ? "1" : q === "0" ? "0" : null;
+}
+
 /** 读浏览器信息构造 GateInput（判定仍由 decideMode 纯函数完成）。 */
 export function readGateInput(): GateInput {
   const params = new URLSearchParams(window.location.search);

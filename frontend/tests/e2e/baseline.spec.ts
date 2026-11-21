@@ -10,13 +10,13 @@ test.beforeEach(async ({ page }) => {
 });
 
 test("首页：标题含「校园办事」，板块按钮恰好 5 个", async ({ page }) => {
-  await page.goto("/");
+  await page.goto("/classic");
   await expect(page.locator("h1.h-display")).toContainText("校园办事");
   await expect(page.locator(".board-tile")).toHaveCount(5);
 });
 
 test("点第 5 个板块按钮，地址变成 /services?board=图书馆", async ({ page }) => {
-  await page.goto("/");
+  await page.goto("/classic");
   await page.locator(".board-tile").nth(4).click();
   await expect(page).toHaveURL(/\/services/);
   const url = new URL(page.url());
@@ -25,7 +25,7 @@ test("点第 5 个板块按钮，地址变成 /services?board=图书馆", async 
 });
 
 test("首页输入「借书」提交，路径变成 /chat", async ({ page }) => {
-  await page.goto("/");
+  await page.goto("/classic");
   await page.getByLabel("输入问题").fill("借书");
   await page.locator(".composer button[type=submit]").click();
   // 对话页会把 q 参数读走后清掉，所以只断言路径

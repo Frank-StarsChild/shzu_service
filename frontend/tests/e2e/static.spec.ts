@@ -24,7 +24,7 @@ test.afterEach(() => {
 });
 
 test("1 海报可见：naturalWidth > 0，alt 非空", async ({ page }) => {
-  await page.goto("/");
+  await page.goto("/classic");
   const poster = page.locator('[data-testid="campus-poster"]');
   await expect(poster).toBeVisible();
   const naturalWidth = await poster.evaluate((el) => (el as HTMLImageElement).naturalWidth);
@@ -34,7 +34,7 @@ test("1 海报可见：naturalWidth > 0，alt 非空", async ({ page }) => {
 });
 
 test("2 外框宽高比：桌面 2.35–2.45；手机 1.28–1.38 且用手机海报", async ({ page }) => {
-  await page.goto("/");
+  await page.goto("/classic");
   const frame = page.locator('[data-testid="campus-hero"]');
   await expect(frame).toBeVisible();
 
@@ -57,9 +57,9 @@ test("2 外框宽高比：桌面 2.35–2.45；手机 1.28–1.38 且用手机�
 });
 
 test("3 标记恰好 5 个；中心与 posterDesktop 相差 < 0.01", async ({ page }) => {
-  await page.goto("/");
+  await page.goto("/classic");
   const frame = page.locator('[data-testid="campus-hero"]');
-  const markers = page.locator('[data-testid^="campus-marker-"]');
+  const markers = page.locator(".campus-marker");
   await expect(markers).toHaveCount(5);
   await expect(frame).toBeVisible();
 
@@ -75,7 +75,7 @@ test("3 标记恰好 5 个；中心与 posterDesktop 相差 < 0.01", async ({ pa
 });
 
 test("4 悬停「教务」按钮：标记 02 高亮且钩子 activeBoard 正确；移开复原", async ({ page }) => {
-  await page.goto("/");
+  await page.goto("/classic");
   const tile = page.locator('.board-tile[data-board="教务"]');
   await tile.hover();
   await expect(page.locator('[data-testid="campus-marker-02"]')).toHaveClass(/is-active/);
@@ -87,7 +87,7 @@ test("4 悬停「教务」按钮：标记 02 高亮且钩子 activeBoard 正确�
 });
 
 test("5 悬停标记 05：第 5 个板块按钮高亮；点击跳服务目录", async ({ page }) => {
-  await page.goto("/");
+  await page.goto("/classic");
   await page.locator('[data-testid="campus-marker-05"]').hover();
   await expect(page.locator('.board-tile[data-board="图书馆"]')).toHaveClass(/is-active/);
 
@@ -97,13 +97,13 @@ test("5 悬停标记 05：第 5 个板块按钮高亮；点击跳服务目录", 
 });
 
 test("6 键盘聚焦标记 01：第 1 个板块按钮高亮", async ({ page }) => {
-  await page.goto("/");
+  await page.goto("/classic");
   await page.locator('[data-testid="campus-marker-01"]').focus();
   await expect(page.locator('.board-tile[data-board="学工"]')).toHaveClass(/is-active/);
 });
 
 test("7 数据说明含 OpenStreetMap 与「示意」", async ({ page }) => {
-  await page.goto("/");
+  await page.goto("/classic");
   const caption = page.locator('[data-testid="campus-caption"]');
   await expect(caption).toContainText("OpenStreetMap");
   await expect(caption).toContainText("示意");
@@ -113,11 +113,11 @@ test("8 meta 请求被中断：海报仍可见、标记 0 个、pageerror 0 次"
   const errors: string[] = [];
   page.on("pageerror", (e) => errors.push(String(e)));
   await page.route("**/campus3d/campus.meta.json", (route) => route.abort());
-  await page.goto("/");
+  await page.goto("/classic");
 
   await expect(page.locator('[data-testid="campus-poster"]')).toBeVisible();
   await page.waitForTimeout(400);
-  await expect(page.locator('[data-testid^="campus-marker-"]')).toHaveCount(0);
+  await expect(page.locator(".campus-marker")).toHaveCount(0);
   expect(errors).toHaveLength(0);
 });
 
@@ -125,8 +125,8 @@ test("9 截图存档（docs/3d/shots）", async ({ page }) => {
   mkdirSync(new URL("../../docs/3d/shots/", import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, "$1"), {
     recursive: true,
   });
-  await page.goto("/");
-  await expect(page.locator('[data-testid^="campus-marker-"]')).toHaveCount(5);
+  await page.goto("/classic");
+  await expect(page.locator(".campus-marker")).toHaveCount(5);
   // 等海报解码完成再截（标记就绪≠图片画完，否则偶发截到空白海报）
   await page.waitForFunction(() => {
     const img = document.querySelector('[data-testid="campus-poster"]') as HTMLImageElement | null;

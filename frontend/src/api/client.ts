@@ -151,6 +151,54 @@ export type CitationRef = {
   time_condition?: string | null;
 };
 
+export type ActionCheck = { label: string; state: "done" | "not_found" | "partial" | "needs_user"; note?: string };
+
+export type ChecklistItem = {
+  label: string;
+  state: "verified" | "needs_user" | "needs_college" | "needs_web";
+  detail?: string | null;
+  evidence_ids: string[];
+};
+
+export type ActionEntry = {
+  label?: string | null;
+  phone?: string | null;
+  url?: string | null;
+  person?: string | null;
+  note?: string | null;
+  evidence_ids: string[];
+};
+
+export type ActionFlowRef = { flow_id: string; name?: string; historical?: boolean; note?: string | null };
+
+export type PlaceMatch = {
+  building_id?: string | null;
+  label: string;
+  category?: string;
+  campus?: string;
+  note?: string;
+  evidence_id?: string | null;
+};
+
+export type ActionCard = {
+  kind: "checklist" | "repair" | "place";
+  title?: string | null;
+  award?: string | null;
+  year?: number | null;
+  year_note?: string | null;
+  items?: ChecklistItem[];
+  checks?: ActionCheck[];
+  flow?: ActionFlowRef | null;
+  entry?: ActionEntry | null;
+  identified?: Record<string, any>;
+  announcement?: { checked?: boolean; local?: boolean; web_state?: string | null; detail?: string | null; evidence_id?: string | null };
+  steps?: { text: string; evidence_ids: string[] }[];
+  draft?: string | null;
+  ambiguous?: boolean;
+  matches?: PlaceMatch[];
+  fallback_text?: string | null;
+};
+
 export type ChatResponse = {
   status: "answer" | "clarify" | "insufficient" | "out_of_scope" | "workflow" | "error" | "model_unavailable";
   session_id: string;
@@ -164,6 +212,8 @@ export type ChatResponse = {
   message?: string | null;
   workflow?: { flow_id: string; flow_version: string; scope: any; historical: boolean; name: string; summary: string };
   citations: CitationRef[];
+  actions?: ActionCard[];
+  tools_used?: string[];
   timing_ms?: number | null;
 };
 

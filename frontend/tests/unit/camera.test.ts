@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { easeInOutCubic, lerpStop } from "@/campus3d/camera";
+import { easeInOutCubic, easeOutCubic, lerpStop } from "@/campus3d/camera";
 import type { Stop } from "@/campus3d/meta";
 
 // PLAN S6：缓动与插值纯函数。
@@ -16,6 +16,17 @@ describe("easeInOutCubic", () => {
 
   it("在 [0,1] 上取 21 个点单调不减", () => {
     const points = Array.from({ length: 21 }, (_, i) => easeInOutCubic(i / 20));
+    for (let i = 1; i < points.length; i++) {
+      expect(points[i]).toBeGreaterThanOrEqual(points[i - 1]);
+    }
+  });
+});
+
+describe("easeOutCubic（N5 高亮涌起）", () => {
+  it("t=0 → 0；t=1 → 1；在 [0,1] 上单调不减", () => {
+    expect(easeOutCubic(0)).toBeCloseTo(0, 10);
+    expect(easeOutCubic(1)).toBeCloseTo(1, 10);
+    const points = Array.from({ length: 21 }, (_, i) => easeOutCubic(i / 20));
     for (let i = 1; i < points.length; i++) {
       expect(points[i]).toBeGreaterThanOrEqual(points[i - 1]);
     }

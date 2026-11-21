@@ -1,0 +1,72 @@
+{
+ "version": "v3",
+ "default": "all",
+ "packs": [
+  {
+   "id": "all",
+   "name": "全校",
+   "dir": "all/",
+   "note": "主校区：北苑新区、北区、中区、南区、东区，加第一附属医院和护士学校",
+   "meta": "all/campus.meta.json",
+   "glb": "all/campus.glb",
+   "posterDesktop": "all/poster-desktop.jpg",
+   "posterMobile": "all/poster-mobile.jpg",
+   "version": "v3"
+  },
+  {
+   "id": "jjs",
+   "name": "将军山校区",
+   "dir": "jjs/",
+   "note": "在主校区以南约 7 公里；按卫星图复原的第一版，未经实地核对",
+   "meta": "jjs/campus.meta.json",
+   "glb": "jjs/campus.glb",
+   "posterDesktop": "jjs/poster-desktop.jpg",
+   "posterMobile": "jjs/poster-mobile.jpg",
+   "version": "v3"
+  }
+ ],
+ "campuses": [
+  {
+   "id": "BY",
+   "name": "北苑新区",
+   "pack": "all",
+   "buildings": 35,
+   "stop": "by"
+  },
+  {
+   "id": "BQ",
+   "name": "北区",
+   "pack": "all",
+   "buildings": 109,
+   "stop": "bq"
+  },
+  {
+   "id": "ZQ",
+   "name": "中区",
+   "pack": "all",
+   "buildings": 45,
+   "stop": "zq"
+  },
+  {
+   "id": "NQ",
+   "name": "南区",
+   "pack": "all",
+   "buildings": 40,
+   "stop": "nq"
+  },
+  {
+   "id": "DQ",
+   "name": "东区",
+   "pack": "all",
+   "buildings": 12,
+   "stop": "dq"
+  },
+  {
+   "id": "JJ",
+   "name": "将军山校区",
+   "pack": "jjs",
+   "buildings": 19,
+   "stop": "overview"
+  }
+ ]
+}

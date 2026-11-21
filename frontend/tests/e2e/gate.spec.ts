@@ -19,7 +19,7 @@ async function readHook(page: Page): Promise<{ mode: string; reason: string }> {
 }
 
 test("/1 强制开 3D → scene / query-on", async ({ page }) => {
-  await page.goto("/?3d=1");
+  await page.goto("/classic?3d=1");
   expect(await readHook(page)).toEqual({ mode: "scene", reason: "query-on" });
 });
 
@@ -28,8 +28,8 @@ test("/0 强制静态 → static / query-off", async ({ page }) => {
   expect(await readHook(page)).toEqual({ mode: "static", reason: "query-off" });
 });
 
-test("/ 默认（无头=软件渲染）→ static / software-gl，开关可见且文字含「开启」", async ({ page }) => {
-  await page.goto("/");
+test("/classic 默认（无头=软件渲染）→ static / software-gl，开关可见且文字含「开启」", async ({ page }) => {
+  await page.goto("/classic");
   expect(await readHook(page)).toEqual({ mode: "static", reason: "software-gl" });
   await expect(page.locator('[data-testid="campus-toggle"]')).toBeVisible();
   await expect(page.locator('[data-testid="campus-toggle"]')).toContainText("开启");
@@ -37,25 +37,25 @@ test("/ 默认（无头=软件渲染）→ static / software-gl，开关可见�
 
 test("视口 390 → small-viewport，开关不显示", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto("/");
+  await page.goto("/classic");
   expect((await readHook(page)).reason).toBe("small-viewport");
   await expect(page.locator('[data-testid="campus-toggle"]')).toHaveCount(0);
 });
 
 test("减少动态偏好 → reduced-motion", async ({ page }) => {
   await page.emulateMedia({ reducedMotion: "reduce" });
-  await page.goto("/");
+  await page.goto("/classic");
   expect(await readHook(page)).toEqual({ mode: "static", reason: "reduced-motion" });
 });
 
 test("localStorage 预置 off → user-off", async ({ page }) => {
   await page.addInitScript(() => localStorage.setItem("shzu.campus3d", "off"));
-  await page.goto("/");
+  await page.goto("/classic");
   expect(await readHook(page)).toEqual({ mode: "static", reason: "user-off" });
 });
 
 test("点开关「开启 3D 沙盘」→ mode 变 scene，localStorage 键被删", async ({ page }) => {
-  await page.goto("/");
+  await page.goto("/classic");
   await page.waitForFunction(() => typeof window.__campus3d?.reason === "string");
   await page.locator('[data-testid="campus-toggle"]').click();
   const h = await page.evaluate(() => ({

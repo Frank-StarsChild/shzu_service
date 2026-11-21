@@ -1,9 +1,11 @@
 <script setup lang="ts">
-import { ref, onMounted } from "vue";
+import { ref, onMounted, defineAsyncComponent } from "vue";
 import { useRouter } from "vue-router";
 import { useKbMeta, useGo } from "@/composables";
 import { api } from "@/api/client";
-import CampusHero from "@/components/CampusHero.vue";
+
+// 沙盘外壳单独分包：主页面块保持精简（scripts/check-bundle.mjs 的体积预算）
+const CampusHero = defineAsyncComponent(() => import("@/components/CampusHero.vue"));
 
 const router = useRouter();
 const { ready } = useKbMeta();
@@ -45,7 +47,18 @@ const boards = [
 const wizardList = ref<{ flow_id: string; name: string; version: string; historical: boolean; steps: string[] }[]>([]);
 const wizardError = ref("");
 
+// N2：沙盘右下的服务数量（拿不到就不显示数量，不报错；不改 client.ts）
+const serviceCounts = ref<Record<string, number>>({});
+
 onMounted(async () => {
+  try {
+    const r = await api.services();
+    const counts: Record<string, number> = {};
+    for (const s of r.services) counts[s.board] = (counts[s.board] ?? 0) + 1;
+    serviceCounts.value = counts;
+  } catch {
+    serviceCounts.value = {};
+  }
   try {
     const r = await api.workflows();
     wizardList.value = r.workflows;
@@ -120,6 +133,7 @@ const samples = [
           <h2 class="h1">五大板块 · {{ ready ? ready.knowledge_evidence + " 条审定证据" : "加载中…" }}</h2>
         </div>
         <CampusHero :active-board="activeBoard" :active-source="activeSource"
+                    :service-counts="serviceCounts"
                     @marker-enter="enterFromMarker" @marker-leave="clearActive"
                     @canvas-enter="enterFromCanvas" @canvas-leave="clearActive">
           <div class="boards">

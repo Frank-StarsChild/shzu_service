@@ -1,0 +1,467 @@
+/* STAGE 3.1/3.2 + W1/W2：舞台的全部变量与零件样式。选择器都在 .stage 之下，
+   不许放进 :root，免得影响普通版。 */
+.stage {
+  /* 五种颜色（3.1 节） */
+  --st-ink: #05080d;      /* 墨：背景 */
+  --st-moon: #e8edf3;     /* 月白：文字 */
+  --st-moon2: rgba(232, 237, 243, 0.66); /* 次要文字 */
+  --st-moon3: rgba(232, 237, 243, 0.38); /* 提示文字 */
+  --st-red: #e2001a;      /* 朱砂：印章与选中 */
+  --st-gold: #e8c98a;     /* 鎏金：细线与小字 */
+  --st-gold2: rgba(232, 201, 138, 0.55);
+  --st-gold3: rgba(232, 201, 138, 0.22);
+  --st-paper: #efe8d8;    /* 宣纸：公文卡与用户问话 */
+  --st-paper-ink: #1b1a17;
+  --st-glass: rgba(7, 10, 15, 0.78);     /* 面板底色 */
+
+  /* 三种字（3.2 节） */
+  --st-song: "Songti SC", "STSong", "SimSun", "Noto Serif CJK SC", serif;
+  --st-hei: "PingFang SC", "Microsoft YaHei", "Helvetica Neue", Arial, sans-serif;
+
+  background: var(--st-ink);
+  color: var(--st-moon);
+  font-family: var(--st-hei);
+}
+
+/* 测试截图用：隐藏除 canvas 以外的全部直接子元素（含海报） */
+.stage.is-shot > :not(canvas) {
+  visibility: hidden;
+}
+
+/* ---- 暗角（4.1 层 1；不接收鼠标） ---- */
+.stage .stage-vignette {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1;
+  background: radial-gradient(ellipse at 50% 48%, rgba(0, 0, 0, 0) 46%, rgba(2, 4, 8, 0.66) 100%);
+}
+
+/* ---- 题字（home 状态；4.2 节） ---- */
+.stage .stage-hero {
+  position: fixed;
+  left: 96px;
+  top: 128px;
+  max-width: 520px;
+  z-index: 4;
+  transition: opacity 300ms;
+}
+.stage .stage-hero-kicker {
+  font-family: var(--st-song);
+  font-size: 12px;
+  letter-spacing: 0.5em;
+  color: var(--st-gold);
+  margin: 0 0 14px;
+}
+.stage .stage-hero-title {
+  font-family: var(--st-song);
+  font-weight: 900;
+  font-size: 62px;
+  line-height: 1.12;
+  margin: 0 0 18px;
+  color: var(--st-moon);
+}
+.stage .stage-hero-desc {
+  font-size: 14.5px;
+  line-height: 1.85;
+  color: var(--st-moon2);
+  margin: 0;
+  max-width: 44ch;
+}
+.stage .stage-hero-kb {
+  margin: 16px 0 0;
+  color: var(--st-moon3);
+  letter-spacing: 0.06em;
+}
+.stage .stage-hero-kb .num {
+  font-family: var(--mono, monospace);
+  color: var(--st-moon2);
+}
+
+/* 题字底下的遮罩（只在首页状态显示；W3：跟题字一起 300ms 淡出/淡入） */
+.stage .stage-hero-mask {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 3;
+  background: linear-gradient(90deg, rgba(5, 8, 13, 0.90) 0%, rgba(5, 8, 13, 0.62) 26%, rgba(5, 8, 13, 0) 52%);
+  transition: opacity 300ms;
+}
+
+/* ---- 署名（页面最底一行） ---- */
+.stage .stage-caption {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 6px;
+  text-align: center;
+  z-index: 4;
+  color: var(--st-moon3);
+  font-size: 10.5px;
+  letter-spacing: 0.05em;
+  pointer-events: none;
+}
+
+/* ---- W4：回答面板与用户问话（4.2） ---- */
+.stage .stage-answer {
+  position: fixed;
+  right: 30px;
+  top: 74px;
+  width: 428px;
+  z-index: 4;
+  animation: stage-answer-in 260ms ease-out;
+}
+@keyframes stage-answer-in {
+  from { opacity: 0; transform: translateX(16px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+.stage .stage-question {
+  margin: 0;
+  padding: 9px 14px;
+  background: var(--st-paper);
+  color: var(--st-paper-ink);
+  font-size: 14px;
+  line-height: 1.5;
+}
+.stage .stage-panel {
+  position: absolute;
+  top: 44px;
+  left: 0;
+  right: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--st-glass);
+  border: 1px solid var(--st-gold3);
+  max-height: calc(100vh - 118px - 190px);
+}
+.stage .stage-corner {
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  pointer-events: none;
+}
+.stage .stage-corner.c-tl { left: -1px; top: -1px; border-left: 2px solid var(--st-gold); border-top: 2px solid var(--st-gold); }
+.stage .stage-corner.c-tr { right: -1px; top: -1px; border-right: 2px solid var(--st-gold); border-top: 2px solid var(--st-gold); }
+.stage .stage-corner.c-bl { left: -1px; bottom: -1px; border-left: 2px solid var(--st-gold); border-bottom: 2px solid var(--st-gold); }
+.stage .stage-corner.c-br { right: -1px; bottom: -1px; border-right: 2px solid var(--st-gold); border-bottom: 2px solid var(--st-gold); }
+.stage .stage-panel-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 12px 16px 10px;
+  border-bottom: 1px solid rgba(232, 237, 243, 0.10);
+}
+.stage .stage-panel-title {
+  margin: 0;
+  font-family: var(--st-song);
+  font-weight: 700;
+  font-size: 16px;
+  letter-spacing: 0.3em;
+  color: var(--st-moon);
+}
+.stage .stage-panel-meta {
+  font-size: 10.5px;
+  letter-spacing: 0.08em;
+  color: var(--st-moon3);
+  white-space: nowrap;
+}
+.stage .stage-panel-scroll {
+  overflow-y: auto;
+  padding: 12px 16px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(232, 237, 243, 0.22) rgba(7, 10, 15, 0.4);
+}
+.stage .stage-panel-scroll::-webkit-scrollbar { width: 6px; }
+.stage .stage-panel-scroll::-webkit-scrollbar-track { background: rgba(7, 10, 15, 0.4); }
+.stage .stage-panel-scroll::-webkit-scrollbar-thumb { background: rgba(232, 237, 243, 0.22); }
+.stage .stage-panel-text {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.75;
+  color: var(--st-moon);
+}
+.stage .stage-panel-text.soft { color: var(--st-moon2); }
+.stage .stage-panel-block {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-items: flex-start;
+}
+.stage .stage-panel-title-line {
+  margin: 0;
+  font-family: var(--st-song);
+  font-weight: 600;
+  font-size: 15px;
+  letter-spacing: 0.1em;
+  color: var(--st-moon);
+}
+.stage .stage-tag {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 1px 7px;
+  border: 1px solid var(--st-gold2);
+  font-family: var(--st-hei);
+  font-size: 10.5px;
+  letter-spacing: 0.14em;
+  color: var(--st-gold);
+  vertical-align: 2px;
+}
+.stage .stage-subtitle {
+  margin: 14px 0 8px;
+  font-family: var(--st-song);
+  font-weight: 600;
+  font-size: 12px;
+  letter-spacing: 0.42em;
+  color: var(--st-gold);
+}
+.stage .stage-subtitle:first-child { margin-top: 0; }
+.stage .stage-btn {
+  display: inline-block;
+  background: none;
+  border: 1px solid var(--st-gold2);
+  color: var(--st-moon);
+  font-family: var(--st-song);
+  font-size: 13px;
+  letter-spacing: 0.2em;
+  padding: 7px 16px;
+  text-decoration: none;
+  cursor: pointer;
+}
+.stage .stage-btn:hover { border-color: var(--st-gold); color: #fff; }
+.stage .stage-choices {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 4px;
+}
+.stage .stage-choice {
+  background: none;
+  border: 1px solid var(--st-gold3);
+  color: var(--st-moon2);
+  font-family: var(--st-hei);
+  font-size: 14px;
+  letter-spacing: 0.06em;
+  text-align: left;
+  padding: 9px 14px;
+  cursor: pointer;
+}
+.stage .stage-choice:hover { border-color: var(--st-gold2); color: var(--st-moon); }
+.stage .stage-panel-foot {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 9px 16px;
+  border-top: 1px solid rgba(232, 237, 243, 0.10);
+}
+.stage .stage-panel-note {
+  font-size: 10.5px;
+  letter-spacing: 0.04em;
+  color: var(--st-moon3);
+}
+.stage .stage-panel-links {
+  display: flex;
+  gap: 10px;
+  white-space: nowrap;
+}
+.stage .stage-link {
+  background: none;
+  border: none;
+  padding: 0;
+  font-family: var(--st-hei);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  color: var(--st-gold2);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+.stage .stage-link:hover { color: var(--st-gold); }
+
+/* ---- W4：公文卡（5.6）：宣纸底、顶边 3px 红色双线（红头）、宋体标题、右侧已审定章 ---- */
+.stage .stage-docs {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.stage .stage-doc {
+  position: relative;
+  background: var(--st-paper);
+  color: var(--st-paper-ink);
+  border: none;
+  border-top: 3px double var(--st-red);
+  padding: 11px 62px 11px 14px;
+  cursor: pointer;
+  text-align: left;
+}
+.stage .stage-doc-title {
+  margin: 0;
+  font-family: var(--st-song);
+  font-weight: 700;
+  font-size: 14px;
+  line-height: 1.45;
+  color: var(--st-paper-ink);
+}
+.stage .stage-doc-sub {
+  margin: 3px 0 0;
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  color: rgba(27, 26, 23, 0.72);
+}
+.stage .stage-doc-time {
+  margin: 3px 0 0;
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  color: rgba(27, 26, 23, 0.6);
+}
+.stage .stage-doc-stamp {
+  position: absolute;
+  right: 8px;
+  top: 10px;
+  width: 50px;
+  height: 50px;
+  transform: rotate(-12deg);
+  opacity: 0.86;
+}
+.stage .stage-doc-extra {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(27, 26, 23, 0.16);
+}
+.stage .stage-doc-excerpt {
+  margin: 0 0 6px;
+  font-size: 12px;
+  line-height: 1.7;
+  color: rgba(27, 26, 23, 0.8);
+}
+.stage .stage-doc-link {
+  font-family: var(--st-hei);
+  font-size: 12px;
+  letter-spacing: 0.06em;
+  color: rgba(27, 26, 23, 0.85);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+/* ---- W4：AnswerBlocks 的舞台覆盖（白底样式是给 /chat 写的，这里盖掉；
+   面板里不许出现红色的字）---- */
+.stage .blocks { border: none; }
+.stage .block {
+  background: transparent;
+  border-bottom: 1px solid rgba(232, 237, 243, 0.10);
+  color: var(--st-moon);
+}
+.stage .block:last-child { border-bottom: none; }
+.stage .block .no {
+  font-family: var(--st-song);
+  color: var(--st-gold);
+}
+.stage .block.kind-note {
+  background: transparent;
+  color: var(--st-moon2);
+}
+.stage .block.kind-note .no { color: var(--st-gold2); }
+.stage .block .cite-sup {
+  background: none;
+  color: var(--st-gold);
+}
+.stage .block .cite-sup:hover {
+  background: none;
+  color: var(--st-gold);
+  text-decoration: underline;
+}
+
+/* ---- W5：办理地点、换包钮、红色引线 ---- */
+.stage .stage-place {
+  margin: 0 0 12px;
+}
+.stage .stage-place-line {
+  margin: 0 0 4px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-family: var(--st-song);
+  font-weight: 600;
+  font-size: 15px;
+  letter-spacing: 0.1em;
+  color: var(--st-moon);
+}
+.stage .stage-place-square {
+  width: 9px;
+  height: 9px;
+  background: var(--st-red);
+  flex: none;
+}
+.stage .stage-place-zone {
+  margin: 0 0 0 19px;
+  font-size: 11.5px;
+  letter-spacing: 0.18em;
+  color: var(--st-moon3);
+}
+.stage .stage-other-pack {
+  margin: 0 0 12px;
+  background: none;
+  border: 1px solid var(--st-gold2);
+  color: var(--st-moon);
+  font-family: var(--st-hei);
+  font-size: 13px;
+  letter-spacing: 0.1em;
+  text-align: left;
+  padding: 10px 14px;
+  cursor: pointer;
+}
+.stage .stage-other-pack:hover {
+  border-color: var(--st-gold);
+}
+.stage .stage-leader {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 2;
+  pointer-events: none;
+}
+
+/* ---- W8：观景。is-tour 时界面零件 300ms 淡到 0、不可点；暗角与「退出观景」保留 ---- */
+.stage .stage-top,
+.stage .stage-rail,
+.stage .stage-dock,
+.stage .stage-answer,
+.stage .stage-hud-widget,
+.stage .stage-signs,
+.stage .stage-caption {
+  transition: opacity 300ms;
+}
+.stage.is-tour .stage-top,
+.stage.is-tour .stage-rail,
+.stage.is-tour .stage-hero,
+.stage.is-tour .stage-hero-mask,
+.stage.is-tour .stage-dock,
+.stage.is-tour .stage-answer,
+.stage.is-tour .stage-hud-widget,
+.stage.is-tour .stage-signs,
+.stage.is-tour .stage-sign, /* 题签自身设了 pointer-events:auto，得单独盖掉 */
+.stage.is-tour .stage-star,
+.stage.is-tour .stage-caption {
+  opacity: 0;
+  pointer-events: none;
+}
+/* 退出观景（右上角小钮：宋体 13px、淡金边） */
+.stage .stage-tour-exit {
+  position: fixed;
+  top: 24px;
+  right: 28px;
+  z-index: 5;
+  font-family: var(--st-song);
+  font-size: 13px;
+  letter-spacing: 0.3em;
+  color: var(--st-moon);
+  background: var(--st-glass);
+  border: 1px solid var(--st-gold3);
+  padding: 7px 14px;
+  cursor: pointer;
+}
+.stage .stage-tour-exit:hover {
+  border-color: var(--st-gold2);
+}

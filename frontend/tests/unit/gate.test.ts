@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { decideMode, type GateInput } from "@/campus3d/gate";
+import { decideIntro, decideMode, type GateInput, type IntroInput } from "@/campus3d/gate";
 
 // PLAN S4：规则表 10 行逐条 + 优先级 + 显卡名。
 
@@ -116,6 +116,56 @@ describe("decideMode 优先级", () => {
   it("视口 390 优先于减少动态（5 在 6 前）", () => {
     const r = decideMode(input({ viewportWidth: 390, reducedMotion: true }));
     expect(r).toEqual({ mode: "static", reason: "small-viewport", canEnable: false });
+  });
+});
+
+describe("decideIntro（N4，从上到下命中第一条）", () => {
+  function intro(over: Partial<IntroInput> = {}): IntroInput {
+    return {
+      queryIntro: null,
+      played: false,
+      reducedMotion: false,
+      hasClip: true,
+      ...over,
+    };
+  }
+
+  it("1 没有片段 → no-clip", () => {
+    expect(decideIntro(intro({ hasClip: false }))).toEqual({ play: false, reason: "no-clip" });
+  });
+
+  it("2 减少动态 → reduced-motion", () => {
+    expect(decideIntro(intro({ reducedMotion: true }))).toEqual({ play: false, reason: "reduced-motion" });
+  });
+
+  it("3 ?intro=0 → query-off", () => {
+    expect(decideIntro(intro({ queryIntro: "0" }))).toEqual({ play: false, reason: "query-off" });
+  });
+
+  it("4 ?intro=1 → query-on", () => {
+    expect(decideIntro(intro({ queryIntro: "1" }))).toEqual({ play: true, reason: "query-on" });
+  });
+
+  it("5 本标签页已播过 → played", () => {
+    expect(decideIntro(intro({ played: true }))).toEqual({ play: false, reason: "played" });
+  });
+
+  it("6 其余 → first-visit", () => {
+    expect(decideIntro(intro())).toEqual({ play: true, reason: "first-visit" });
+  });
+
+  it("优先级：reducedMotion 优先于 ?intro=1", () => {
+    expect(decideIntro(intro({ reducedMotion: true, queryIntro: "1" }))).toEqual({
+      play: false,
+      reason: "reduced-motion",
+    });
+  });
+
+  it("优先级：?intro=1 优先于 played", () => {
+    expect(decideIntro(intro({ queryIntro: "1", played: true }))).toEqual({
+      play: true,
+      reason: "query-on",
+    });
   });
 });
 

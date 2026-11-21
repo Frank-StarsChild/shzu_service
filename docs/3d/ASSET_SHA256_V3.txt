@@ -1,0 +1,15 @@
+# 资产包 v3 的校验值，由协助方随资产包一起给出。不要手改；资产包更新时这个文件会一起更新。
+# JSON 文件不校验哈希（换行符在不同系统上可能不同），只校验里面的 version。路径相对于 frontend/public/campus3d/。
+version v3
+a79c273861e602d42f559a6d43889ade6dfce627525947b85d0075eaf10790d0  all/campus.glb
+e17656ff304b33c38e6ac7767efbcc4e57cdd5e69e0600c238ec7cd1df772779  all/poster-desktop.jpg
+e2ffcbbfcec7f822babb89cec442a02a496350dcd2208b108a8b68a3bfb4f167  all/poster-mobile.jpg
+ddfade274f26b482c8cf9b5c459a64dbd792dda1f7bd4c22f0f84b2a60ae1100  jjs/campus.glb
+45c66336dbbfd3137eb12b9bd06da72c22e6fb5cb3c6324b1b9eaae2316c7bcb  jjs/poster-desktop.jpg
+7835d6801259928cbb71494917416d45d4fc2371b3a865a9d298f05e333735e5  jjs/poster-mobile.jpg
+8e222c9fe3201641875f3f7b98af90f03cbfbc335e072159573cc0120db731b6  ui/seal.svg
+94dba5959160b1a26310b29dbbd03e243d0d8e2e09922239f7cda61580ce143f  ui/stamp.svg
+db2ef2e014abd04506ce38d76244b9ed031b609f29e506b3f6215a398bf592c8  ui/compass.svg
+
+
+AI生成

@@ -6,6 +6,11 @@ export function easeInOutCubic(t: number): number {
   return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
 }
 
+/** 先快后慢（cubic out），N5 高亮涌起用。 */
+export function easeOutCubic(t: number): number {
+  return 1 - Math.pow(1 - t, 3);
+}
+
 export function lerp(a: number, b: number, t: number): number {
   return a + (b - a) * t;
 }

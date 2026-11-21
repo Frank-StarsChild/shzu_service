@@ -67,4 +67,28 @@ describe("campus.glb 契约", () => {
       expect(st.size, `${f} 超过 300 KB`).toBeLessThanOrEqual(300 * 1024);
     }
   });
+
+  it("N1：每个热点都有 H_<buildingId> 组，scale 为 [0,0,0]，不是 Mesh", () => {
+    const nodes = glb["nodes"] as Record<string, unknown>[];
+    const byName = new Map(nodes.map((n) => [String(n["name"] ?? ""), n]));
+    for (const h of meta.hotspots) {
+      const name = `${meta.look.highlight.nodePrefix}${h.buildingId}`;
+      const n = byName.get(name);
+      expect(n, `缺少高亮件 ${name}`).toBeTruthy();
+      expect(n!["mesh"], `${name} 应是组，不是 Mesh`).toBeUndefined();
+      expect(Array.isArray(n!["children"]), `${name} 应有 children`).toBe(true);
+      expect(n!["scale"]).toEqual([0, 0, 0]);
+    }
+  });
+
+  it("N1/N3：FX 节点带 mesh；动画恰好一个片段，名字等于 look.intro.clip", () => {
+    const nodes = glb["nodes"] as Record<string, unknown>[];
+    const fx = nodes.find((n) => n["name"] === meta.look.fx.node);
+    expect(fx, `缺少 ${meta.look.fx.node}`).toBeTruthy();
+    expect(fx!["mesh"]).toBeDefined();
+
+    const anims = (glb["animations"] as Record<string, unknown>[] | undefined) ?? [];
+    expect(anims).toHaveLength(1);
+    expect(anims[0]["name"]).toBe(meta.look.intro.clip);
+  });
 });

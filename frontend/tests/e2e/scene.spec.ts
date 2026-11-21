@@ -58,7 +58,7 @@ test.beforeEach(async ({ page }) => {
 });
 
 test("1 20 秒内 ready；buildingCount 等于 buildings 条数；hotspotCount = 5", async ({ page }) => {
-  await page.goto("/?3d=1");
+  await page.goto("/classic?3d=1");
   await waitReady(page);
   const h = await readHook(page);
   expect(h.buildingCount).toBe(BUILDING_COUNT);
@@ -66,7 +66,7 @@ test("1 20 秒内 ready；buildingCount 等于 buildings 条数；hotspotCount =
 });
 
 test("2 画布不是空白（像素统计）", async ({ page }) => {
-  await page.goto("/?3d=1");
+  await page.goto("/classic?3d=1");
   await waitReady(page);
   // 隐藏标记层：统计的只有场景本身
   await page.addStyleTag({ content: "[data-testid=campus-overlay] { visibility: hidden !important; }" });
@@ -97,13 +97,13 @@ test("2 画布不是空白（像素统计）", async ({ page }) => {
 });
 
 test("3 海报对位：anchor 投影与 posterDesktop 相差 < 0.02", async ({ page }) => {
-  await page.goto("/?3d=1");
+  await page.goto("/classic?3d=1");
   await waitReady(page);
   await checkPosterAlignment(page, "对位");
 });
 
 test("4 ready 后画布 opacity 为 1；海报仍在 DOM", async ({ page }) => {
-  await page.goto("/?3d=1");
+  await page.goto("/classic?3d=1");
   await waitReady(page);
   await page.waitForTimeout(600); // 等 400ms 过渡结束
   const opacity = await page
@@ -117,7 +117,7 @@ test("5 失败回退：拦截 .glb → error + 海报 + 重试；解除后重试
   const errors: string[] = [];
   page.on("pageerror", (e) => errors.push(String(e)));
   await page.route("**/campus.glb*", (route) => route.abort());
-  await page.goto("/?3d=1");
+  await page.goto("/classic?3d=1");
 
   await page.waitForFunction(() => window.__campus3d?.status === "error", undefined, {
     timeout: 20_000,
@@ -170,10 +170,10 @@ test("7 反复进出 6 次：无控制台 error、无 WebGL 上下文耗尽", as
 
   for (let i = 0; i < 6; i++) {
     if (i === 0) {
-      await page.goto("/?3d=1");
+      await page.goto("/classic?3d=1");
     } else {
       await page.goBack();
-      await page.waitForURL(/\/\?3d=1/);
+      await page.waitForURL(/\/classic\?3d=1/);
     }
     await waitReady(page);
     await page.getByRole("link", { name: "服务目录" }).click();
@@ -187,7 +187,7 @@ test("7 反复进出 6 次：无控制台 error、无 WebGL 上下文耗尽", as
 });
 
 test("8 视口 1100 宽仍对位", async ({ page }) => {
-  await page.goto("/?3d=1");
+  await page.goto("/classic?3d=1");
   await waitReady(page);
   await page.setViewportSize({ width: 1100, height: 800 });
   await page.waitForTimeout(300);
@@ -196,7 +196,7 @@ test("8 视口 1100 宽仍对位", async ({ page }) => {
 
 test("截图存档（docs/3d/shots）", async ({ page }) => {
   mkdirSync("../docs/3d/shots", { recursive: true });
-  await page.goto("/?3d=1");
+  await page.goto("/classic?3d=1");
   await waitReady(page);
   await page.waitForTimeout(600);
   await page.locator('[data-testid="campus-hero"]').screenshot({
