@@ -11,6 +11,7 @@
 import json
 import logging
 import os
+import re
 import time
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional
@@ -46,7 +47,9 @@ class ProviderError(Exception):
 
 
 def _extract_json(text: str) -> dict:
-    """容忍 markdown 包裹的 JSON 提取；失败抛 ProviderError(invalid_output)。"""
+    """容忍 markdown 包裹的 JSON 提取；失败抛 ProviderError(invalid_output)。
+    max_tokens 截断的尾巴（status/reply/evidence_ids 多已产出）按「闭合到最里层完整值」
+    降级解析：截断在 reply 字符串内时保留已产出正文。"""
     raw = (text or "").strip()
     if raw.startswith("```"):
         raw = raw.strip("`")
@@ -56,13 +59,34 @@ def _extract_json(text: str) -> dict:
     try:
         return json.loads(raw)
     except ValueError:
-        s, e = raw.find("{"), raw.rfind("}")
-        if s >= 0 and e > s:
-            try:
-                return json.loads(raw[s:e + 1])
-            except ValueError:
-                raise ProviderError("invalid_output", "模型输出不是合法 JSON")
-        raise ProviderError("invalid_output", "模型输出不是合法 JSON")
+        pass
+    s, e = raw.find("{"), raw.rfind("}")
+    if s >= 0 and e > s:
+        try:
+            return json.loads(raw[s:e + 1])
+        except ValueError:
+            pass
+    # 截断容错：从最里层可见的完整字段回退（找最后一个 `,"key":` 前的闭合位置）
+    m = re.search(r',\s*"\w+"\s*:\s*$', raw)
+    if m:
+        trimmed = raw[:m.start()] + "}"
+        try:
+            obj = json.loads(trimmed[s:] if s >= 0 else trimmed)
+            if isinstance(obj, dict) and obj.get("reply"):
+                return obj
+        except ValueError:
+            pass
+    # reply 被截在字符串中：闭合 reply 字符串再补 }
+    m2 = re.search(r'"reply"\s*:\s*"((?:[^"\\]|\\.)*)$', raw, re.S)
+    if m2 and s >= 0:
+        trimmed = raw[:m2.end()] + '"}'
+        try:
+            obj = json.loads(trimmed[s:])
+            if isinstance(obj, dict) and obj.get("reply"):
+                return obj
+        except ValueError:
+            pass
+    raise ProviderError("invalid_output", "模型输出不是合法 JSON")
 
 
 def error_code(exc: Exception) -> str:
@@ -109,7 +133,9 @@ def create_chat_model():
         api_key=cfg["api_key"],
         base_url=cfg["base_url"],
         temperature=0.2,
-        max_tokens=1100,
+        # 资料丰富的回答（多工具结果 + 6 证据 + 900 字 reply）总输出可达 2k token；
+        # 1100 会把最终 JSON 截成非法尾（model_response 失败的主因）
+        max_tokens=2400,
         timeout=REQUEST_TIMEOUT,
         max_retries=1,   # SDK 内部重试限制为 1 次（预算控制由对话图负责）
     )

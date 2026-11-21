@@ -68,10 +68,78 @@ class WorkflowRefBody(BaseModel):
     summary: str = ""
 
 
-# 联合响应（判别字段 status）
-# error：技术错误状态（模型不可用/超时/输出未通过校验），前端展示失败与重试入口，
-# 不冒充智能体回答；message 为系统级技术说明，不是模型正文。
-# model_unavailable：历史版本技术状态，仅为兼容旧会话记录保留。
+# ---------- 场景动作卡片（可选字段：由后端工具产生的已核实结构化数据，
+#             模型正文之外的展示组件；旧消息无该字段仍可正常渲染） ----------
+
+class ActionCheck(BaseModel):
+    """分诊/核对过程的状态行（做过什么、结论如何）"""
+    label: str
+    state: Literal["done", "not_found", "partial", "needs_user"] = "done"
+    note: str = ""
+
+
+class ChecklistItem(BaseModel):
+    """核对清单单项：已有依据 / 待用户补充 / 待学院确认 / 待官网核实"""
+    label: str
+    state: Literal["verified", "needs_user", "needs_college", "needs_web"] = "verified"
+    detail: str = ""
+    evidence_ids: List[str] = []
+
+
+class ActionEntry(BaseModel):
+    """官方办理入口（电话/地点/链接），均带证据"""
+    label: str = ""
+    phone: Optional[str] = None
+    url: Optional[str] = None
+    person: Optional[str] = None
+    note: Optional[str] = None
+    evidence_ids: List[str] = []
+
+
+class ActionFlowRef(BaseModel):
+    flow_id: str
+    name: str = ""
+    historical: bool = False
+    note: Optional[str] = None
+
+
+class RepairStep(BaseModel):
+    text: str
+    evidence_ids: List[str] = []
+
+
+class PlaceMatch(BaseModel):
+    building_id: Optional[str] = None   # 已登记到沙盘的楼（可为空=仅文字定位）
+    label: str
+    category: str = ""
+    campus: str = "中区"
+    note: str = ""
+    evidence_id: Optional[str] = None
+
+
+class ActionCard(BaseModel):
+    """联合动作卡片（kind 判别）。三种：材料核对 / 网络报修分诊 / 沙盘定位"""
+    kind: Literal["checklist", "repair", "place"]
+    title: str = ""
+    # checklist
+    award: Optional[str] = None
+    year: Optional[int] = None
+    year_note: Optional[str] = None
+    items: List[ChecklistItem] = []
+    flow: Optional[ActionFlowRef] = None
+    entry: Optional[ActionEntry] = None
+    # repair
+    identified: dict = {}              # 识别出的校区/楼栋/设备范围
+    announcement: dict = {}            # 公告核对（matched/checked/detail）
+    checks: List[ActionCheck] = []
+    steps: List[RepairStep] = []
+    draft: Optional[str] = None        # 报修草稿（无校方正式接口，不真实提交）
+    # place
+    ambiguous: bool = False
+    matches: List[PlaceMatch] = []
+    fallback_text: Optional[str] = None
+
+
 class ChatResponse(BaseModel):
     status: Literal["answer", "clarify", "insufficient", "out_of_scope", "workflow",
                     "error", "model_unavailable"]
@@ -86,6 +154,8 @@ class ChatResponse(BaseModel):
     message: Optional[str] = None
     workflow: Optional[WorkflowRefBody] = None
     citations: List[CitationRef] = []
+    actions: List[ActionCard] = []     # 可选：场景动作卡片（旧消息缺省为空）
+    tools_used: List[str] = []         # 可选：本轮实际执行的工具（步骤可见）
     timing_ms: Optional[int] = None
 
 

@@ -35,6 +35,22 @@ app.include_router(sources.router)
 app.include_router(system.router)
 
 
+@app.on_event("startup")
+def _warm_indexes():
+    """启动即构建检索索引（万级条款 jieba 分词约 30s；命中磁盘缓存约 2s），
+    并预载向量通道（bge 编码模型约 6-10s；懒加载会拖慢首次全校检索 ~15-20s，
+    有触发工具超时的风险）。后台线程执行，向量加载失败自动退回纯 BM25，不阻塞服务。"""
+    import threading
+
+    from .knowledge.retriever import get_indexes, get_vector_channel
+
+    def _warm():
+        get_indexes()
+        get_vector_channel()
+
+    threading.Thread(target=_warm, daemon=True, name="index-warmup").start()
+
+
 @app.exception_handler(store.sqlite3.Error)
 async def _db_error(request: Request, exc):
     return JSONResponse(status_code=500, content={

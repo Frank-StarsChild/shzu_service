@@ -1,7 +1,12 @@
 # -*- coding: utf-8 -*-
-"""加载审定知识包：documents / clauses / facts / flows / rules / aliases"""
+"""加载审定知识包：documents / clauses / facts / flows / rules / aliases
+
+clauses 文件按 REVIEWED_DIR 下 clauses_*.json 全量加载（新增板块由批量导入器
+scripts/import_campus_corpus.py 产出 clauses_imp_<板块>.json，本加载器自动纳入）。
+"""
 import json
 from functools import lru_cache
+from pathlib import Path
 
 from ..config import REVIEWED_DIR, WORKFLOWS_DIR, KB_VERSION
 
@@ -12,7 +17,8 @@ def _read(path):
 
 
 def _clause_files():
-    return ["clauses_lib.json", "clauses_xg.json", "clauses_jw.json", "clauses_hq_bw.json", "clauses_xy.json"]
+    """全部 clauses_*.json（手工审定的 5 份 + 批量导入的各板块文件），排序保证稳定。"""
+    return sorted(p.name for p in Path(REVIEWED_DIR).glob("clauses_*.json") if p.is_file())
 
 
 @lru_cache(maxsize=1)

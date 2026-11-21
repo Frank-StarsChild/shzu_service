@@ -13,6 +13,7 @@ from fastapi.responses import FileResponse
 from ..contracts import models as M
 from ..agent import deepseek_adapter, graph
 from ..knowledge.loader import get_kb
+from ..knowledge import web_evidence
 from ..knowledge.retriever import retrieve
 from ..rules.engine import evaluate_rules
 from ..documents import renderer as doc_renderer
@@ -284,6 +285,15 @@ def evidence(evidence_id: str):
     kb = get_kb()
     c = kb.citation(evidence_id)
     if not c:
+        # 本轮联网查证注册的官网证据（web- 前缀）：可打开实际官网原文
+        w = web_evidence.get(evidence_id)
+        if w:
+            return M.EvidenceResponse(
+                id=w["id"], title=w["title"], issuer=w["issuer"], url=w["url"],
+                published_at=w.get("published_at"), effective_from=None, effective_to=None,
+                locator=w.get("locator"), excerpt=w.get("excerpt") or "",
+                time_condition=None, review_state=w.get("review_state"),
+                doc_id=f"web:{evidence_id}", knowledge_version=kb.kb_version)
         _err(404, "evidence_not_found", "证据不存在或未发布")
     return M.EvidenceResponse(
         id=c["evidence_id"], title=c["title"], issuer=c["issuer"], url=c["source_url"],
