@@ -1,6 +1,7 @@
 <script setup lang="ts">
 // STAGE W3：左侧一列校区题签（第 4.2 节）。只读 store、调动作；
-// 第一项「全校」，后面是 packs.json 的六个校区。
+// 第一项「全校」（packs.json 的 default），后面是 campuses 的六项。
+// 判断只看三样：default、当前包的 zones、campuses[].pack（不按包名写分支）。
 import { computed, onMounted } from "vue";
 import { useStageStore } from "@/stores/stage";
 
@@ -20,27 +21,34 @@ type RailItem = {
   sub: string;
   far: boolean;
   active: boolean;
+  /** 选中校区的 pack ≠ 当前包（campus 态下右侧显示「近看」） */
+  showEnter: boolean;
 };
 
 const items = computed<RailItem[]>(() => {
+  const isDefault = store.packId === store.default;
   const list: RailItem[] = [
     {
       id: "ALL",
       name: "全校",
       sub: "六校区",
       far: false,
-      active: store.mode === "home" && store.packId === "all",
+      active: store.mode === "home" && isDefault,
+      showEnter: false,
     },
   ];
   for (const c of store.campuses) {
+    const selected = store.mode === "campus" && store.zoneId === c.id;
     list.push({
       id: c.id,
       name: shortName(c.name),
       sub: String(c.buildings),
-      far: c.pack !== store.packId,
+      // 当前包的 zones 里没有的校区：虚线边框（不在眼前这块沙盘上）
+      far: !store.campusOnPack(c.id),
       active:
-        (store.mode === "campus" && store.zoneId === c.id)
-        || (store.mode === "home" && c.pack === store.packId && store.packId !== "all"),
+        selected
+        || (store.mode === "home" && !isDefault && c.pack === store.packId),
+      showEnter: selected && c.pack !== store.packId,
     });
   }
   return list;
@@ -48,7 +56,8 @@ const items = computed<RailItem[]>(() => {
 
 function onClick(id: string) {
   if (id === "ALL") {
-    if (store.packId !== "all") void store.switchPack("all");
+    // 点「全校」：当前包不是默认包就换回去；否则回首页
+    if (store.packId !== store.default) store.switchPack(store.default);
     else store.goHome();
     return;
   }
@@ -58,18 +67,26 @@ function onClick(id: string) {
 
 <template>
   <nav class="stage-rail" data-testid="stage-rail" aria-label="校区">
-    <button
-      v-for="it in items"
-      :key="it.id"
-      type="button"
-      class="stage-rail-item"
-      :class="{ 'is-active': it.active, 'is-far': it.far }"
-      :data-testid="`stage-rail-${it.id}`"
-      @click="onClick(it.id)"
-    >
-      <span class="stage-rail-name">{{ it.name }}</span>
-      <span class="stage-rail-sub">{{ it.sub }}</span>
-    </button>
+    <div v-for="it in items" :key="it.id" class="stage-rail-wrap">
+      <button
+        type="button"
+        class="stage-rail-item"
+        :class="{ 'is-active': it.active, 'is-far': it.far }"
+        :data-testid="`stage-rail-${it.id}`"
+        @click="onClick(it.id)"
+      >
+        <span class="stage-rail-name">{{ it.name }}</span>
+        <span class="stage-rail-sub">{{ it.sub }}</span>
+      </button>
+      <!-- 「近看」：campus 态且选中校区有自己的另一块沙盘时，出现在选中项右侧 -->
+      <button
+        v-if="it.showEnter"
+        type="button"
+        class="stage-rail-enter"
+        data-testid="stage-rail-enter"
+        @click.stop="store.enterCampus()"
+      >近看</button>
+    </div>
   </nav>
 </template>
 
@@ -85,6 +102,9 @@ function onClick(id: string) {
   flex-direction: column;
   gap: 8px;
   z-index: 4;
+}
+.stage .stage-rail-wrap {
+  position: relative;
 }
 .stage .stage-rail-item {
   width: 40px;
@@ -123,5 +143,28 @@ function onClick(id: string) {
   font-size: 9.5px;
   letter-spacing: 0.16em;
   color: var(--st-gold2);
+}
+/* 「近看」小题签：选中项右侧，竖排、金边金字（第 4.2 节） */
+.stage .stage-rail-enter {
+  position: absolute;
+  left: calc(100% + 8px);
+  top: 50%;
+  transform: translateY(-50%);
+  padding: 12px 0 8px;
+  background: var(--st-glass);
+  border: 1px solid var(--st-gold2);
+  cursor: pointer;
+}
+.stage .stage-rail-enter:focus-visible {
+  outline: 1px solid var(--st-gold2);
+  outline-offset: 2px;
+}
+.stage .stage-rail-enter {
+  writing-mode: vertical-rl;
+  font-family: var(--st-song);
+  font-weight: 600;
+  font-size: 13px;
+  letter-spacing: 0.28em;
+  color: var(--st-gold);
 }
 </style>

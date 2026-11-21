@@ -42,7 +42,7 @@ type CollegeRow = {
 
 /** 学院列表（zone 过滤；同楼两院只留先出现的——卡第 4 条） */
 const collegeRows = computed<CollegeRow[]>(() => {
-  const m = store.mode === "campus" ? store.packMeta : null;
+  const m = store.mode === "campus" ? store.meta : null;
   const zid = store.zoneId;
   if (!m?.colleges || !zid) return [];
   const seen = new Set<string>();
@@ -66,10 +66,10 @@ const collegeRows = computed<CollegeRow[]>(() => {
 
 // ---- 五个板块：只在选中片区是 places.boards 里那些楼所在的片区时显示 ----
 const boardZone = computed<string | null>(() => {
-  if (!store.places || !store.packMeta) return null;
+  if (!store.places || !store.meta) return null;
   const bid = Object.values(store.places.boards)[0];
   if (!bid) return null;
-  return store.packMeta.buildings[bid]?.zone ?? null;
+  return store.meta.buildings[bid]?.zone ?? null;
 });
 
 const boards = computed<string[]>(() => {
@@ -104,7 +104,7 @@ const svcLoading = ref(false);
 const placeZoneName = computed(() => {
   const bid = store.place?.buildingId;
   if (!bid) return "";
-  const m = store.packMeta;
+  const m = store.meta;
   const zoneId = m?.buildings[bid]?.zone;
   if (!zoneId) return "";
   return m?.zones?.find((z) => z.id === zoneId)?.name ?? "";

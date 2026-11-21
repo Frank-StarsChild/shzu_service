@@ -7,6 +7,10 @@ export type Pack = {
   id: string;
   name: string;
   dir: string;
+  /** 这块沙盘上有哪些片区（packs.json 的 zones；all 是 7 个，nq 是 3 个，其余 1 个） */
+  zones: string[];
+  /** 这块沙盘的楼数（正整数） */
+  buildings: number;
   note?: string;
   meta: string;
   glb: string;
@@ -18,9 +22,9 @@ export type Pack = {
 export type CampusZoneRef = {
   id: string;
   name: string;
+  /** 这个校区自己的沙盘（packs.json v3：campuses 不再有 stop，镜头停靠看当前包 meta.zones[].stop） */
   pack: string;
   buildings: number;
-  stop: string;
 };
 
 export type PackIndex = {
@@ -60,10 +64,24 @@ export function parsePackIndex(json: unknown): PackIndex {
       const v = p[k];
       if (typeof v !== "string" || v === "") fail(`packs[${i}].${k}`, "必须是非空字符串");
     }
+    // zones：非空的字符串数组（判断「校区在不在当前沙盘上」只看它，见 STAGE 5.2）
+    const zonesRaw = p["zones"];
+    if (!Array.isArray(zonesRaw) || zonesRaw.length === 0) {
+      fail(`packs[${i}].zones`, "必须是非空的字符串数组");
+    }
+    if (zonesRaw.some((z) => typeof z !== "string" || z === "")) {
+      fail(`packs[${i}].zones`, "每一项必须是非空字符串");
+    }
+    const buildingsRaw = p["buildings"];
+    if (typeof buildingsRaw !== "number" || !Number.isInteger(buildingsRaw) || buildingsRaw <= 0) {
+      fail(`packs[${i}].buildings`, `必须是正整数（收到 ${JSON.stringify(buildingsRaw)}）`);
+    }
     return {
       id: p["id"] as string,
       name: p["name"] as string,
       dir: p["dir"] as string,
+      zones: zonesRaw as string[],
+      buildings: buildingsRaw as number,
       note: typeof p["note"] === "string" ? p["note"] : undefined,
       meta: p["meta"] as string,
       glb: p["glb"] as string,
@@ -78,19 +96,21 @@ export function parsePackIndex(json: unknown): PackIndex {
   if (!Array.isArray(campusesRaw)) fail("campuses", "必须是数组");
   const campuses: CampusZoneRef[] = campusesRaw.map((c, i) => {
     if (!isObj(c)) fail(`campuses[${i}]`, "必须是对象");
-    for (const k of ["id", "name", "pack", "stop"] as const) {
+    for (const k of ["id", "name", "pack"] as const) {
       const v = c[k];
       if (typeof v !== "string" || v === "") fail(`campuses[${i}].${k}`, "必须是非空字符串");
     }
     if (!packIds.has(c["pack"] as string)) {
       fail(`campuses[${i}].pack`, `"${String(c["pack"])}" 不是任何包的 id`);
     }
+    if (typeof c["buildings"] !== "number") {
+      fail(`campuses[${i}].buildings`, "必须是数字");
+    }
     return {
       id: c["id"] as string,
       name: c["name"] as string,
       pack: c["pack"] as string,
-      buildings: typeof c["buildings"] === "number" ? c["buildings"] : 0,
-      stop: c["stop"] as string,
+      buildings: c["buildings"] as number,
     };
   });
   return { version, default: def, packs, campuses };

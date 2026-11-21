@@ -19,6 +19,14 @@ const jjsMetaRaw = JSON.parse(
   colleges: { name: string; zone: string; buildingIds: string[] }[];
 };
 
+const zqMetaRaw = JSON.parse(
+  readFileSync(new URL("../../public/campus3d/zq/campus.meta.json", import.meta.url), "utf-8")
+) as {
+  colleges: { name: string; zone: string; buildingIds: string[] }[];
+  hotspots: { no: string; buildingId: string }[];
+  buildings: Record<string, { name?: string }>;
+};
+
 /** 面板同款去重：zone 过滤后按第一栋楼去重（同楼只留先出现的） */
 function collegesOfZone(meta: typeof allMetaRaw, zone: string) {
   const seen = new Set<string>();
@@ -250,4 +258,39 @@ test("8 将军山：再点一次进 campus；学院行数等于 jjs 元数据；
   const jjsColleges = jjsMetaRaw.colleges.filter((c) => c.zone === "JJ");
   expect(rows).toBe(jjsColleges.length);
   await expect(page.locator('[data-testid="stage-board-图书馆"]')).toHaveCount(0);
+});
+
+test("9 中区自己的沙盘：点地标题签落到热点楼；板块与学院在中区沙盘上同样成立", async ({ page }) => {
+  test.setTimeout(180_000);
+  await page.goto("/stage?3d=1&intro=0");
+  await waitReady(page);
+
+  // 换到中区自己的沙盘
+  await page.click('[data-testid="stage-rail-ZQ"]');
+  await waitCamStill(page);
+  await page.click('[data-testid="stage-rail-enter"]');
+  await page.waitForFunction(
+    () => window.__campus3d?.pack === "zq" && window.__campus3d?.status === "ready",
+    undefined,
+    { timeout: 40_000, polling: 200 }
+  );
+
+  // 点地标题签 05（图书馆）：answer 态、shell 等于 zq 元数据里 05 号热点的楼
+  const hotspot05 = zqMetaRaw.hotspots.find((h) => h.no === "05")!;
+  await page.locator('[data-testid="stage-landmark-05"]').click();
+  await waitCamStill(page);
+  expect(await page.evaluate(() => window.__campus3d.mode)).toBe("answer");
+  expect(await page.evaluate(() => window.__campus3d.shell)).toBe(hotspot05.buildingId);
+
+  // 再点中区：回 campus，五个板块钮都在（板块楼就在这块沙盘的 ZQ 片区）
+  await page.click('[data-testid="stage-rail-ZQ"]');
+  await waitCamStill(page);
+  expect(await page.evaluate(() => window.__campus3d.mode)).toBe("campus");
+  for (const b of ["学工", "教务", "后勤", "保卫", "图书馆"]) {
+    await expect(page.locator(`[data-testid="stage-board-${b}"]`)).toBeVisible();
+  }
+  // 学院行数等于 zq 元数据里 zone === 'ZQ' 的学院数（同楼去重后面板同款）
+  const rows = await page.locator('[data-testid^="stage-college-"]').count();
+  const zqColleges = collegesOfZone(zqMetaRaw as unknown as typeof allMetaRaw, "ZQ");
+  expect(rows).toBe(zqColleges.length);
 });

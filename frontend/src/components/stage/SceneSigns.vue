@@ -20,14 +20,23 @@ const HERO_RECT = { w: 640, h: 470 };
 type Pos = { x: number; y: number; visible: boolean };
 const positions = ref<Record<string, Pos>>({});
 
-/** home：全部「校区」题签；campus：只留选中的那块；answer：校区题签全收（W5 换成楼的题签） */
+/** home + 默认包：全部「校区」题签；campus：只留选中的那块；
+ *  home + 非默认包：校区题签全收，换成地标小题签（W3 第 6 条）；answer：全收（W5 换成楼的题签） */
 const zones = computed<ZoneInfo[]>(() => {
   const m = meta.value;
   if (!m?.zones) return [];
   if (store.mode === "answer") return [];
+  if (store.mode === "home" && store.packId !== store.default) return [];
   const kinded = m.zones.filter((z) => z.kind === "校区" && z.label);
   if (store.mode === "campus") return kinded.filter((z) => z.id === store.zoneId);
   return kinded;
+});
+
+/** W3：校区沙盘的首页——给元数据 hotspots 里的每一块地标小题签
+ *  （文字 board、标记点 anchor；这张卡里不响应点击） */
+const landmarks = computed(() => {
+  if (store.mode !== "home" || store.packId === store.default) return [];
+  return meta.value?.hotspots ?? [];
 });
 
 /** W5：答案态那栋楼的题签：标记点 = anchor 再往上 look.sign.lift，线长 60px */
@@ -83,6 +92,10 @@ function updatePositions() {
     if (!z.label) continue;
     next[z.id] = handle.project(z.label);
   }
+  // W3：地标小题签（key 用 landmark-<no>）
+  for (const h of landmarks.value) {
+    next[`landmark-${h.no}`] = handle.project(h.anchor);
+  }
   if (buildingSign.value) {
     next[buildingSign.value.id] = handle.project(buildingSign.value.anchor);
   }
@@ -91,6 +104,15 @@ function updatePositions() {
     next[`mark-${m.index}`] = handle.project(m.anchor);
   }
   positions.value = next;
+}
+
+function landmarkStyle(no: string): Record<string, string> {
+  const p = positions.value[`landmark-${no}`];
+  if (!p || !p.visible) return { display: "none" };
+  if (store.mode === "home" && p.x >= 0 && p.x <= HERO_RECT.w && p.y >= 0 && p.y <= HERO_RECT.h) {
+    return { display: "none" };
+  }
+  return { left: `${p.x}px`, top: `${p.y}px` };
 }
 
 function markStyle(index: number): Record<string, string> {
@@ -116,6 +138,12 @@ function onClick(id: string) {
 function onMarkClick(row: { buildingId: string }) {
   store.board = null;
   void store.showBuilding(row.buildingId);
+}
+
+/** W9：点地标题签 → 飞到它的楼（先清板，板块面板让位给楼的题签面板形态） */
+function onLandmarkClick(buildingId: string) {
+  store.board = null;
+  void store.showBuilding(buildingId);
 }
 
 let offFrame: (() => void) | null = null;
@@ -159,6 +187,19 @@ onBeforeUnmount(() => {
       @click="onClick(z.id)"
     >
       <span class="stage-sign-label">{{ z.name }}</span>
+      <span class="stage-sign-line"></span>
+    </button>
+    <!-- W3 画、W9 改可点：校区沙盘首页的地标小题签——点了飞到它的楼 -->
+    <button
+      v-for="h in landmarks"
+      :key="`landmark-${h.no}`"
+      type="button"
+      class="stage-sign is-landmark"
+      :data-testid="`stage-landmark-${h.no}`"
+      :style="landmarkStyle(h.no)"
+      @click="onLandmarkClick(h.buildingId)"
+    >
+      <span class="stage-sign-label">{{ h.board }}</span>
       <span class="stage-sign-line"></span>
     </button>
     <button
@@ -246,6 +287,20 @@ onBeforeUnmount(() => {
 /* W5：楼的题签线长 60px（校区 40px） */
 .stage .stage-sign.is-building .stage-sign-line {
   height: 60px;
+}
+/* W3 画、W9 可点：地标小题签——线 26px、字小一号；点击飞到它的楼 */
+.stage .stage-sign.is-landmark {
+  cursor: pointer;
+  pointer-events: auto;
+  padding: 8px 0 0;
+  border-top-width: 1px;
+}
+.stage .stage-sign.is-landmark .stage-sign-label {
+  font-size: 13px;
+  letter-spacing: 0.24em;
+}
+.stage .stage-sign.is-landmark .stage-sign-line {
+  height: 26px;
 }
 /* W9：学院序号标记——20×20 小方块，近黑底、月白 1px 边、宋体 700 11px；右边学院名 */
 .stage .stage-mark {

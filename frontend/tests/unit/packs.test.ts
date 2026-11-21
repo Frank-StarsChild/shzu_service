@@ -1,9 +1,10 @@
-// W1 验证：packs.json / places.json / 两包元数据的解析与反例（直接读真实资产）。
+// W1 验证：packs.json / places.json / 七包元数据的解析与反例（直接读真实资产）。
+// packs.json v3：七个沙盘（all/by/bq/zq/nq/dq/jjs），campuses 不再有 stop 字段。
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { parsePackIndex } from "@/stage/packs";
-import { parseMeta } from "@/campus3d/meta";
+import { parsePackIndex, type PackIndex } from "@/stage/packs";
+import { parseMeta, type CampusMeta } from "@/campus3d/meta";
 
 const PUB = resolve(__dirname, "../../public/campus3d");
 
@@ -11,21 +12,28 @@ function readJson(name: string): any {
   return JSON.parse(readFileSync(resolve(PUB, name), "utf-8"));
 }
 
+const index: PackIndex = parsePackIndex(readJson("packs.json"));
+
+/** 七个包的 meta 一并解析（read once；用真实 campus.meta.json 走完整 parseMeta） */
+const metas: Record<string, CampusMeta> = {};
+for (const p of index.packs) {
+  metas[p.id] = parseMeta(readJson(`${p.id}/campus.meta.json`));
+}
+
 describe("parsePackIndex（真实 packs.json）", () => {
-  const index = parsePackIndex(readJson("packs.json"));
-
-  it("校验通过，包含 all 与 jjs 两个包", () => {
-    expect(index.packs.map((p) => p.id)).toEqual(["all", "jjs"]);
-  });
-
-  it("campuses 恰好 6 个，名字依次正确", () => {
-    expect(index.campuses.map((c) => c.name)).toEqual([
-      "北苑新区", "北区", "中区", "南区", "东区", "将军山校区",
-    ]);
+  it("校验通过，恰好 7 个包，id 依次是 all/by/bq/zq/nq/dq/jjs", () => {
+    expect(index.packs.map((p) => p.id)).toEqual(["all", "by", "bq", "zq", "nq", "dq", "jjs"]);
   });
 
   it("默认包是 all", () => {
     expect(index.default).toBe("all");
+  });
+
+  it("campuses 恰好 6 个，名字与自己的包依次正确", () => {
+    expect(index.campuses.map((c) => c.name)).toEqual([
+      "北苑新区", "北区", "中区", "南区", "东区", "将军山校区",
+    ]);
+    expect(index.campuses.map((c) => c.pack)).toEqual(["by", "bq", "zq", "nq", "dq", "jjs"]);
   });
 
   it("反例：version 不是 v3 时抛错", () => {
@@ -38,35 +46,48 @@ describe("parsePackIndex（真实 packs.json）", () => {
     raw.campuses[1].pack = "x";
     expect(() => parsePackIndex(raw)).toThrow(/campuses\[1\]\.pack/);
   });
+
+  it("反例：某个包的 zones 是空数组时抛错", () => {
+    const raw = readJson("packs.json");
+    raw.packs[2].zones = [];
+    expect(() => parsePackIndex(raw)).toThrow(/packs\[2\]\.zones/);
+  });
 });
 
-describe("两包元数据交给 parseMeta", () => {
+describe("七个包的元数据交给 parseMeta", () => {
+  for (const p of index.packs) {
+    it(`${p.id}：buildings 项数=${p.buildings}、pack.id、zones 与 packs.json 一致`, () => {
+      const m = metas[p.id];
+      expect(Object.keys(m.buildings).length).toBe(p.buildings);
+      expect(m.pack?.id).toBe(p.id);
+      expect((m.zones ?? []).map((z) => z.id).sort()).toEqual([...p.zones].sort());
+    });
+  }
+
   it("all：303 栋楼、29 个外壳、7 个片区", () => {
-    const m = parseMeta(readJson("all/campus.meta.json"));
-    expect(Object.keys(m.buildings).length).toBe(303);
-    expect((m.shells ?? []).length).toBe(29);
-    expect((m.zones ?? []).length).toBe(7);
+    expect(Object.keys(metas.all.buildings).length).toBe(303);
+    expect(metas.all.shells?.length).toBe(29);
+    expect(metas.all.zones?.length).toBe(7);
   });
 
   it("jjs：19 栋楼", () => {
-    const m = parseMeta(readJson("jjs/campus.meta.json"));
-    expect(Object.keys(m.buildings).length).toBe(19);
+    expect(Object.keys(metas.jjs.buildings).length).toBe(19);
   });
 
-  it("反例：删掉 focus 里任意一项抛错", () => {
+  it("反例：删掉 all 的 focus 里任意一项抛错", () => {
     const raw = readJson("all/campus.meta.json");
     const key = Object.keys(raw.focus)[0];
     delete raw.focus[key];
     expect(() => parseMeta(raw)).toThrow(new RegExp(`focus\\.${key}`));
   });
 
-  it("反例：删掉 stops.home 抛错", () => {
+  it("反例：删掉 all 的 stops.home 抛错", () => {
     const raw = readJson("all/campus.meta.json");
     delete raw.stops.home;
     expect(() => parseMeta(raw)).toThrow(/stops\.home/);
   });
 
-  it("反例：look.pin.node 为空字符串抛错", () => {
+  it("反例：all 的 look.pin.node 改成空字符串抛错", () => {
     const raw = readJson("all/campus.meta.json");
     raw.look.pin.node = "";
     expect(() => parseMeta(raw)).toThrow(/look\.pin\.node/);

@@ -11,6 +11,11 @@ const metaRaw = JSON.parse(
 ) as {
   buildings: Record<string, { name: string; anchor: [number, number, number]; zone: string }>;
 };
+const zqMetaRaw = JSON.parse(
+  readFileSync(new URL("../../public/campus3d/zq/campus.meta.json", import.meta.url), "utf-8")
+) as {
+  buildings: Record<string, { name: string; anchor: [number, number, number]; zone: string }>;
+};
 
 async function waitReady(page: Page) {
   await page.waitForFunction(() => window.__campus3d?.status === "ready", undefined, { timeout: 40_000 });
@@ -281,3 +286,95 @@ test("10 连问 10 个不同的问题：geometries、textures 不变", async ({ 
   expect(after.g).toBe(before.g);
   expect(after.t).toBe(before.t);
 });
+
+test("11 换到中区自己的沙盘再问学生证：同一栋楼直接落（不看 packOf）", async ({ page }) => {
+  test.setTimeout(180_000);
+  await page.goto("/stage?3d=1&intro=0");
+  await waitReady(page);
+  await page.click('[data-testid="stage-rail-ZQ"]');
+  await waitNotMoving(page);
+  await page.click('[data-testid="stage-rail-enter"]');
+  await waitPack(page, "zq");
+  await ask(page, "学生证丢了去哪补办");
+  await page.waitForFunction(
+    () => window.__campus3d?.stop === "focus:ZQ-B023" && window.__campus3d?.moving === false,
+    undefined,
+    { timeout: 15_000 }
+  );
+  const h = await page.evaluate(() => ({
+    pack: window.__campus3d.pack,
+    mode: window.__campus3d.mode,
+    shell: window.__campus3d.shell,
+  }));
+  expect(h.pack).toBe("zq");
+  expect(h.mode).toBe("answer");
+  expect(h.shell).toBe("ZQ-B023");
+  await expect(page.locator('[data-testid="stage-other-pack"]')).toHaveCount(0);
+  // 第 3 条在这里同样成立：楼在画面左中（用 zq 沙盘自己的坐标）
+  const width = page.viewportSize()?.width ?? 1440;
+  const x = await page.evaluate(
+    (anchor) => window.__campus3d.projectPoint(anchor).x,
+    zqMetaRaw.buildings["ZQ-B023"].anchor
+  );
+  expect(x).toBeGreaterThan(width * 0.25);
+  expect(x).toBeLessThan(width * 0.55);
+  // 第 4 条在这里同样成立：红色引线末端对齐
+  const check = await page.evaluate((anchor) => {
+    const svg = document.querySelector('[data-testid="stage-leader"]');
+    const poly = svg?.querySelector("polyline");
+    const pts = poly?.getAttribute("points") ?? "";
+    const last = pts.trim().split(/\s+/).pop() ?? "";
+    const [lx, ly] = last.split(",").map(Number);
+    const p = window.__campus3d.projectPoint([anchor[0], anchor[1] - 6, anchor[2]]);
+    return { dx: lx - p.x, dy: ly - p.y };
+  }, zqMetaRaw.buildings["ZQ-B023"].anchor);
+  expect(Math.abs(check.dx - 30)).toBeLessThanOrEqual(3);
+  expect(Math.abs(check.dy)).toBeLessThanOrEqual(3);
+  // 偏红像素（近看沙盘的楼更大更红）
+  expect(await reddishRatio(page)).toBeGreaterThan(0.015);
+});
+
+test("12 还在 zq：音乐系指将军山；北区会堂指「全校」沙盘", async ({ page }) => {
+  test.setTimeout(180_000);
+  await page.goto("/stage?3d=1&intro=0");
+  await waitReady(page);
+  await page.click('[data-testid="stage-rail-ZQ"]');
+  await waitNotMoving(page);
+  await page.click('[data-testid="stage-rail-enter"]');
+  await waitPack(page, "zq");
+  // 问「音乐系在哪」：楼在 jjs 沙盘上，钮里引号是「将军山校区」
+  await ask(page, "音乐系在哪");
+  await page.waitForFunction(
+    () => window.__campus3d?.stop === "home" && window.__campus3d?.moving === false,
+    undefined,
+    { timeout: 15_000 }
+  );
+  await expect(page.locator('[data-testid="stage-other-pack"]')).toContainText("将军山校区");
+  // 直接换目标楼：BQ-B019 不在 zq 沙盘上，换成「全校」
+  await page.evaluate(() => window.__campus3d.debugShowAnswer?.("BQ-B019"));
+  await page.waitForFunction(
+    () => window.__campus3d?.stop === "home" && window.__campus3d?.moving === false,
+    undefined,
+    { timeout: 15_000 }
+  );
+  const h0 = await page.evaluate(() => window.__campus3d.mode);
+  expect(h0).not.toBe("answer");
+  await expect(page.locator('[data-testid="stage-other-pack"]')).toContainText("全校");
+  // 点它：换回 all，ready 后落到 BQ-B019（有外壳 → shell）
+  await page.click('[data-testid="stage-other-pack"]');
+  await packReadyAndAnswer(page, "all", "BQ-B019");
+  expect(await page.evaluate(() => window.__campus3d.shell)).toBe("BQ-B019");
+});
+
+/** 等 pack ready 且 moving false（第 12 条用的组合等待） */
+async function packReadyAndAnswer(page: Page, packId: string, buildingId: string) {
+  await page.waitForFunction(
+    ({ id, bid }) =>
+      window.__campus3d?.status === "ready"
+      && window.__campus3d?.pack === id
+      && window.__campus3d?.stop === `focus:${bid}`
+      && window.__campus3d?.moving === false,
+    { id: packId, bid: buildingId },
+    { timeout: 40_000 }
+  );
+}

@@ -2,7 +2,7 @@
 // STAGE W4/W5：右侧回答面板（stage-panel）+ 上方用户问话条（stage-question）+ 红色引线。
 // 只显示最后一轮；W5 起：place 不为空时最上面多一节「办理地点」（引线连到楼上），
 // 楼在另一个沙盘时显示「换过去」的钮。样式在 stage.css。
-import { computed, inject, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
+import { computed, inject, nextTick, onBeforeUnmount, onMounted, ref } from "vue";
 import { useChatStore, type ChatTurn } from "@/stores/chat";
 import { useStageStore } from "@/stores/stage";
 import type { StageCtx } from "@/stage/types";
@@ -117,25 +117,23 @@ const placeZoneName = computed(() => {
 const otherPackName = computed(() => {
   const op = stage.otherPack;
   if (!op) return "";
-  return stage.campuses.find((c) => c.pack === op.packId)?.name ?? op.packId;
+  // 「引号里是 packs.json 里那个包的 name」——不是校区名，也不是包 id；
+  // all 等默认包在 campuses 里没有对应校区，必须查包表
+  return stage.packs.find((p) => p.id === op.packId)?.name ?? op.packId;
 });
 
-/** 点「换过去」：换包，等新场景 ready 后再把那栋楼的答案态补上 */
+/** 点「换过去」：换包，等新场景 ready 后再把那栋楼的答案态补上
+ *  （W10：等待逻辑与 enterPlace 共用 store.waitPackThenShow，不另写一份） */
 function goOtherPack() {
   const op = stage.otherPack;
   if (!op) return;
-  const bid = op.buildingId;
-  void stage.switchPack(op.packId);
-  const stop = watch(
-    () => ctx?.sceneStatus.value,
-    (s) => {
-      if (s === "ready") {
-        stop();
-        void stage.showAnswer(bid);
-      }
-    }
-  );
+  const seq = stage.placeSeq;
+  stage.switchPack(op.packId);
+  void stage.waitPackThenShow(op.packId, op.buildingId, seq);
 }
+
+/** W10：这栋楼可以「近看」吗（在另一个非默认包上有它的片区） */
+const nearPack = computed(() => stage.nearPack);
 
 // ---- W5：红色引线。三个点：「办理地点」左缘往下 36px → 往左 70px → 楼的 anchor 往下 6
 // 投影后再往右 30px。每帧重算；「办理地点」滚出面板可见范围时隐藏。----
@@ -252,6 +250,14 @@ onBeforeUnmount(() => {
             <p class="stage-subtitle">办理地点</p>
             <p class="stage-place-line">
               <span class="stage-place-square" aria-hidden="true"></span>{{ stage.place.name }}
+              <!-- W10：楼名右边的「近看」钮（当前是默认包且楼在另一个非默认包上时） -->
+              <button
+                v-if="nearPack"
+                type="button"
+                class="stage-place-near"
+                data-testid="stage-place-near"
+                @click="stage.enterPlace()"
+              >近看</button>
             </p>
             <p v-if="placeZoneName" class="stage-place-zone">{{ placeZoneName }}</p>
           </div>
@@ -261,7 +267,7 @@ onBeforeUnmount(() => {
             class="stage-other-pack"
             data-testid="stage-other-pack"
             @click="goOtherPack"
-          >这栋楼在{{ otherPackName }}，点这里换过去</button>
+          >这栋楼在「{{ otherPackName }}」沙盘上，点这里换过去</button>
 
           <p v-if="resp.status === 'insufficient'" class="stage-panel-text">{{ insufficientText }}</p>
           <p v-if="missingText" class="stage-panel-text soft">{{ missingText }}</p>
@@ -330,3 +336,30 @@ onBeforeUnmount(() => {
     </svg>
   </div>
 </template>
+
+<style scoped>
+/* W10：「近看」小钮——样式同左侧校区列表里的「近看」，但是横排：
+   宋体 600 12.5px、字距 0.34em、金色字、1px 金色边、内边距 3px 8px、直角。 */
+.stage .stage-place-near {
+  margin-left: 10px;
+  padding: 3px 8px;
+  background: none;
+  border: 1px solid var(--st-gold);
+  border-radius: 0;
+  font-family: var(--st-song);
+  font-weight: 600;
+  font-size: 12.5px;
+  letter-spacing: 0.34em;
+  color: var(--st-gold);
+  cursor: pointer;
+  vertical-align: middle;
+}
+.stage .stage-place-near:hover {
+  border-color: var(--st-gold2);
+  color: var(--st-gold2);
+}
+.stage .stage-place-near:focus-visible {
+  outline: 1px solid var(--st-gold2);
+  outline-offset: 2px;
+}
+</style>

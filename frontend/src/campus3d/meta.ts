@@ -269,11 +269,12 @@ export function parseMeta(raw: unknown): CampusMeta {
   }
 
   const hotspotsRaw = raw["hotspots"];
-  // v3（有 pack 字段）允许 5 或 6 个热点，board 不再固定为五大板块；v2 仍恰为 5 个
+  // v3（有 pack 字段）热点 5–7 个：all 是五个校区代表楼，六块校区沙盘是地标楼
+  // （by/bq/jjs 6 栋、zq/nq 7 栋、dq 5 栋，见 STAGE 5.7 表）；board 不再固定为五大板块；v2 仍恰为 5 个
   const isV3 = isObj(raw["pack"]);
-  const hsCount = isV3 ? [5, 6] : [5];
+  const hsCount = isV3 ? [5, 6, 7] : [5];
   if (!Array.isArray(hotspotsRaw) || !hsCount.includes(hotspotsRaw.length)) {
-    fail("hotspots", `必须${isV3 ? "是 5 或 6" : "恰好 5"}个热点（收到 ${Array.isArray(hotspotsRaw) ? hotspotsRaw.length : "非数组"} 个）`);
+    fail("hotspots", `必须${isV3 ? "是 5、6 或 7" : "恰好 5"}个热点（收到 ${Array.isArray(hotspotsRaw) ? hotspotsRaw.length : "非数组"} 个）`);
   }
   const hotspots: Hotspot[] = hotspotsRaw.map((hRaw, i) => {
     if (!isObj(hRaw)) fail(`hotspots[${i}]`, "必须是对象");

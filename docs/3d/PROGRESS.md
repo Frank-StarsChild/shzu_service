@@ -845,4 +845,182 @@ stage 8/8 及全部既有回归）。视觉自查 W2-shell.png：印章顶栏、
   反向验证必须确认「缺陷真的被制造出来了」。
 2. `meta.colleges[].confirmed` 在类型里是可选的（v2 语义），面板按 `=== true` 取严格布尔。
 
+
+## 舞台第二阶段总览：七包「近看」架构落地 — 2026-11-22
+
+协助方交付了七包结构的新资产（`frontend/public/campus3d/` 全量替换，与 `docs/3d/ASSET_SHA256_V3.txt`
+对照 24 项全部一致）和更新后的 STAGE.md、W1/W3/W5/W9 卡与全新 W10 卡。第二阶段在一个会话里按卡顺序
+完成：W1 适配（zones 字段）、W3 重构（近看与换包）、W5 适配（只看 meta.buildings）、W9 补充（地标题签
+可点）、W10 全新（回答里近看）；W2/W4/W6/W7/W8 与 N 系列不受影响、未改动。每张卡的验证与反向验证
+均重做，末尾全量 `npm run verify` 全绿（单测 153、e2e 161）。
+
+## 舞台 W1（二阶段适配）：七包 packs.json 与元数据 — 2026-11-22
+
+**做了什么**
+- `packs.ts`：`Pack` 增加 `zones`（非空字符串数组）与 `buildings`（正整数）两个字段并校验；
+  `CampusZoneRef` 删除 `stop`（v3 里校区镜头停靠一律看当前包 `meta.zones[].stop`，单片区沙盘
+  没有 stop 就退回 overview）。
+- `meta.ts`：v3 热点数校验从 5/6 放宽到 5/6/7（zq、nq 两块沙盘有 7 个地标楼，放宽前会拒绝解析）。
+- `StageCanvas.vue`：`campusStop()` 从查 `campuses[].stop` 改为查当前包 `meta.zones[].stop`
+  （all 上五个主校区的值与旧表完全一致，旧 W3 e2e 语义不变），缺省 `overview`。
+- `packs.test.ts` 重写：七包 id 顺序、default、campuses 六校区与各自 pack、三个反例（version 改 v2 /
+  校区 pack 改 x / 某包 zones 置空）、七个包的 meta 循环校验（楼数=包表 buildings、pack.id、
+  zones 片区号一致）、all 303/29/7、jjs 19、三个 meta 反例（focus 删一项 / stops.home / pin 空）、
+  v2 元数据仍然可解析。
+- `glb-v3.test.ts` 重写为七包循环：shells 的 H_ 节点（无 mesh、缩放 0）、带 node 片区的同城节点、
+  look.pin.node 节点、B_ 前缀节点数=楼数。
+
+**验证**：单测 packs 20 项、glb-v3 28 项全过。
+
+## 舞台 W3（二阶段重构）：校区题签、近看和切换沙盘 — 2026-11-22
+
+**做了什么**
+- `stores/stage.ts` 按 STAGE 6.3 重写：字段 `packId / meta / mode / zoneId / place / otherPack /
+  board`；动作 `goHome / pickCampus / enterCampus / switchPack / setMeta`（保留已有的 `setTour /
+  showAnswer / showBuilding / applyPlace`）。pickCampus 三分支从上到下：①campus 态再点同一校区 =
+  goHome（取消）；②当前包 zones 里有这个校区 → campus 态；③否则 switchPack(这个校区自己的包)，
+  换包后停在 home。enterCampus 只在 campus 态有效。switchPack 传当前的 packId 时只 goHome、
+  传不同的包时先 `meta = null` 再 goHome。loadCampuses 现在保存整个 packs.json（packs + default +
+  campuses）——「在不在当前沙盘」「校区自己的沙盘」「默认沙盘」三个判断只查这三样，不写包名分支。
+- `CampusRail.vue`：is-far 改看当前包 zones（不含的校区虚线边框）；「全校」钮走 default 而非写死
+  'all'；新增「近看」钮（stage-rail-enter，campus 态且选中校区 pack ≠ 当前包时出现在选中项右侧，
+  竖排金字）。
+- `StageView.vue`：题字随沙盘换（默认包用固定文案；其他包小题「石河子大学」、大标题包名、
+  说明 pack.note）。
+- `SceneSigns.vue`：非默认包的 home 态显示 hotspots 地标小题签（stage-landmark-<no>，文字 board、
+  锚点 anchor、26px 线）；校区题签只在默认包的 home 态显示。
+- `CampusPanel.vue`：`packMeta` 引用更名为 `meta`（W9 组件，4 处最小编译修复）。
+- `stage-store.test.ts` 重写（W3 卡 10 条 + 适配后的 W5/W9 断言）；`stage-campus.spec.ts` 重写
+  12 条（6—11 条同页连续换包）。
+
+**验证**：e2e 12 条全过。反向验证：把 setZone 里「把上一个设回 0」临时去掉 → 第 5 条变红
+（偏红像素 0.0029 > 0.001，界线残留可见），改回后绿。
+
+## 舞台 W5（二阶段适配）：落楼只看 meta.buildings — 2026-11-22
+
+**做了什么**
+- `applyPlace` 重写：「楼在不在当前沙盘上」只看 `meta.buildings`（不再拿 packOf 与 packId 比——
+  在中区自己的沙盘里，中区的楼 packOf 是 all 但它就在眼前）；meta 为 null（换包中）一律复位；
+  packOf 里没有这个楼号时也复位；place.name 从 meta.buildings 取。
+- `AnswerPanel.vue`：其它沙盘钮文案改为「这栋楼在「全校」沙盘上，点这里换过去」——引号里取
+  packs.json 包表的 name（all 在 campuses 里没有对应项，之前按校区表取会显示 id）。
+- 单测追加 7 例（zq 沙盘里落 ZQ-B023 不误报 otherPack；BQ-B019 在 zq 里 otherPack=all；
+  setMeta(null) 后 showAnswer 复位等）；e2e 追加第 11、12 条（换到 zq 再问学生证：同一栋楼直接落、
+  第 3/4 条同样成立、偏红 >0.015；zq 里问音乐系指「将军山校区」、BQ-B019 指「全校」，点换过去照常落楼）。
+
+**验证**：e2e 12 条全过（一次通过）。反向验证：resolvePlace「取出现位置最靠前」临时改成「取最长」
+→ 第 2 行（行政楼在前）变红，改回后绿。
+
+## 舞台 W9（二阶段补充）：地标题签可点 — 2026-11-22
+
+**做了什么**
+- `SceneSigns.vue`：stage-landmark-<no> 从「不响应点击」改为可点的 button——点了先清 board 再
+  showBuilding(热点的 buildingId)，样式不变（26px 线、小一号字）。
+- `stage-colleges.spec.ts` 追加第 9 条：换到中区自己的沙盘后点 05 号地标题签 → answer 态、
+  shell = zq 元数据里 05 号热点的楼；再点中区回 campus，五个板块钮都在（板块楼就在这块沙盘的
+  ZQ 片区，boardZone 判断自动成立），学院行数 = zq 元数据 zone === 'ZQ' 的学院数。
+
+**验证**：e2e 9 条全过（一次通过）。反向验证：把学院列表的 zone 过滤临时去掉 → 第 1 条变红，
+改回后绿。
+
+## 舞台 W10（新增）：在回答里近看 — 2026-11-22
+
+**做了什么**
+- `stores/stage.ts`：新增 getter `nearPack`——place 或 meta 为空 → null；当前包不是默认包 →
+  null（已经在近看的沙盘里）；否则取这栋楼的片区号，在 packs 里找一个不是默认包、zones 含这个
+  片区号的包。按 zones 找而不是查 campuses：附属医院（FY）和护士学校（HX）不是校区，但它们的楼
+  在 nq 沙盘上，按 zones 才找得到。
+- 新增动作 `enterPlace()`：nearPack 为 null 时不动；否则记下楼号，switchPack(nearPack)，等新沙盘
+  就绪再落回同一栋楼。「换包等 ready 再落楼」提取为 `waitPackThenShow(packId, buildingId, seq)`，
+  与 W5 的 stage-other-pack 钮共用同一份实现（AnswerPanel 里原来 watch sceneStatus 的那份删除）。
+- 作废机制：state 加 `placeSeq`（每次 applyPlace 递增）。等待期间用户又问了新问题（showAnswer 被
+  再次调用，placeSeq 变）或又换了沙盘（packId 变），记下的楼号作废、不再 showAnswer。
+- state 另加技术性字段 `sceneReady`（StageCanvas 把 sceneStatus === 'ready' 同步进来）与
+  `setSceneReady` 动作——不在 STAGE 6.3 的字段/动作清单里，是 W10 等待逻辑的最小实现，特此说明。
+- `AnswerPanel.vue`：nearPack 非空时在「办理地点」楼名右边显示「近看」小钮（stage-place-near，
+  横排金字金边、宋体 600 12.5px、字距 0.34em、内边距 3px 8px、直角）。
+- 单测追加 4 例（all 上五个片区的楼各指对自己的近看沙盘——zq/bq/nq/by/dq；showAnswer(null) 后
+  为 null；zq、jjs 沙盘内为 null）。
+- 新建 `stage-near.spec.ts` 8 条：答完学生证「近看」钮可见；点了换到 zq、开场动画后镜头落回
+  ZQ-B023、面板全程在（正文与两张公文卡、办理地点、引线），且不再出现近看钮（截图
+  `W10-near.png`）；换沙盘全程没有新的 POST /api/v1/chat；在 zq 里继续问借书照常落 ZQ-B034；
+  回全校后面板还在；范围外的问题无办理地点无近看钮；「点近看后立刻问新问题」旧的那一问不再落下
+  （作废机制，shell 是 ZQ-B034 或 null 而非 ZQ-B023）；近看来回 5 次每次回全校后 geometries、
+  textures 都与第一次相同。
+
+**验证**：e2e 8 条全过（一次通过）。反向验证：把 nearPack 第二条（非默认包返回 null）临时去掉 →
+第 2 条里「没有 stage-place-near」变红（zq 上又冒出近看钮），改回后绿。
+
+## 舞台第二阶段收尾：全量 verify — 2026-11-22
+
+- `npm run verify`（build + bundle 检查 + 单测 + e2e）：单测 **153 passed**（11 个文件），
+  e2e **161 passed (20.3m)** 全绿。比第一阶段净增 11 条 e2e（W3 系列重写后 12 条、W5 +2、
+  W9 +1、W10 新增 8 条）与 24 例 store 单测里的 7 例 zq/meta 空等新校验。
+- 途中修复：CampusPanel 曾被 PowerShell 5.1 的 Set-Content 写坏（UTF-8 重编码导致 vue-tsc
+  Invalid character，与 PROGRESS 环境备忘「中文文件必须原字节写」同一条教训），git checkout 恢复后
+  改用 node 读写完成 4 处更名，build 复绿。
+- e2e 长流程的测试级超时：stage-campus 第 6—11 条（四次换包）与 stage-near 相关条目用
+  `test.setTimeout` 放宽（240s/420s/120s），页面内等待本身不变。
+
+**与卡不一致 / 说明**
+1. W3 卡要求「一次只做一张卡、每卡 verify 全绿才做下一张」；本轮是资产全量替换后的适配工程，
+   packs.json 换包瞬间旧 W3/W5 契约的测试必然变红（旧 campuses[].stop 删除、主校区 pack 不再是
+   all），无法逐卡满足旧测试全绿，因此按 W1→W3→W5→W9→W10 顺序连续实施，各自完成验证与反向
+   验证后，末尾以一次全量 verify 收口（161 全绿）。
+2. `stores/stage.ts` 里的 `sceneReady`/`setSceneReady` 与 `placeSeq` 不在 STAGE 6.3 的
+   清单里，见 W10 段——是共用等待逻辑所需的最小技术字段。
+
+全量 `npm run verify` 末尾 20 行：
+
+```
+  ok 144 tests\e2e\stage-star.spec.ts:213:1 › 7 减少动态：全程无 flying、无拖尾，落点仍准 (5.9s)
+  ok 145 tests\e2e\stage.spec.ts:43:1 › 1 ready 后：pack=all、303 栋楼、29 外壳、7 片区、停靠 home (2.9s)
+  ok 146 tests\e2e\stage.spec.ts:62:1 › 2 画布占满视口；没有普通版的顶栏和页脚 (5.5s)
+  ok 147 tests\e2e\stage.spec.ts:72:1 › 3 夜景像素：暗色 >75%、暖色亮 >0.15%、饱和红 <0.05% (9.4s)
+  ok 148 tests\e2e\stage.spec.ts:82:1 › 4 预算：drawCalls ≤ 600、triangles ≤ 400000 (3.2s)
+  ok 149 tests\e2e\stage.spec.ts:93:1 › 5 ?3d=0：静态模式显示海报 (4.3s)
+  ok 150 tests\e2e\stage.spec.ts:104:1 › 6 ?intro=1：先 intro 后 ready，落 home (5.8s)
+  ok 151 tests\e2e\stage.spec.ts:113:1 › 7 普通版不受影响：/classic 仍有顶栏与白色首页 (652ms)
+  ok 152 tests\e2e\stage.spec.ts:120:1 › shots：W1-home.png (7.3s)
+  ok 153 tests\e2e\static.spec.ts:26:1 › 1 海报可见：naturalWidth > 0，alt 非空 (1.1s)
+  ok 154 tests\e2e\static.spec.ts:36:1 › 2 外框宽高比：桌面 2.35–2.45；手机 1.28–1.38 且用手机海报 (1.3s)
+  ok 155 tests\e2e\static.spec.ts:59:1 › 3 标记恰好 5 个；中心与 posterDesktop 相差 < 0.01 (1.3s)
+  ok 156 tests\e2e\static.spec.ts:77:1 › 4 悬停「教务」按钮：标记 02 高亮且 activeBoard 正确；移开复原 (1.3s)
+  ok 157 tests\e2e\static.spec.ts:89:1 › 5 悬停标记 05：第 5 个板块按钮高亮；点击跳服务目录 (1.3s)
+  ok 158 tests\e2e\static.spec.ts:99:1 › 6 键盘聚焦标记 01：第 1 个板块按钮高亮 (1.1s)
+  ok 159 tests\e2e\static.spec.ts:105:1 › 7 数据说明含 OpenStreetMap 与「示意」 (874ms)
+  ok 160 tests\e2e\static.spec.ts:112:1 › 8 meta 请求被中断：海报仍可见、标记 0 个、pageerror 0 次 (1.1s)
+  ok 161 tests\e2e\static.spec.ts:124:1 › 9 截图存档（docs/3d/shots） (8.2s)
+
+  161 passed (20.3m)
+```
+
+
+
+## 舞台第二阶段真机实测与两处竞态修复 — 2026-11-22
+
+全量 verify 之后在 http://127.0.0.1:8300（uvicorn 托管 dist、真实后端与 DeepSeek 回答）上实测
+近看主流程，抓到两个被 e2e 侥幸放过的**真缺陷**，均已修复并回归：
+
+1. **TDZ（暂时性死区）**：`waitPackThenShow` 初版写成
+   `const stop = watch(..., { immediate: true })`——immediate 回调同步执行时 `stop` 尚未赋值，
+   真机一点「近看」即抛 `ReferenceError: Cannot access '_' before initialization`（压缩后变量名
+   `_`）。e2e 未红是因为异常被 Vue 吞掉后第二个 ready 回调（此时 `stop` 已赋值）走完了正常路径。
+   修复：`let stop` 先声明后赋值。
+2. **immediate 抢跑**：修完 TDZ 后真机仍「换到 zq 但楼不落」——immediate 首次回调读到的是**旧场景
+   残留的 sceneReady=true**（switchPack 还没来得及触发 teardown），作废检查恰好全过，`showAnswer`
+   在新包 `meta` 还是 null 时被调用，直接走了复位分支（即 W10 卡常见错误第 1 条原话）。修复：
+   等待条件改成「目标包的元数据已放进来（meta.pack.id === packId）且 sceneReady 且仍在目标包」——
+   switchPack 会同步清 meta，旧场景的 ready 因此不可能再冒充新就绪。
+3. 修复后回归 `stage-near.spec` + `stage-place.spec` 共 20 条全过；真机重测：学生证真实问答
+   →「近看」→ 开场动画后镜头落回中区沙盘的同一栋楼（shell=ZQ-B023、focus:ZQ-B023），面板的
+   办理地点/公告出处卡/红色引线全程在，console 零报错；zq 上 7 块地标题签（学工/教务/后勤/保卫/
+   图书馆/博学楼/知行楼）悬在对应楼上，点 05 落图书馆；将军山 19 楼、回全校 303 楼后
+   geometries=415 / textures=4 与 e2e 稳定值一致（无泄漏）。截图
+   `docs/3d/shots/live-near-bq.png`、`live-near-answer.png`。
+
+教训记录：**「e2e 全绿」不能替代真机首次实测**——两处缺陷都在时序边界上，压缩产物与真实交互的
+时序和 headless swiftshader 不完全一致；本次幸而按惯例做了 8300 实测才兜住。
+
+
 > AI生成

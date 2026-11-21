@@ -256,7 +256,10 @@ watch([() => store.mode, () => store.zoneId], ([m], [prevM]) => {
 });
 
 // W5：把当前包元数据同步给 store（showAnswer 取楼名用）
-watch(meta, (m) => store.setPackMeta(m), { immediate: true });
+watch(meta, (m) => store.setMeta(m), { immediate: true });
+
+// W10：把场景就绪状态同步给 store（enterPlace / otherPack 的等待逻辑用）
+watch(sceneStatus, (s) => store.setSceneReady(s === "ready"), { immediate: true });
 
 function applyStageMode() {
   if (!sceneHandle || sceneStatus.value !== "ready") return;
@@ -270,6 +273,7 @@ function applyStageMode() {
     sceneHandle.setZone(store.zoneId);
     sceneHandle.setShell(null);
     sceneHandle.setPin(null);
+    // W3：片区没有 stop 的（单片区校区沙盘）退回 overview
     const stop = campusStop(store.zoneId);
     if (stop) sceneHandle.goTo(stop);
   } else if (store.mode === "answer" && store.place) {
@@ -290,9 +294,11 @@ function applyStageMode() {
   }
 }
 
-function campusStop(zoneId: string): string | null {
-  const c = store.campuses.find((x) => x.id === zoneId);
-  return c ? c.stop : null;
+function campusStop(zoneId: string): string {
+  // packs.json v3 的 campuses 不再有 stop：校区镜头停靠看当前包 meta.zones[].stop
+  // （all 上五个主校区有 by/bq/zq/nq/dq；单片区沙盘没有 → overview，STAGE 5.3）
+  const z = meta.value?.zones?.find((x) => x.id === zoneId);
+  return z?.stop ?? "overview";
 }
 
 function touchHook(patch: Record<string, unknown>) {

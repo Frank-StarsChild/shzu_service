@@ -32,6 +32,11 @@ const heroStyle = computed(() => ({
   pointerEvents: "none" as const,
 }));
 
+// W3：题字跟着沙盘换（第 4.5 节）——当前包是默认包时用固定文案；
+// 不是默认包时，小题写「石河子大学」，大标题写包名，说明写包的 note。
+const currentPack = computed(() => store.currentPack);
+const isDefaultPack = computed(() => store.packId === store.default);
+
 // W9：answer 态且选中了板块 → 显示板块面板，回答面板让位
 // （发出问题后 board 被清空，面板自然换回回答面板）
 const boardPanelActive = computed(() => store.mode === "answer" && store.board !== null);
@@ -102,13 +107,20 @@ onBeforeUnmount(() => {
     <!-- 题字底下的遮罩（只在首页状态显示；W3：非 home 时跟着题字一起淡出） -->
     <div class="stage-hero-mask" aria-hidden="true" :style="heroStyle"></div>
 
-    <!-- 题字（home 状态显示；W3：非 home 时 300ms 淡出，回 home 淡入） -->
+    <!-- 题字（home 状态显示；W3：非 home 时 300ms 淡出，回 home 淡入；题字随包换） -->
     <section class="stage-hero" data-testid="stage-hero" :style="heroStyle">
-      <p class="stage-hero-kicker">校园就是界面</p>
-      <h1 class="stage-hero-title">校园办事，<br />问一次就清楚。</h1>
-      <p class="stage-hero-desc">
-        依据学校官方发布的资料作答，每条回答都附出处，并在校园里指给你看：去哪栋楼。
-      </p>
+      <template v-if="isDefaultPack">
+        <p class="stage-hero-kicker">校园就是界面</p>
+        <h1 class="stage-hero-title">校园办事，<br />问一次就清楚。</h1>
+        <p class="stage-hero-desc">
+          依据学校官方发布的资料作答，每条回答都附出处，并在校园里指给你看：去哪栋楼。
+        </p>
+      </template>
+      <template v-else-if="currentPack">
+        <p class="stage-hero-kicker">石河子大学</p>
+        <h1 class="stage-hero-title">{{ currentPack.name }}</h1>
+        <p class="stage-hero-desc">{{ currentPack.note }}</p>
+      </template>
     </section>
 
     <!-- 校区列表（左）与场景题签（悬在校区上方），智多星（W7） -->
