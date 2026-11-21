@@ -4,6 +4,3 @@ version v2
 b75b904b427fa18b5ff75cc493900011d8410de79eb4f8c73d673917fc580dc9  campus.glb
 bfc04332eecd251aed2eb328e350fa18c9d8ee9867b4d499f35a85c1d1df7375  poster-desktop.jpg
 12175f6a420103798c936f4cd3b0f47013abcf97c4d98879341d08015fedbbca  poster-mobile.jpg
-
-
-AI生成
