@@ -190,6 +190,16 @@ def check_award_readiness(
         "evidence_ids": [lz_time] if lz_time else [],
     }]
 
+    # 转专业×奖学金（跨部门）：库内未见「转专业后按哪个学院/哪个时间点认定排名」的条款 → 待学院确认
+    if has(r"转专业|转出专业|换了专业"):
+        items.append({
+            "label": "转专业后的学院归属与排名口径",
+            "state": "needs_college",
+            "detail": "评审办法要求申请人为在籍在校生、排名按学年度计算；但「转专业后按现学院还是原学院、从哪个学期起算排名」"
+                      "库内没有条款，需要向转入学院学生工作办公室确认（教务的学籍异动由学院教科办办理）。",
+            "evidence_ids": [lz_cond] if lz_cond else [],
+        })
+
     # 去重 None
     items = [{**it, "evidence_ids": [e for e in it["evidence_ids"] if e]} for it in items
              if it is not None]
@@ -380,6 +390,103 @@ def locate_campus_place(
     return {"note": note + "。可在回答中引导用户点「在沙盘查看」定位建筑；"
                       "不提供路线长度/步行时间/楼层入口（无依据数据）。",
             "evidence": [], "action": action}
+
+
+# =====================================================================
+# 场景三：学生证/乘车优惠卡补办 · 现场办事单
+# =====================================================================
+
+@tool
+def student_card_reissue(
+    issue: Annotated[str, Field(min_length=2, max_length=120,
+                                description="用户原话中的补办诉求，如「学生证丢了去哪补办」「乘车优惠卡怎么办」")] = "学生证补办",
+    config: RunnableConfig = None,
+) -> dict:
+    """学生证/乘车优惠卡补办：生成一张到现场还能用的办事单（地点/部门/待确认事项）。
+
+    用户问「学生证丢了怎么补」「乘车优惠卡在哪办」时调用。返回内容全部从库内
+    官方证据取值（窗口、楼栋、电话、职责）；证据没确认的材料清单、办公时间
+    会明确标注「需向办公室确认」，不臆造。
+    """
+    cache = _load_campus_meta()
+    cid, text = "", ""
+    try:
+        cid, text = _first_hit("学生证 乘车优惠卡 办理 学生事务管理办公室",
+                               must_contain=["学生证", "乘车优惠卡"])
+    except Exception:
+        cid, text = None, None
+    if not cid:
+        cl = get_kb().clauses.get("xg-ks-c1")
+        cid, text = ("xg-ks-c1", cl.get("exact_text") or "") if cl else (None, None)
+    if not cid:
+        return {"note": "库内未找到学生证办理窗口的官方依据。", "evidence": [], "action": None}
+
+    # ---- 从证据文本取值（不做任何前端固定的地点/电话）----
+    phone = None
+    m = re.search(r"学生事务管理办公室[^）]*?电话\s*(\d{3,4})[－—-](\d{7,8})", text)
+    if m:
+        phone = f"{m.group(1)}-{m.group(2)}"
+    loc = None
+    m = re.search(r"学生事务管理办公室[^）]*?((?:[\u4e00-\u9fa5]{2,12}?)楼[^）\s]*?\d+(?:[-—－]\d+)?室)", text)
+    if m:
+        loc = m.group(1)
+    room = None
+    building = loc
+    if loc:
+        m2 = re.match(r"(.+?楼)\s*(\d+(?:[-—－]\d+)?室)", loc)
+        if m2:
+            building, room = m2.group(1), m2.group(2)
+
+    # 楼栋映射到沙盘（大学生活动中心南楼 → 大学生活动中心 ZQ-B023）
+    building_id = None
+    if building:
+        for probe in (building, re.sub(r"(南楼|北楼|东楼|西楼|新楼|旧楼)$", "", building)):
+            bid = cache["aliases"].get(probe)
+            if bid:
+                building_id = bid
+                break
+
+    # 材料清单 / 办公时间：库内没有 → 如实交给「出发前确认」
+    confirms = []
+    if not re.search(r"学生证[^。]{0,40}(材料|身份证|照片|工本费)", text):
+        confirms.append({"text": "补办所需材料（如身份证明、照片等）目前没有官方文件确认，请打办公楼电话核实后再去",
+                         "state": "needs_user"})
+    if not re.search(r"(办公时间|工作时间|作息)", text):
+        confirms.append({"text": "办公时间尚未在官方资料中登记，建议去电确认（避免白跑）",
+                         "state": "needs_office"})
+
+    place = {"building": building, "room": room, "building_id": building_id,
+             "campus": "中区", "evidence_id": cid}
+    fields = {
+        "kind": "errand",
+        "title": "学生证 / 乘车优惠卡补办 · 办事单",
+        "place": place,
+        "dept": "学生事务管理办公室（学生处）",
+        "service_scope": "学生证、乘车优惠卡的办理",
+        "phone": phone,
+        "hours": None,
+        "materials_confirmed": False,
+        "confirms": confirms,
+    }
+    # 证据视图 + 附带沙盘定位动作
+    ev = _evidence_view([cid], {})
+    action = dict(fields)
+    note = ("窗口、楼栋、电话均出自本轮证据；材料清单与办公时间库内未确认，"
+            "已在「出发前确认」中明确标注，正文不得写成已确认。")
+    if building_id:
+        place_action = {
+            "kind": "place", "title": "地点定位", "ambiguous": False,
+            "matches": [{"building_id": building_id, "label": building or "大学生活动中心（南楼）",
+                         "category": "办公", "campus": "中区", "note": "办事单定位"}],
+            "fallback_text": None,
+        }
+    else:
+        place_action = None
+    logger.info("tool student_card_reissue issue=%r room=%s phone=%s", issue, room, phone)
+    out = {"note": note, "evidence": ev, "action": action}
+    if place_action:
+        out["place_action"] = place_action
+    return out
 
 
 # =====================================================================

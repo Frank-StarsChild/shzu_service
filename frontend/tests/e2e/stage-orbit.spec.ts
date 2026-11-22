@@ -194,7 +194,7 @@ test("5 拖动后点北区：镜头照常飞到 bq 停靠点", async ({ page }) 
 test("6 点观景：mode=tour、界面淡出、退出钮可见、方位角按 degPerSec 增大、相机高度不变", async ({ page }) => {
   await page.goto("/stage?3d=1&intro=0");
   await waitReady(page);
-  await page.click('[data-testid="stage-nav-tour"]');
+  await page.click('[data-testid="stage-tool-tour"]');
 
   await page.waitForFunction(
     () => window.__campus3d?.mode === "tour" && window.__campus3d?.tour === true,
@@ -233,7 +233,7 @@ test("7 在北区上观景后按 Esc：恢复 campus、镜头回 bq、界面回�
     { timeout: 20_000, polling: 100 }
   );
 
-  await page.click('[data-testid="stage-nav-tour"]');
+  await page.click('[data-testid="stage-tool-tour"]');
   await page.waitForFunction(
     () => window.__campus3d?.mode === "tour" && window.__campus3d?.tour === true,
     undefined,
@@ -254,9 +254,9 @@ test("7 在北区上观景后按 Esc：恢复 campus、镜头回 bq、界面回�
   expect(await page.evaluate(() => window.__campus3d.stop)).toBe("bq");
 });
 
-test("8 减少动态：顶栏没有「观景」", async ({ page }) => {
+test("8 减少动态：控制区没有「观景」", async ({ page }) => {
   await page.emulateMedia({ reducedMotion: "reduce" });
   await page.goto("/stage?3d=1&intro=0");
   await waitReady(page);
-  await expect(page.locator('[data-testid="stage-nav-tour"]')).toHaveCount(0);
+  await expect(page.locator('[data-testid="stage-tool-tour"]')).toHaveCount(0);
 });

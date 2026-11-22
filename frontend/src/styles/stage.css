@@ -1,18 +1,21 @@
 /* STAGE 3.1/3.2 + W1/W2：舞台的全部变量与零件样式。选择器都在 .stage 之下，
-   不许放进 :root，免得影响普通版。 */
+   不许放进 :root，免得影响普通版。
+   主题改造：--st-* 令牌改引自全站 theme.css（html[data-theme]），
+   夜间取值与原设计一致；日间时周围的导航/按钮/题签/面板随界面换色，
+   舞台保留自己的构图、定位与地图标记，场景始终是夜景。 */
 .stage {
-  /* 五种颜色（3.1 节） */
-  --st-ink: #05080d;      /* 墨：背景 */
-  --st-moon: #e8edf3;     /* 月白：文字 */
-  --st-moon2: rgba(232, 237, 243, 0.66); /* 次要文字 */
-  --st-moon3: rgba(232, 237, 243, 0.38); /* 提示文字 */
-  --st-red: #e2001a;      /* 朱砂：印章与选中 */
-  --st-gold: #e8c98a;     /* 鎏金：细线与小字 */
-  --st-gold2: rgba(232, 201, 138, 0.55);
-  --st-gold3: rgba(232, 201, 138, 0.22);
-  --st-paper: #efe8d8;    /* 宣纸：公文卡与用户问话 */
-  --st-paper-ink: #1b1a17;
-  --st-glass: rgba(7, 10, 15, 0.78);     /* 面板底色 */
+  /* 五种颜色（3.1 节；现引自全站主题令牌，日夜自动换） */
+  --st-ink: var(--stage-bg);          /* 场景兜底底色 */
+  --st-moon: var(--text);             /* 正文（夜间月白 / 日间墨色） */
+  --st-moon2: var(--text-2);
+  --st-moon3: var(--text-3);
+  --st-red: var(--vermilion);         /* 朱砂：印章与选中 */
+  --st-gold: var(--gold);             /* 金：细线与小字（日间深金） */
+  --st-gold2: var(--gold-soft);
+  --st-gold3: var(--gold-faint);
+  --st-paper: var(--stage-doc-paper);/* 宣纸：公文卡与用户问话（日夜同色，卡上墨字不变） */
+  --st-paper-ink: var(--stage-doc-ink);
+  --st-glass: var(--stage-glass);    /* 面板底色 */
 
   /* 三种字（3.2 节） */
   --st-song: "Songti SC", "STSong", "SimSun", "Noto Serif CJK SC", serif;
@@ -78,17 +81,18 @@
   color: var(--st-moon2);
 }
 
-/* 题字底下的遮罩（只在首页状态显示；W3：跟题字一起 300ms 淡出/淡入） */
+/* 题字底下的遮罩（只在首页状态显示；W3：跟题字一起 300ms 淡出/淡入）
+   夜间为墨色渐变；日间换暖纸渐变，保证墨色题字在夜景画布上可读 */
 .stage .stage-hero-mask {
   position: fixed;
   inset: 0;
   pointer-events: none;
   z-index: 3;
-  background: linear-gradient(90deg, rgba(5, 8, 13, 0.90) 0%, rgba(5, 8, 13, 0.62) 26%, rgba(5, 8, 13, 0) 52%);
+  background: var(--stage-mask);
   transition: opacity 300ms;
 }
 
-/* ---- 署名（页面最底一行） ---- */
+/* ---- 署名（页面最底一行）：日间悬在夜景画布上，加纸色衬底保证可读 ---- */
 .stage .stage-caption {
   position: fixed;
   left: 0;
@@ -101,38 +105,76 @@
   letter-spacing: 0.05em;
   pointer-events: none;
 }
+html[data-theme="light"] .stage .stage-caption {
+  background: var(--stage-chrome-bg);
+  border: 1px solid var(--stage-chrome-border);
+  padding: 3px 12px;
+  max-width: min(92vw, 1080px);
+  margin: 0 auto;
+  display: block;
+  width: fit-content;
+}
 
-/* ---- W4：回答面板与用户问话（4.2） ---- */
+/* ---- W4：回答面板与用户问话（4.2）；W11：clamp 宽度 + 纵向 flex（长问题换行，
+    长回答在面板内滚动，收起后只留「展开对话」小钮） ---- */
 .stage .stage-answer {
   position: fixed;
   right: 30px;
   top: 74px;
-  width: 428px;
+  width: clamp(320px, 28vw, 428px);
   z-index: 4;
+  display: flex;
+  flex-direction: column;
+  max-height: calc(100vh - 264px);
   animation: stage-answer-in 260ms ease-out;
 }
 @keyframes stage-answer-in {
   from { opacity: 0; transform: translateX(16px); }
   to { opacity: 1; transform: translateX(0); }
 }
+/* W11：收起后右上角的小钮（在全站顶栏下方，不挡主题开关） */
+.stage .stage-answer-expand {
+  align-self: flex-end;
+  background: var(--st-glass);
+  border: 1px solid var(--st-gold3);
+  font-family: var(--st-song);
+  font-size: 13px;
+  letter-spacing: 0.3em;
+  color: var(--st-moon);
+  padding: 7px 14px;
+  cursor: pointer;
+}
+.stage .stage-answer-expand:hover {
+  border-color: var(--st-gold2);
+}
+.stage .stage-answer-expand:focus-visible {
+  outline: 1px solid var(--st-gold2);
+  outline-offset: 2px;
+}
+/* W11：问话条 + 面板 + 引线包在同一纵向布局里（v-show 收起时整体隐藏） */
+.stage .stage-answer-body {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+}
 .stage .stage-question {
-  margin: 0;
+  margin: 0 0 10px;
   padding: 9px 14px;
   background: var(--st-paper);
   color: var(--st-paper-ink);
   font-size: 14px;
   line-height: 1.5;
+  overflow-wrap: anywhere;
 }
 .stage .stage-panel {
-  position: absolute;
-  top: 44px;
-  left: 0;
-  right: 0;
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
   display: flex;
   flex-direction: column;
   background: var(--st-glass);
   border: 1px solid var(--st-gold3);
-  max-height: calc(100vh - 118px - 190px);
 }
 .stage .stage-corner {
   position: absolute;
@@ -150,7 +192,7 @@
   justify-content: space-between;
   gap: 10px;
   padding: 12px 16px 10px;
-  border-bottom: 1px solid rgba(232, 237, 243, 0.10);
+  border-bottom: 1px solid var(--stage-hair);
 }
 .stage .stage-panel-title {
   margin: 0;
@@ -168,13 +210,15 @@
 }
 .stage .stage-panel-scroll {
   overflow-y: auto;
+  flex: 1 1 auto;
+  min-height: 0;
   padding: 12px 16px;
   scrollbar-width: thin;
-  scrollbar-color: rgba(232, 237, 243, 0.22) rgba(7, 10, 15, 0.4);
+  scrollbar-color: var(--stage-sb-thumb) var(--stage-sb-track);
 }
 .stage .stage-panel-scroll::-webkit-scrollbar { width: 6px; }
-.stage .stage-panel-scroll::-webkit-scrollbar-track { background: rgba(7, 10, 15, 0.4); }
-.stage .stage-panel-scroll::-webkit-scrollbar-thumb { background: rgba(232, 237, 243, 0.22); }
+.stage .stage-panel-scroll::-webkit-scrollbar-track { background: var(--stage-sb-track); }
+.stage .stage-panel-scroll::-webkit-scrollbar-thumb { background: var(--stage-sb-thumb); }
 .stage .stage-panel-text {
   margin: 0;
   font-size: 14px;
@@ -228,7 +272,7 @@
   text-decoration: none;
   cursor: pointer;
 }
-.stage .stage-btn:hover { border-color: var(--st-gold); color: #fff; }
+.stage .stage-btn:hover { border-color: var(--st-gold); color: var(--link-strong); }
 .stage .stage-choices {
   display: flex;
   flex-direction: column;
@@ -253,7 +297,7 @@
   justify-content: space-between;
   gap: 10px;
   padding: 9px 16px;
-  border-top: 1px solid rgba(232, 237, 243, 0.10);
+  border-top: 1px solid var(--stage-hair);
 }
 .stage .stage-panel-note {
   font-size: 10.5px;
@@ -345,11 +389,11 @@
 }
 
 /* ---- W4：AnswerBlocks 的舞台覆盖（白底样式是给 /chat 写的，这里盖掉；
-   面板里不许出现红色的字）---- */
+    面板里不许出现红色的字）---- */
 .stage .blocks { border: none; }
 .stage .block {
   background: transparent;
-  border-bottom: 1px solid rgba(232, 237, 243, 0.10);
+  border-bottom: 1px solid var(--stage-hair);
   color: var(--st-moon);
 }
 .stage .block:last-child { border-bottom: none; }

@@ -77,6 +77,19 @@ const meta = ref<CampusMeta | null>(null);
 const mobile = ref(false);
 let mq: MediaQueryList | null = null;
 
+// ---- 「进入 3D 校园」：从普通版回舞台（原顶栏「校园」入口，保留设备判断与偏好清除） ----
+// 只在设备能跑 3D 且视口不小于 1100 时显示；点击删掉 shzu.stage（舞台「普通版」记下的选择），
+// 去 /?stage=1 回舞台；当前页带着 ?3d=1（软件渲染环境里唯一能强制 scene 的开关）时一并带上。
+const canEnterStage = computed(
+  () => gate.value.mode === "scene" && window.innerWidth >= 1100
+);
+const campusTo = computed(() => (lastInput?.query3d === "1" ? "/?stage=1&3d=1" : "/?stage=1"));
+
+function enterStage() {
+  localStorage.removeItem("shzu.stage");
+  router.push(campusTo.value);
+}
+
 // ---- 对话定位（?focus=buildingId）：聊天页「在沙盘查看」按钮跳转而来 ----
 const focusId = computed<string | null>(() => {
   const f = route.query.focus;
@@ -618,19 +631,48 @@ function goBoard(board: string) {
     <div class="campus-sr" aria-live="polite" data-testid="campus-live">{{ liveText }}</div>
     <slot />
     <figcaption class="campus-caption tiny" data-testid="campus-caption">
-      <span>{{ attribution }}</span>
-      <button
-        v-if="toggleLabel"
-        type="button"
-        class="btn-sm"
-        data-testid="campus-toggle"
-        @click="onToggle"
-      >{{ toggleLabel }}</button>
+      <!-- 场景仍为夜景（团队后续提供日景 GLB 与双端海报再接真正的昼夜切换） -->
+      <span class="caption-line">
+        <span class="tag tag-soft" data-testid="campus-scene-mode">场景 · 夜景</span>
+        <span>{{ attribution }}</span>
+      </span>
+      <span class="caption-actions">
+        <!-- 普通版回舞台：设备够格才显示（原顶栏「校园」入口，放沙盘说明区） -->
+        <button
+          v-if="canEnterStage"
+          type="button"
+          class="btn-sm"
+          data-testid="campus-enter-stage"
+          title="进入 3D 校园（全屏沙盘）"
+          @click="enterStage"
+        >进入 3D 校园 →</button>
+        <button
+          v-if="toggleLabel"
+          type="button"
+          class="btn-sm"
+          data-testid="campus-toggle"
+          @click="onToggle"
+        >{{ toggleLabel }}</button>
+      </span>
     </figcaption>
   </figure>
 </template>
 
 <style scoped>
+/* 说明行左侧：夜景标签与署名并排；右侧动作（进入 3D 校园 / 3D 开关）收在一组 */
+.caption-line {
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--gap-3);
+  min-width: 0;
+}
+.caption-actions {
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--gap-2);
+  flex: none;
+}
+
 /* 对话定位提示（聊天页「在沙盘查看」跳转而来）：静态图与 3D 模式都显示 */
 .campus-focus-chip {
   position: absolute;
@@ -641,9 +683,9 @@ function goBoard(board: string) {
   align-items: baseline;
   gap: 8px;
   padding: 4px 12px;
-  background: var(--paper);
-  border: 1px solid var(--red);
-  border-left: 3px solid var(--red);
+  background: var(--bg-panel);
+  border: 1px solid var(--vermilion);
+  border-left: 3px solid var(--vermilion);
   max-width: min(86%, 520px);
 }
 </style>

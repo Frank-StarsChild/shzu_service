@@ -66,9 +66,16 @@ def gen_lizhi_form(task):
     sec.left_margin, sec.right_margin = Cm(2.2), Cm(2.2)
 
     _title(doc, "本专科生国家励志奖学金申请表", size=16)
-    _para(doc, "（模板依据：石河子大学 2025 年本专科生国家励志奖学金评审通知附件2；"
-               "本文件为按官方表格栏目生成的可编辑版本，来源与原文以“填写依据与办理提示”文件为准）",
-          size=9, align=WD_ALIGN_PARAGRAPH.CENTER)
+    # 办事体验改造：历史演示的导出文件必须自行可见年度与性质（主文件与依据文件都要能看出）
+    if task.get("historical"):
+        _para(doc, "【2025 年度历史演示】模板依据：石河子大学 2025 年本专科生国家励志奖学金评审通知附件2；"
+                   "本文件为按官方表格栏目生成的可编辑历史案例，不可用于当前年度实际申报，"
+                   "来源与原文以“填写依据与办理提示”文件为准。",
+              size=9, align=WD_ALIGN_PARAGRAPH.CENTER)
+    else:
+        _para(doc, "（模板依据：石河子大学 2025 年本专科生国家励志奖学金评审通知附件2；"
+                   "本文件为按官方表格栏目生成的可编辑版本，来源与原文以“填写依据与办理提示”文件为准）",
+              size=9, align=WD_ALIGN_PARAGRAPH.CENTER)
 
     def row_of(table, r, cells):
         for i, v in enumerate(cells):

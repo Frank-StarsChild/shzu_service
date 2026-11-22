@@ -32,6 +32,8 @@ declare global {
       pin?: string | null;
       azimuth?: number;
       tour?: boolean;
+      framing?: number;
+      panBounds?: number[] | null;
       debugGoTo?: (stop: string) => void;
       debugShowAnswer?: (buildingId: string) => void;
       stop: string;

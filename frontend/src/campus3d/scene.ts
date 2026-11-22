@@ -29,6 +29,10 @@ export interface CampusSceneHandle {
   setOrbit(enabled: boolean): void;
   /** W8：观景——绕当前目标点的竖直轴匀速转；关时 900ms 回到开启前的机位。 */
   setTour(on: boolean): void;
+  /** W11：构图偏移——把模型整体向左挪 offsetPx 个 CSS 像素（回答面板展开时腾位）。
+   *  只改相机投影（setViewOffset），不动机位、旋转、缩放与平移目标。
+   *  普通版 CampusHero 不调用它，恒为零偏移。 */
+  setFraming(offsetPx: number): void;
   onHover(cb: (board: string | null) => void): void;
   onPick(cb: (board: string) => void): void;
   onFrame(cb: () => void): void;
@@ -134,6 +138,11 @@ interface Runtime {
   tourActive: boolean;
   /** 开观景时的机位快照（关时回到这里） */
   tourSaved: { pos: THREE.Vector3; target: THREE.Vector3; stop: string } | null;
+  // ---- W11：构图偏移与平移边界 ----
+  /** 当前构图偏移（CSS 像素；0 = 不偏移，普通版永远不调用 setFraming） */
+  framingOffset: number;
+  /** 平移目标点的边界（模型包围盒外扩）；null = 不限制（模型未加载前） */
+  panBounds: THREE.Box3 | null;
 }
 
 export function createCampusScene(
@@ -187,6 +196,7 @@ export function createCampusScene(
         renderer.setSize(w, h, false);
         camera.aspect = w / h;
         camera.updateProjectionMatrix();
+        applyFraming(); // W11：画布尺寸变了，按新的 CSS 像素重算视图偏移
         renderNow();
       }),
       frames: 0,
@@ -230,6 +240,9 @@ export function createCampusScene(
       orbitWanted: false,
       tourActive: false,
       tourSaved: null,
+      // W11
+      framingOffset: 0,
+      panBounds: null,
     };
     rt.resizeObs.observe(frame);
 
@@ -273,6 +286,11 @@ export function createCampusScene(
       hook.azimuth = getAzimuth();
       // W8：是否在观景
       hook.tour = rt.tourActive;
+      // W11：当前构图偏移（CSS 像素）与平移边界（模型包围盒，供 e2e 断言）
+      hook.framing = rt.framingOffset;
+      hook.panBounds = rt.panBounds
+        ? [rt.panBounds.min.x, rt.panBounds.min.y, rt.panBounds.min.z, rt.panBounds.max.x, rt.panBounds.max.y, rt.panBounds.max.z]
+        : null;
       hook.camera = {
         position: [camera.position.x, camera.position.y, camera.position.z],
         target: [rt.currentTarget.x, rt.currentTarget.y, rt.currentTarget.z],
@@ -608,9 +626,33 @@ export function createCampusScene(
     }
 
     function onControlsChange() {
+      // W11：右键平移后把目标点夹回校园包围盒（相机跟着挪同样的量，视线不变），
+      // 再把 controls.target 同步成场景当前目标点——罗盘、观景、下一次自动定位
+      // 用的都是同一个目标
+      clampPan();
+      if (rt.controls) rt.currentTarget.copy(rt.controls.target);
       // 拖动、滚轮时请求渲染一帧，并回调 onFrame（题签、罗盘、星跟着动）
       hookInfo();
       scheduleRender();
+    }
+
+    /** W11：把 controls.target 夹回模型包围盒内（连同相机一起平移，视线不变） */
+    function clampPan() {
+      const controls = rt.controls;
+      const b = rt.panBounds;
+      if (!controls || !b) return;
+      const t = controls.target;
+      const cx = Math.min(Math.max(t.x, b.min.x), b.max.x);
+      const cy = Math.min(Math.max(t.y, b.min.y), b.max.y);
+      const cz = Math.min(Math.max(t.z, b.min.z), b.max.z);
+      const dx = cx - t.x;
+      const dy = cy - t.y;
+      const dz = cz - t.z;
+      if (dx === 0 && dy === 0 && dz === 0) return;
+      t.set(cx, cy, cz);
+      camera.position.x += dx;
+      camera.position.y += dy;
+      camera.position.z += dz;
     }
 
     function setOrbit(enabled: boolean) {
@@ -620,7 +662,8 @@ export function createCampusScene(
         const o = meta.look.orbit;
         const savedPos = camera.position.clone();
         const controls = new OrbitControls(camera, canvas);
-        controls.enablePan = false;
+        // W11：左键旋转、滚轮缩放之外，右键拖动（默认映射）平移——保留原俯仰与缩放限制
+        controls.enablePan = true;
         controls.enableDamping = false;
         controls.minPolarAngle = (o.minPolarDeg * Math.PI) / 180;
         controls.maxPolarAngle = (o.maxPolarDeg * Math.PI) / 180;
@@ -636,6 +679,29 @@ export function createCampusScene(
         rt.controls = controls;
       }
       syncControls();
+    }
+
+    // ---- W11：构图偏移（只改投影，不动机位；收展回答面板时由外壳调用）----
+    function applyFraming() {
+      const w = Math.max(canvas.clientWidth || frame?.clientWidth || 0, 1);
+      const h = Math.max(canvas.clientHeight || frame?.clientHeight || 0, 1);
+      if (rt.framingOffset > 0) {
+        // 可视窗口在虚拟整幅里向右挪 offsetPx 像素 → 画面内容整体左移 offsetPx 像素。
+        // 投影矩阵带了偏移，project()/拾取/图钉/标签/引线自动与画布对齐。
+        camera.setViewOffset(w, h, rt.framingOffset, 0, w, h);
+      } else if (camera.view?.enabled) {
+        camera.clearViewOffset();
+      }
+    }
+
+    function setFraming(offsetPx: number) {
+      if (rt.disposed) return;
+      const next = Math.max(0, Math.round(offsetPx));
+      if (next === rt.framingOffset) return;
+      rt.framingOffset = next;
+      applyFraming();
+      hookInfo();
+      scheduleRender();
     }
 
     // ---- W8：观景（绕目标点竖直轴匀速转，方位角随时间增大）----
@@ -779,6 +845,8 @@ export function createCampusScene(
       const down = rt.downPos;
       rt.downPos = null;
       if (!down) return;
+      // W11：右键/中键是平移与缩放，不是点击（右键松手不能误触楼栋）
+      if (e.button !== 0) return;
       // 按下和抬起位置相差 < 5px 才算点击（拖动不算）
       if (Math.hypot(e.clientX - down.x, e.clientY - down.y) >= 5) return;
       const board = pickBoard(e.clientX, e.clientY);
@@ -861,6 +929,13 @@ export function createCampusScene(
         window.clearTimeout(timer);
         rt.root = gltf.scene;
         scene.add(gltf.scene);
+
+        // W11：平移边界——模型包围盒外扩 60，把 controls.target 限制在校园里
+        const panBox = new THREE.Box3().setFromObject(gltf.scene);
+        if (!panBox.isEmpty()) {
+          panBox.expandByScalar(60);
+          rt.panBounds = panBox;
+        }
 
         // B_ 节点 → 楼号 Mesh（拾取与计数）
         gltf.scene.traverse((obj) => {
@@ -976,6 +1051,7 @@ export function createCampusScene(
         getAzimuth,
         setOrbit,
         setTour,
+        setFraming,
         onHover(cb: (board: string | null) => void) {
           rt.onHoverCb = cb;
         },

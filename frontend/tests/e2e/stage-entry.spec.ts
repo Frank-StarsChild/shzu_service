@@ -44,10 +44,10 @@ test("3 1000 宽打开 /?3d=1：窄窗口走普通版", async ({ page }) => {
   await expectClassicHome(page);
 });
 
-test("4 普通版的往返：点「普通版」去 /classic 并记住选择；点「校园」回舞台", async ({ page }) => {
+test("4 普通版的往返：点「普通版」去 /classic 并记住选择；点「进入 3D 校园」回舞台", async ({ page }) => {
   await page.goto("/?3d=1");
-  await expect(page.locator('[data-testid="stage-nav-classic"]')).toBeVisible();
-  await page.click('[data-testid="stage-nav-classic"]');
+  await expect(page.locator('[data-testid="stage-tool-classic"]')).toBeVisible();
+  await page.click('[data-testid="stage-tool-classic"]');
 
   await expect(page).toHaveURL(/\/classic/);
   await expect(page.locator(".topbar")).toHaveCount(1);
@@ -58,23 +58,23 @@ test("4 普通版的往返：点「普通版」去 /classic 并记住选择；�
   await expect(page.locator(".topbar")).toHaveCount(1);
   await expectClassicHome(page);
 
-  // 点普通版顶栏的「校园」：清掉选择，回舞台（exact：顶栏里还有「校园对话」）
-  await page.getByRole("link", { name: "校园", exact: true }).click();
+  // 点沙盘说明区的「进入 3D 校园」：清掉选择，回舞台（原顶栏「校园」入口迁至此处）
+  await page.locator('[data-testid="campus-enter-stage"]').click();
   await expect(page.locator('[data-testid="stage"]')).toBeVisible();
   await expect(page.locator(".topbar")).toHaveCount(0);
   expect(await page.evaluate(() => localStorage.getItem("shzu.stage"))).toBeNull();
 });
 
-test("5 舞台点「服务」去普通版页面；后退回舞台，场景重新就绪", async ({ page }) => {
+test("5 舞台顶栏点「服务目录」去普通版页面；后退回舞台，场景重新就绪", async ({ page }) => {
   await page.goto("/?3d=1");
-  await expect(page.locator('[data-testid="stage-nav-services"]')).toBeVisible();
-  await page.click('[data-testid="stage-nav-services"]');
+  await expect(page.locator('[data-testid="app-nav-services"]')).toBeVisible();
+  await page.click('[data-testid="app-nav-services"]');
 
   await expect(page).toHaveURL(/\/services/);
   await expect(page.locator(".topbar")).toHaveCount(1);
-  // 普通版页面：暖白纸面（swiss.css 的 body 底色），没有被舞台样式带黑
+  // 普通版页面：日间暖纸白（theme.css 的 --bg 令牌），没有被舞台样式带黑
   const bg = await page.evaluate(() => getComputedStyle(document.body).backgroundColor);
-  expect(bg).toBe("rgb(251, 250, 248)");
+  expect(bg).toBe("rgb(246, 243, 234)");
 
   // 后退回舞台：不缓存（无 keep-alive），画布重新创建并就绪（W6 常见错误 2）
   await page.goBack();

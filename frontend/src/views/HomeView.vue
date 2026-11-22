@@ -3,6 +3,7 @@ import { ref, onMounted, defineAsyncComponent } from "vue";
 import { useRouter } from "vue-router";
 import { useKbMeta, useGo } from "@/composables";
 import { api } from "@/api/client";
+import { listDrafts, type FlowDraft } from "@/stores/flowDraft";
 
 // 沙盘外壳单独分包：主页面块保持精简（scripts/check-bundle.mjs 的体积预算）
 const CampusHero = defineAsyncComponent(() => import("@/components/CampusHero.vue"));
@@ -47,6 +48,13 @@ const boards = [
 const wizardList = ref<{ flow_id: string; name: string; version: string; historical: boolean; steps: string[] }[]>([]);
 const wizardError = ref("");
 
+// 办事体验改造：未完成的向导草稿（会话 × 事项），首页「继续办理」入口
+const draftList = ref<{ sessionId: string; draft: FlowDraft }[]>([]);
+
+function resumeDraft(sessionId: string, draft: FlowDraft) {
+  router.push({ path: `/workflows/${draft.flowId}`, query: { draft: sessionId } });
+}
+
 // N2：沙盘右下的服务数量（拿不到就不显示数量，不报错；不改 client.ts）
 const serviceCounts = ref<Record<string, number>>({});
 
@@ -65,6 +73,7 @@ onMounted(async () => {
   } catch {
     wizardError.value = "向导清单加载失败，可直接在服务目录中重试";
   }
+  draftList.value = listDrafts().slice(0, 2);
 });
 
 function submit() {
@@ -81,6 +90,32 @@ const samples = [
   "电动自行车怎么办校园通行牌？",
 ];
 </script>
+
+<style scoped>
+/* 「继续办理」入口：跟随表单/常见问题之后；楼名式留边，手机上同样好点（≥44px 高） */
+.resume-drafts {
+  margin-top: var(--gap-4);
+  border: 1px solid color-mix(in srgb, var(--link) 45%, transparent);
+  background: color-mix(in srgb, var(--link) 6%, transparent);
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.resume-draft {
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 10px;
+  min-height: 44px;
+  background: none;
+  border: 1px solid var(--line-soft);
+  cursor: pointer;
+}
+.resume-draft:hover { border-color: var(--link); color: var(--link); }
+.resume-draft:focus-visible { outline: 1px solid var(--link); outline-offset: 2px; }
+</style>
 
 <template>
   <div class="page">
@@ -104,6 +139,21 @@ const samples = [
             </form>
             <div style="display: flex; flex-wrap: wrap; gap: var(--gap-2);">
               <button v-for="s in samples" :key="s" type="button" class="btn-sm" @click="ask(s)">{{ s }}</button>
+            </div>
+
+            <!-- 有未完成事项时：输入框/常见问题下方的「继续办理」入口（停在唧一步 + 下一项待补） -->
+            <div v-if="draftList.length" class="resume-drafts" data-testid="continue-drafts">
+              <p class="label tiny" style="margin: 0 0 4px;">继续办理</p>
+              <button v-for="({ sessionId, draft }, i) in draftList" :key="sessionId + draft.flowId"
+                      type="button" class="resume-draft" :data-testid="`resume-draft-${i}`"
+                      @click="resumeDraft(sessionId, draft)">
+                <strong>{{ draft.flowName }}</strong>
+                <span class="tiny">
+                  停在「{{ draft.stepName || "待开始" }}」
+                  <template v-if="draft.nextTodo"> · 下一项：{{ draft.nextTodo }}</template>
+                  <template v-else> · 待核对导出</template>
+                </span>
+              </button>
             </div>
           </div>
           <div class="hero-right">

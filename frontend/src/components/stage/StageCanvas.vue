@@ -10,12 +10,14 @@ import {
 } from "@/campus3d/gate";
 import { loadPackIndex, loadPackMeta, packUrl, type PackIndex } from "@/stage/packs";
 import { useStageStore } from "@/stores/stage";
+import { useChatStore } from "@/stores/chat";
 import type { StageCtx } from "@/stage/types";
 import type { CampusSceneHandle } from "@/campus3d/scene"; // 仅类型，构建时擦除
 
 // window.__campus3d 的全局类型声明在 CampusHero.vue（同一份，v3 字段经宽松记录写入）。
 
 const store = useStageStore();
+const chat = useChatStore();
 
 const meta = ref<CampusMeta | null>(null);
 const posterSrc = ref("");
@@ -34,6 +36,30 @@ const canvasRef = ref<HTMLCanvasElement | null>(null);
 let sceneHandle: CampusSceneHandle | null = null; // three 对象不进响应式
 let canvasEl: HTMLCanvasElement | null = null;
 let posterEl: HTMLImageElement | null = null;
+
+// ---- W11：构图偏移。无回答或已收起 = 基线 48px；回答面板展开 = 再按面板宽度
+// 加 70–110px（面板宽度 clamp(320px, 28vw, 428px) 的 22%）。窗口变化时按实时
+// 视口重算，避免累计偏移；只改投影不动机位；普通版 CampusHero 不经此处恒为零。----
+const FRAMING_BASE_PX = 48;
+const viewportW = ref(typeof window !== "undefined" ? window.innerWidth : 0);
+function onWindowResize() {
+  viewportW.value = window.innerWidth;
+}
+const panelW = computed(() =>
+  Math.min(Math.max(320, Math.round(viewportW.value * 0.28)), 428)
+);
+const hasAssistant = computed(() => chat.turns.some((t) => t.role === "assistant"));
+const panelOpen = computed(() => hasAssistant.value && store.answerOpen);
+const framingOffset = computed(() => {
+  if (gate.value.mode !== "scene") return 0;
+  if (!panelOpen.value) return FRAMING_BASE_PX;
+  const extra = Math.min(Math.max(Math.round(panelW.value * 0.22), 70), 110);
+  return FRAMING_BASE_PX + extra;
+});
+function applyFraming() {
+  sceneHandle?.setFraming(framingOffset.value);
+}
+watch(framingOffset, () => applyFraming());
 let introDecision: { play: boolean; reason: string } = { play: false, reason: "not-ready" };
 let introFinishedEarly = false;
 /** W3：换包时预置「必播开场」（卡第 3 条：playIntro 传 !reducedMotion），
@@ -105,6 +131,7 @@ async function initScene() {
       return;
     }
     sceneHandle = handle;
+    applyFraming(); // W11：创建后立刻按当前面板状态应用构图偏移
     handle.onFrame(() => {
       for (const cb of frameListeners) cb();
     });
@@ -261,6 +288,13 @@ watch(meta, (m) => store.setMeta(m), { immediate: true });
 // W10：把场景就绪状态同步给 store（enterPlace / otherPack 的等待逻辑用）
 watch(sceneStatus, (s) => store.setSceneReady(s === "ready"), { immediate: true });
 
+// W11：「重置视角」——把镜头飞回当前状态的推荐机位（全景/校区/楼栋），
+// 不动校区选择、高亮与对话；观景中不理会（按钮此刻也看不到）。
+watch(() => store.resetViewSeq, () => {
+  if (sceneStatus.value !== "ready" || store.mode === "tour") return;
+  applyStageMode();
+});
+
 function applyStageMode() {
   if (!sceneHandle || sceneStatus.value !== "ready") return;
   if (store.mode === "tour") return; // W8：观景由 setTour 控制，不动片区与镜头
@@ -347,6 +381,7 @@ onMounted(async () => {
   lastInput = readGateInput();
   gate.value = decideMode(lastInput);
   touchHook({ reason: gate.value.reason });
+  window.addEventListener("resize", onWindowResize);
 
   // W5：测试入口（只给 e2e 用，和 W2 的 debugGoTo 一样做完也留着）
   const hookForDebug = (window as unknown as { __campus3d?: Record<string, unknown> }).__campus3d;
@@ -375,6 +410,7 @@ onMounted(async () => {
 });
 
 onBeforeUnmount(() => {
+  window.removeEventListener("resize", onWindowResize);
   if (sceneHandle || canvasMounted.value) {
     sceneHandle?.dispose();
     sceneHandle = null;

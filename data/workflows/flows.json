@@ -14,11 +14,11 @@
       },
       "award_type": "national_inspirational",
       "steps": [
-        { "step": 1, "key": "policy", "name": "事项与政策确认", "desc": "确认申请国家励志奖学金、学生层次与申报年度（2025历史演示）", "evidence_ids": ["xg-lz-c1", "xg-lz-c2", "xg-cj181-c1"] },
-        { "step": 2, "key": "conditions", "name": "条件对照", "desc": "按规则逐项核对年级、困难认定、双排名，输出三态结果", "evidence_ids": ["xg-lz-c1", "xg-lz-c2"] },
-        { "step": 3, "key": "materials", "name": "材料清单", "desc": "生成已准备/待准备/需确认的材料清单", "evidence_ids": ["xg-lz-c6"] },
-        { "step": 4, "key": "document", "name": "文书生成", "desc": "按2025年学校申请表结构生成可编辑申请表，签名与审核栏留白", "evidence_ids": ["xg-lzform-c1", "xg-lz-c5"] },
-        { "step": 5, "key": "export", "name": "预览与导出", "desc": "导出Word/PDF，附填写依据与办理提示", "evidence_ids": ["xg-lz-c5", "xg-lz-c6"] }
+        { "step": 1, "key": "policy", "name": "事项与政策确认", "desc": "确认申请国家励志奖学金、学生层次与申报年度（2025历史演示）", "slot_keys": ["student_type"], "evidence_ids": ["xg-lz-c1", "xg-lz-c2", "xg-cj181-c1"] },
+        { "step": 2, "key": "conditions", "name": "条件对照", "desc": "按规则逐项核对年级、困难认定、双排名，输出三态结果", "slot_keys": ["grade", "difficulty_confirmed", "study_rank", "study_total", "zongce_rank", "zongce_total", "national_scholarship_this_year", "aid_applied"], "evidence_ids": ["xg-lz-c1", "xg-lz-c2"] },
+        { "step": 3, "key": "materials", "name": "材料清单", "desc": "生成已准备/待准备/需确认的材料清单", "slot_keys": [], "evidence_ids": ["xg-lz-c6"] },
+        { "step": 4, "key": "document", "name": "文书生成", "desc": "按2025年学校申请表结构生成可编辑申请表，签名与审核栏留白", "slot_keys": ["name", "college", "major_class", "reason"], "evidence_ids": ["xg-lzform-c1", "xg-lz-c5"] },
+        { "step": 5, "key": "export", "name": "预览与导出", "desc": "导出Word/PDF，附填写依据与办理提示", "slot_keys": [], "evidence_ids": ["xg-lz-c5", "xg-lz-c6"] }
       ],
       "required_slots": [
         { "key": "name", "label": "姓名", "type": "text", "required": false, "personal": true, "note": "演示使用虚构信息；正式使用可留空线下填写" },
@@ -27,10 +27,10 @@
         { "key": "college", "label": "学院", "type": "text", "required": false },
         { "key": "major_class", "label": "专业与班级", "type": "text", "required": false },
         { "key": "difficulty_confirmed", "label": "本学年是否已通过家庭经济困难认定", "type": "choice", "options": ["是", "否", "不确定"], "required": true },
-        { "key": "study_rank", "label": "学习成绩排名（名次）", "type": "number", "required": true },
-        { "key": "study_total", "label": "学习成绩排名总人数", "type": "number", "required": true },
-        { "key": "zongce_rank", "label": "综合测评排名（名次）", "type": "number", "required": true },
-        { "key": "zongce_total", "label": "综合测评排名总人数", "type": "number", "required": true },
+        { "key": "study_rank", "label": "学习成绩排名（名次）", "type": "number", "group": "学习成绩排名（名次/总人数）", "required": true },
+        { "key": "study_total", "label": "学习成绩排名总人数", "type": "number", "group": "学习成绩排名（名次/总人数）", "required": true },
+        { "key": "zongce_rank", "label": "综合测评排名（名次）", "type": "number", "group": "综合测评排名（名次/总人数）", "required": true },
+        { "key": "zongce_total", "label": "综合测评排名总人数", "type": "number", "group": "综合测评排名（名次/总人数）", "required": true },
         { "key": "national_scholarship_this_year", "label": "本学年是否已获/拟申请国家奖学金", "type": "choice", "options": ["是", "否"], "required": true },
         { "key": "aid_applied", "label": "是否同时申请国家助学金", "type": "choice", "options": ["是", "否"], "required": false },
         { "key": "reason", "label": "申请理由（仅使用您确认的真实事实）", "type": "textarea", "required": false, "note": "官方表格未对励志申请表设置强制字数要求；不虚构奖项、家庭情况或经历，缺省保留填写项" }
@@ -60,11 +60,11 @@
         "note": "其他学院未取得对应模板，将使用明确标识的通用准备稿，不称为该学院正式表格"
       },
       "steps": [
-        { "step": 1, "key": "scope", "name": "确认学院与事项", "desc": "确认所在学院；生命科学学院使用官方请假条模板", "evidence_ids": ["sk-leave-c1"] },
-        { "step": 2, "key": "form", "name": "填写请假信息", "desc": "专业班级、事由、天数（节）、起止时间、联系方式", "evidence_ids": ["sk-leave-c1"] },
-        { "step": 3, "key": "address", "name": "回家或超3天补充", "desc": "请假回家或超过3天需填写家庭住址", "evidence_ids": ["sk-leave-c1"] },
-        { "step": 4, "key": "document", "name": "生成请假条", "desc": "按官方格式生成请假条（含存根联），意见栏与签章栏留白", "evidence_ids": ["sk-leave-c1"] },
-        { "step": 5, "key": "export", "name": "预览与导出", "desc": "导出Word/PDF，线下送班主任/辅导员/学办审批签字" }
+        { "step": 1, "key": "scope", "name": "确认学院与事项", "desc": "确认所在学院；生命科学学院使用官方请假条模板", "slot_keys": ["college", "grade"], "evidence_ids": ["sk-leave-c1"] },
+        { "step": 2, "key": "form", "name": "填写请假信息", "desc": "专业班级、事由、天数（节）、起止时间、联系方式", "slot_keys": ["major", "cls", "name", "reason", "days_or_sections", "start_date", "start_time", "end_date", "end_time", "personal_phone"], "evidence_ids": ["sk-leave-c1"] },
+        { "step": 3, "key": "address", "name": "回家或超3天补充", "desc": "请假回家或超过3天需填写家庭住址", "slot_keys": ["going_home", "home_address", "parent_phone"], "evidence_ids": ["sk-leave-c1"] },
+        { "step": 4, "key": "document", "name": "生成请假条", "desc": "按官方格式生成请假条（含存根联），意见栏与签章栏留白", "slot_keys": [], "evidence_ids": ["sk-leave-c1"] },
+        { "step": 5, "key": "export", "name": "预览与导出", "desc": "导出Word/PDF，线下送班主任/辅导员/学办审批签字", "slot_keys": [] }
       ],
       "required_slots": [
         { "key": "college", "label": "所在学院", "type": "text", "required": true },
@@ -99,11 +99,11 @@
         "note": "学生借用教室可通过班主任、辅导员在教务系统进行借用"
       },
       "steps": [
-        { "step": 1, "key": "apply", "name": "教务系统网上申请", "desc": "提前1-2天申请：教学服务→我的课表→教室借用申请", "evidence_ids": ["jw-venue-c1", "jw-venue-c2"] },
-        { "step": 2, "key": "branch_venue", "name": "按场地类型确认归口", "desc": "室内体育馆/机房/多媒体教室对应实验设备处、体育学院场馆中心、教务处教务科（电话2058577）", "evidence_ids": ["jw-venue-c2"] },
-        { "step": 3, "key": "print", "name": "打印借用单并盖章", "desc": "使用者打印教室借用单并按活动性质选择审核盖章部门", "evidence_ids": ["jw-venue-c2"] },
-        { "step": 4, "key": "branch_activity", "name": "按活动性质选择盖章部门", "desc": "非教学活动（班会、党团活动等）由学院使用部门（团委、学办等）审核盖章；课表外教学活动（科研训练、学科竞赛等）由学院教科办审核盖章", "evidence_ids": ["jw-venue-c2"] },
-        { "step": 5, "key": "deliver", "name": "送达审批单", "desc": "将审批单送达博学楼C238中控室（电话2057552）", "evidence_ids": ["jw-venue-c2"] }
+        { "step": 1, "key": "apply", "name": "教务系统网上申请", "desc": "提前1-2天申请：教学服务→我的课表→教室借用申请", "slot_keys": ["applicant_type", "use_date", "use_time"], "evidence_ids": ["jw-venue-c1", "jw-venue-c2"] },
+        { "step": 2, "key": "branch_venue", "name": "按场地类型确认归口", "desc": "室内体育馆/机房/多媒体教室对应实验设备处、体育学院场馆中心、教务处教务科（电话2058577）", "slot_keys": ["venue_type"], "evidence_ids": ["jw-venue-c2"] },
+        { "step": 3, "key": "print", "name": "打印借用单并盖章", "desc": "使用者打印教室借用单并按活动性质选择审核盖章部门", "slot_keys": [], "evidence_ids": ["jw-venue-c2"] },
+        { "step": 4, "key": "branch_activity", "name": "按活动性质选择盖章部门", "desc": "非教学活动（班会、党团活动等）由学院使用部门（团委、学办等）审核盖章；课表外教学活动（科研训练、学科竞赛等）由学院教科办审核盖章", "slot_keys": ["activity_type"], "evidence_ids": ["jw-venue-c2"] },
+        { "step": 5, "key": "deliver", "name": "送达审批单", "desc": "将审批单送达博学楼C238中控室（电话2057552）", "slot_keys": [], "evidence_ids": ["jw-venue-c2"] }
       ],
       "required_slots": [
         { "key": "applicant_type", "label": "申请身份", "type": "choice", "options": ["学生", "教职工"], "required": true },

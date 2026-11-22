@@ -1,0 +1,242 @@
+/* ============================================================
+   石大智多星 · 全站主题令牌（theme tokens）
+   - 以 3D 首页的视觉语言为基准：朱砂印章、宋体题字、墨蓝、鎏金细线
+   - 日间：暖纸白背景 / 浅纸面板 / 墨色正文 / 浅墨分隔线，朱砂用于主按钮、当前项与链接
+   - 夜间：墨蓝背景 / 稍亮深色面板 / 月白正文，鎏金用于细线、小标题与引用标记
+   - data-theme 挂在 document.documentElement 上（index.html 预置脚本在挂载前写入，
+     防止夜间刷新先闪白）；color-scheme 与主题同步
+   - swiss.css 的旧令牌（--ink/--paper/--red…）在这里按主题重定义，
+     布局类（网格/间距/字号）仍留在 swiss.css
+   ============================================================ */
+
+:root {
+  color-scheme: light;
+
+  /* ---------- 字体 ---------- */
+  --font-display: "Songti SC", "STSong", "SimSun", "Noto Serif CJK SC", serif;
+
+  /* ---------- 日间（暖纸白）默认值；html[data-theme=dark] 覆盖 ---------- */
+  --bg: #f6f3ea;                       /* 暖纸白页面底 */
+  --bg-panel: #fdfbf4;                 /* 浅纸色面板 */
+  --bg-panel-2: #f0ebdd;               /* 次级面板 / 浅纸区块 */
+  --bg-panel-3: #e9e3d2;               /* 深一档的浅纸（hover 等） */
+  --bg-input: #fffdf6;                 /* 输入框 */
+  --bg-panel-alpha: rgba(253, 251, 244, 0.96);  /* 顶栏半透明底 */
+  --paper-3: #f0ebdd;                  /* 兼容名（ActionCards 曾引用未定义值） */
+
+  --text: #211e19;                     /* 墨色正文 */
+  --text-2: #56514a;                   /* 次要文字 */
+  --text-3: #837d72;                   /* 说明文字 */
+
+  --line: #211e19;                     /* 强规则线（墨） */
+  --line-soft: #ded8c8;                /* 浅墨分隔线 */
+
+  --vermilion: #c8392b;                /* 朱砂：实心主按钮 / 当前项底色 */
+  --vermilion-deep: #a72a1f;           /* 朱砂按压 / hover 深一档 */
+  --on-vermilion: #fff7ee;             /* 朱砂底上的文字 */
+  --link: #b2322a;                     /* 链接朱砂（文字用途，对比可读） */
+  --link-strong: #8f2119;              /* 链接 hover */
+  --err: #b2322a;                      /* 错误文字 */
+  --focus: #c8392b;                    /* 焦点描边 */
+
+  /* 填充“墨底”上的文字（.chip.on / 步骤当前 / 选中行 等） */
+  --on-ink: #fffdf6;
+  --on-ink-soft: #cfc9ba;
+  --on-ink-accent: #ff8f9e;
+
+  /* 金（日间为深金，保证纸上可读；夜间为鎏金） */
+  --gold: #9c7b33;
+  --gold-soft: rgba(156, 123, 51, 0.55);
+  --gold-faint: rgba(156, 123, 51, 0.22);
+  --gold-text: #7c6224;
+
+  /* 状态色（文字 / 底色成对） */
+  --ok: #1f6b45;   --ok-bg: #eef6ef;
+  --warn: #7c5a10; --warn-bg: #f7f0dc;
+  --info: #274f7d; --info-bg: #edf3f9;
+  --err-bg: #faecea;
+
+  /* 阴影（拟物层引用） */
+  --sh-card: inset 0 1px 0 rgba(255, 255, 255, 0.9), 0 1px 0 rgba(33, 30, 23, 0.14), 0 3px 10px rgba(33, 30, 23, 0.06);
+  --sh-line: rgba(33, 30, 23, 0.12);
+  --sh-soft: rgba(33, 30, 23, 0.06);
+  --sh-btn: 0 2px 0 rgba(33, 30, 23, 0.22), 0 3px 8px rgba(33, 30, 23, 0.08);
+  --sh-btn-hover: 0 3px 0 rgba(33, 30, 23, 0.24), 0 5px 12px rgba(33, 30, 23, 0.1);
+  --sh-btn-active: 0 1px 0 rgba(33, 30, 23, 0.18), 0 1px 3px rgba(33, 30, 23, 0.06);
+  --sh-btn-disabled: 0 1px 0 rgba(33, 30, 23, 0.08);
+  --sh-inset: rgba(33, 30, 23, 0.06);
+  --sh-edge: rgba(255, 255, 255, 0.8);
+  --seal-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35), inset 0 -1px 0 rgba(0, 0, 0, 0.25), 0 1px 0 rgba(33, 30, 23, 0.85), 0 2px 5px rgba(200, 57, 43, 0.3);
+  --seal-text: rgba(0, 0, 0, 0.22);
+
+  /* 纸面颗粒与暖光（body 背景） */
+  --bg-grain:
+    repeating-linear-gradient(0deg, rgba(59, 50, 38, 0.016) 0 1px, transparent 1px 3px),
+    repeating-linear-gradient(90deg, rgba(59, 50, 38, 0.016) 0 1px, transparent 1px 3px),
+    radial-gradient(120% 90% at 50% 0%, rgba(255, 255, 255, 0.75), rgba(250, 247, 240, 0.5) 65%, rgba(243, 238, 228, 0.45));
+
+  /* ---------- 舞台（3D 首页）界面令牌：场景始终是夜景，界面随主题换色 ---------- */
+  --stage-bg: #f6f3ea;                 /* 场景画布外的兜底底色（海报/画布铺满时不可见） */
+  --stage-glass: rgba(251, 249, 242, 0.92);   /* 面板底（日间纸面板） */
+  --stage-doc-paper: #efe8d8;          /* 公文卡宣纸（日夜同色：卡上的墨字不变） */
+  --stage-doc-ink: #1b1a17;
+  --stage-mask: linear-gradient(90deg, rgba(246, 243, 234, 0.92) 0%, rgba(246, 243, 234, 0.6) 26%, rgba(246, 243, 234, 0) 52%);
+  --stage-topbar-from: rgba(246, 243, 234, 0.9);
+  --stage-dock-1: rgba(251, 249, 242, 0.94);
+  --stage-dock-2: rgba(246, 243, 234, 0.98);
+  --stage-hair: rgba(27, 26, 23, 0.16);        /* 面板内发丝线 */
+  --stage-sb-thumb: rgba(27, 26, 23, 0.25);    /* 滚动条 */
+  --stage-sb-track: rgba(251, 249, 242, 0.4);
+  --stage-chrome-bg: rgba(251, 249, 242, 0.86); /* 悬在夜景画布上的读数/署名衬底 */
+  --stage-chrome-border: rgba(156, 123, 51, 0.4);
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+
+  --bg: #0c1420;                       /* 墨蓝页面底 */
+  --bg-panel: #131d2c;                 /* 稍亮的深色面板 */
+  --bg-panel-2: #182436;
+  --bg-panel-3: #1e2b40;
+  --bg-input: #101a29;
+  --bg-panel-alpha: rgba(12, 20, 32, 0.94);
+  --paper-3: #182436;
+
+  --text: #e8edf3;                     /* 月白正文 */
+  --text-2: #b9c3d2;
+  --text-3: #93a0b3;
+
+  --line: #c9a55e;                     /* 鎏金强线 */
+  --line-soft: rgba(232, 201, 138, 0.3); /* 金色细线 */
+
+  --vermilion: #d63b2c;                /* 朱砂实心底 */
+  --vermilion-deep: #b52f22;
+  --on-vermilion: #fff5ef;
+  --link: #ef6a52;                     /* 夜间链接朱砂（提亮可读） */
+  --link-strong: #ff8a72;
+  --err: #ef6a52;
+  --focus: #e8c98a;                    /* 夜间焦点：鎏金描边 */
+
+  /* 墨底在夜间为月白填充 → 其上文字用深墨蓝 */
+  --on-ink: #101a29;
+  --on-ink-soft: #4d5a6d;
+  --on-ink-accent: #b3452f;
+
+  --gold: #e8c98a;
+  --gold-soft: rgba(232, 201, 138, 0.55);
+  --gold-faint: rgba(232, 201, 138, 0.22);
+  --gold-text: #e8c98a;
+
+  --ok: #58b07c;   --ok-bg: rgba(88, 176, 124, 0.14);
+  --warn: #d9b45c; --warn-bg: rgba(217, 180, 92, 0.14);
+  --info: #7ab0e8; --info-bg: rgba(122, 176, 232, 0.14);
+  --err-bg: rgba(239, 106, 82, 0.14);
+
+  --sh-card: inset 0 1px 0 rgba(255, 255, 255, 0.04), 0 1px 0 rgba(0, 0, 0, 0.5), 0 3px 12px rgba(0, 0, 0, 0.35);
+  --sh-line: rgba(0, 0, 0, 0.5);
+  --sh-soft: rgba(0, 0, 0, 0.3);
+  --sh-btn: 0 2px 0 rgba(0, 0, 0, 0.55), 0 3px 10px rgba(0, 0, 0, 0.35);
+  --sh-btn-hover: 0 3px 0 rgba(0, 0, 0, 0.6), 0 5px 14px rgba(0, 0, 0, 0.4);
+  --sh-btn-active: 0 1px 0 rgba(0, 0, 0, 0.45), 0 1px 3px rgba(0, 0, 0, 0.3);
+  --sh-btn-disabled: 0 1px 0 rgba(0, 0, 0, 0.3);
+  --sh-inset: rgba(0, 0, 0, 0.4);
+  --sh-edge: rgba(232, 237, 243, 0.05);
+  --seal-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35), inset 0 -1px 0 rgba(0, 0, 0, 0.25), 0 1px 0 rgba(0, 0, 0, 0.7), 0 2px 5px rgba(214, 59, 44, 0.4);
+  --seal-text: rgba(0, 0, 0, 0.45);
+
+  --bg-grain:
+    repeating-linear-gradient(0deg, rgba(232, 237, 243, 0.018) 0 1px, transparent 1px 3px),
+    repeating-linear-gradient(90deg, rgba(232, 237, 243, 0.018) 0 1px, transparent 1px 3px),
+    radial-gradient(120% 90% at 50% 0%, rgba(232, 201, 138, 0.05), rgba(12, 20, 32, 0) 65%);
+
+  --stage-bg: #05080d;
+  --stage-glass: rgba(7, 10, 15, 0.78);
+  --stage-doc-paper: #efe8d8;
+  --stage-doc-ink: #1b1a17;
+  --stage-mask: linear-gradient(90deg, rgba(5, 8, 13, 0.9) 0%, rgba(5, 8, 13, 0.62) 26%, rgba(5, 8, 13, 0) 52%);
+  --stage-topbar-from: rgba(5, 8, 13, 0.85);
+  --stage-dock-1: rgba(10, 14, 20, 0.92);
+  --stage-dock-2: rgba(7, 10, 15, 0.97);
+  --stage-hair: rgba(232, 237, 243, 0.1);
+  --stage-sb-thumb: rgba(232, 237, 243, 0.22);
+  --stage-sb-track: rgba(7, 10, 15, 0.4);
+  --stage-chrome-bg: transparent;
+  --stage-chrome-border: transparent;
+}
+
+/* 顶栏 / 页面底色随主题（html 底色防夜间滚动越界闪白） */
+html[data-theme="light"] { background: #f6f3ea; }
+html[data-theme="dark"] { background: #0c1420; }
+
+/* ---------- swiss.css 旧令牌按主题重定义（布局规则自动换肤） ----------
+   注意：swiss.css 的 :root 已移除颜色令牌（只留字体/间距），
+   颜色的唯一来源是本文件，避免加载顺序覆盖。 */
+:root {
+  --ink: var(--text);
+  --ink-2: var(--text-2);
+  --ink-3: var(--text-3);
+  --paper: var(--bg);
+  --paper-2: var(--bg-panel-2);
+  --red: var(--vermilion);
+  --red-dark: var(--vermilion-deep);
+}
+
+/* ============================================================
+   打印：统一白底深字（夜间模式打印同样生效）
+   ============================================================ */
+@media print {
+  :root,
+  :root[data-theme="dark"] {
+    color-scheme: light;
+    --bg: #ffffff;
+    --bg-panel: #ffffff;
+    --bg-panel-2: #f4f4f2;
+    --bg-panel-3: #ececea;
+    --bg-input: #ffffff;
+    --bg-panel-alpha: #ffffff;
+    --paper-3: #f4f4f2;
+    --text: #111111;
+    --text-2: #444444;
+    --text-3: #767676;
+    --line: #111111;
+    --line-soft: #cccccc;
+    --vermilion: #b3221b;
+    --vermilion-deep: #8f1a14;
+    --on-vermilion: #ffffff;
+    --link: #8f1a14;
+    --link-strong: #6f130e;
+    --err: #8f1a14;
+    --focus: #b3221b;
+    --on-ink: #ffffff;
+    --on-ink-soft: #bbbbbb;
+    --on-ink-accent: #b3221b;
+    --gold: #9c7b33;
+    --gold-soft: rgba(156, 123, 51, 0.55);
+    --gold-faint: rgba(156, 123, 51, 0.22);
+    --gold-text: #7c6224;
+    --ok: #1f6b45;  --ok-bg: #ffffff;
+    --warn: #7c5a10; --warn-bg: #ffffff;
+    --info: #274f7d; --info-bg: #ffffff;
+    --err-bg: #ffffff;
+    --sh-card: none;
+    --sh-line: rgba(17, 17, 17, 0.2);
+    --sh-soft: none;
+    --sh-btn: none;
+    --sh-btn-hover: none;
+    --sh-btn-active: none;
+    --sh-btn-disabled: none;
+    --sh-inset: none;
+    --sh-edge: none;
+    --seal-shadow: none;
+    --seal-text: none;
+    --bg-grain: none;
+    --ink: var(--text);
+    --ink-2: var(--text-2);
+    --ink-3: var(--text-3);
+    --paper: #ffffff;
+    --paper-2: #f4f4f2;
+    --red: #b3221b;
+    --red-dark: #8f1a14;
+  }
+  html[data-theme="dark"], html[data-theme="light"], html { background: #fff !important; }
+}

@@ -66,6 +66,10 @@ class WorkflowRefBody(BaseModel):
     historical: bool = False
     name: str = ""
     summary: str = ""
+    # 办事体验改造：会话里学生自述过的身份事实（本科/二年级等），进入向导时带入
+    # 待确认；旧响应无这两个字段自然兼容。preset_note 为引用原句。
+    preset_slots: Optional[dict] = None
+    preset_note: Optional[str] = None
 
 
 # ---------- 场景动作卡片（可选字段：由后端工具产生的已核实结构化数据，
@@ -101,11 +105,19 @@ class ActionFlowRef(BaseModel):
     name: str = ""
     historical: bool = False
     note: Optional[str] = None
+    preset_slots: Optional[dict] = None   # 会话里学生自述过的身份事实（同 WorkflowRefBody）
+    preset_note: Optional[str] = None
 
 
 class RepairStep(BaseModel):
     text: str
     evidence_ids: List[str] = []
+
+
+class ErrandConfirm(BaseModel):
+    """办事单「出发前确认」条目：待学生/办公室核实的具体事项"""
+    text: str
+    state: Literal["needs_user", "needs_office", "needs_college"] = "needs_user"
 
 
 class PlaceMatch(BaseModel):
@@ -118,8 +130,8 @@ class PlaceMatch(BaseModel):
 
 
 class ActionCard(BaseModel):
-    """联合动作卡片（kind 判别）。三种：材料核对 / 网络报修分诊 / 沙盘定位"""
-    kind: Literal["checklist", "repair", "place"]
+    """联合动作卡片（kind 判别）。四种：材料核对 / 网络报修分诊 / 办事单 / 沙盘定位"""
+    kind: Literal["checklist", "repair", "place", "errand"]
     title: str = ""
     # checklist
     award: Optional[str] = None
@@ -138,6 +150,14 @@ class ActionCard(BaseModel):
     ambiguous: bool = False
     matches: List[PlaceMatch] = []
     fallback_text: Optional[str] = None
+    # errand（办事单）：现场可用的一页纸结论，全部取自本次回答关联的证据
+    place: Optional[dict] = None        # {building, room, building_id, campus, evidence_id}
+    dept: Optional[str] = None          # 负责部门（如 学生事务管理办公室）
+    service_scope: Optional[str] = None # 窗口职责（如 学生证、乘车优惠卡办理）
+    phone: Optional[str] = None
+    hours: Optional[str] = None
+    materials_confirmed: bool = False   # 证据是否确认了材料清单
+    confirms: List[ErrandConfirm] = []  # 出发前需要确认的事项
 
 
 class ChatResponse(BaseModel):
@@ -221,6 +241,7 @@ class SlotSpec(BaseModel):
     required: bool = False
     personal: bool = False
     note: Optional[str] = None
+    group: Optional[str] = None        # 表单分组（如 两种排名各自的「名次/总人数」归属）
 
 
 class WorkflowStep(BaseModel):

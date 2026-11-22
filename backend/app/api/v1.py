@@ -12,6 +12,7 @@ from fastapi.responses import FileResponse
 
 from ..contracts import models as M
 from ..agent import deepseek_adapter, graph
+from ..agent.seed_slots import extract_student_facts, filter_for_flow
 from ..knowledge.loader import get_kb
 from ..knowledge import web_evidence
 from ..knowledge.retriever import retrieve
@@ -169,6 +170,11 @@ def chat(req: M.ChatRequest):
     final = result["final"]
     new_slots = result["slots"]
 
+    # 办事体验改造：进入向导的响应上附带「会话里学生自述过的身份事实」
+    # （本科/二年级）。仅取学生自己说过的第一人称事实，后说的覆盖先说的；
+    # 旧会话/普通回答不受影响（字段只附在 workflow 与 checklist 的 flow 引用上）。
+    _attach_preset(final, req.session_id)
+
     store.add_turn(req.session_id, req.request_id, "user", text_hint or "", status="done")
     store.add_turn(req.session_id, req.request_id, "assistant", final.get("message") or "",
                    response=final, slots=new_slots, status=final["status"])
@@ -176,6 +182,43 @@ def chat(req: M.ChatRequest):
         c.execute("UPDATE sessions SET slots=?, last_query=? WHERE session_id=?",
                   (json.dumps(new_slots, ensure_ascii=False), keep_query, req.session_id))
     return M.ChatResponse(**final)
+
+
+MAX_PRESET_TURNS = 12
+
+
+def _attach_preset(final: dict, session_id: str):
+    """把会话中用户自述的身份事实附到向导入口（workflow 响应 / checklist 卡的 flow）。
+
+    只在响应里真的出现了向导入口时才抽；抽取规则见 agent.seed_slots。"
+    flows = get_kb().flows
+    targets = []  # [(flow_id, holder)]
+    if final.get("status") == "workflow" and final.get("workflow"):
+        targets.append((final["workflow"].get("flow_id"), final["workflow"]))
+    for act in final.get("actions") or []:
+        if isinstance(act, dict) and isinstance(act.get("flow"), dict):
+            targets.append((act["flow"].get("flow_id"), act["flow"]))
+    if not targets:
+        return
+    try:
+        user_texts = [m["text"] for m in store.list_messages(session_id)
+                      if m["role"] == "user"][-MAX_PRESET_TURNS:]
+        # 本轮用户输入在 add_turn 之前还不在库里，补在末尾
+        last_user = next((m for m in reversed(store.list_messages(session_id))
+                          if m["role"] == "user"), None)
+    except Exception:
+        user_texts, last_user = [], None
+    facts = extract_student_facts(user_texts)
+    if not facts:
+        return
+    excerpt = facts.get("source_excerpt") or ""
+    for flow_id, holder in targets:
+        flow = flows.get(flow_id) or {}
+        preset = filter_for_flow(facts, flow.get("required_slots") or [])
+        if not preset:
+            continue
+        holder["preset_slots"] = preset
+        holder["preset_note"] = excerpt
 
 
 # ---------- 服务目录 ----------
@@ -330,6 +373,7 @@ def _flow_detail(fid: str) -> tuple:
     if not flow:
         _err(404, "workflow_not_found", "向导不存在")
     steps = [M.WorkflowStep(key=s["key"], name=s["name"], desc=s.get("desc", ""),
+                            slot_keys=s.get("slot_keys", []),
                             evidence_ids=s.get("evidence_ids", [])) for s in flow.get("steps", [])]
     slots = [M.SlotSpec(**s) for s in flow.get("required_slots", [])]
     materials = [M.MaterialView(**m) for m in flow.get("materials", [])]
@@ -423,7 +467,8 @@ def export(flow_id: str, req: M.ExportRequest):
         _err(422, "field_errors", "字段校验未通过",
              field_errors={fe.slot_key: fe.message for fe in field_errors})
 
-    task_like = {"task_id": "wx-" + req.preview_token[:10], "slots": dict(req.inputs)}
+    task_like = {"task_id": "wx-" + req.preview_token[:10], "slots": dict(req.inputs),
+                 "historical": bool(flow.get("demo_mode"))}
     result = doc_renderer.render_document(flow_id, flow.get("template_id"), task_like, rule_results)
 
     main = result["main"]

@@ -137,10 +137,12 @@ watch(() => route.query, (q) => {
 
 <style scoped>
 .chip {
-  border: 1px solid var(--line); border-right: none; background: var(--paper);
+  border: 1px solid var(--line); border-right: none; background: var(--bg-panel);
+  color: var(--text);
   padding: 8px 16px; font-weight: 500; min-height: 36px;
 }
 .chip:last-of-type { border-right: 1px solid var(--line); }
-.chip.on { background: var(--ink); color: #fff; }
-.chip.on:hover { background: var(--red); }
+.chip:hover { background: var(--bg-panel-2); color: var(--text); }
+.chip.on { background: var(--text); color: var(--on-ink); border-bottom-color: var(--vermilion); }
+.chip.on:hover { background: var(--vermilion); color: var(--on-vermilion); border-color: var(--vermilion); }
 </style>

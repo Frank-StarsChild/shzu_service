@@ -102,7 +102,7 @@ test("2 面板办理地点与楼的题签", async ({ page }) => {
   await expect(page.locator('[data-testid="stage-sign-ZQ-B023"]')).toBeVisible();
 });
 
-test("3 楼在画面左中：anchor 投影横坐标在 25%–55%", async ({ page }) => {
+test("3 楼在画面左中：anchor 投影横坐标在 14%–50%（W11 构图偏移后模型整体左移）", async ({ page }) => {
   await page.goto("/stage?3d=1&intro=0");
   await waitReady(page);
   await ask(page, "学生证丢了去哪补办");
@@ -116,8 +116,8 @@ test("3 楼在画面左中：anchor 投影横坐标在 25%–55%", async ({ page
     (anchor) => window.__campus3d.projectPoint(anchor).x,
     metaRaw.buildings["ZQ-B023"].anchor
   );
-  expect(x).toBeGreaterThan(width * 0.25);
-  expect(x).toBeLessThan(width * 0.55);
+  expect(x).toBeGreaterThan(width * 0.14);
+  expect(x).toBeLessThan(width * 0.5);
 });
 
 test("4 红色引线：末端与 anchor−6 的投影横向相差 30±3、纵向 ≤3", async ({ page }) => {
@@ -310,14 +310,14 @@ test("11 换到中区自己的沙盘再问学生证：同一栋楼直接落（�
   expect(h.mode).toBe("answer");
   expect(h.shell).toBe("ZQ-B023");
   await expect(page.locator('[data-testid="stage-other-pack"]')).toHaveCount(0);
-  // 第 3 条在这里同样成立：楼在画面左中（用 zq 沙盘自己的坐标）
+  // 第 3 条在这里同样成立：楼在画面左中（用 zq 沙盘自己的坐标；W11 构图偏移后整体左移）
   const width = page.viewportSize()?.width ?? 1440;
   const x = await page.evaluate(
     (anchor) => window.__campus3d.projectPoint(anchor).x,
     zqMetaRaw.buildings["ZQ-B023"].anchor
   );
-  expect(x).toBeGreaterThan(width * 0.25);
-  expect(x).toBeLessThan(width * 0.55);
+  expect(x).toBeGreaterThan(width * 0.14);
+  expect(x).toBeLessThan(width * 0.5);
   // 第 4 条在这里同样成立：红色引线末端对齐
   const check = await page.evaluate((anchor) => {
     const svg = document.querySelector('[data-testid="stage-leader"]');

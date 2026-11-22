@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, watch } from "vue";
+import { ref, computed, onMounted, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useSourceStore } from "@/stores/source";
 
@@ -22,6 +22,13 @@ async function load(id: string) {
   loading.value = false;
 }
 
+// 主标题优先显示实际来源标题；加载中/出错时才用证据编号占位
+const displayTitle = computed(() => {
+  if (loading.value) return evidenceId.value;
+  if (errorText.value) return "证据不可用";
+  return data.value?.title || evidenceId.value;
+});
+
 onMounted(() => load(evidenceId.value));
 watch(() => route.params.evidenceId, (id) => { if (id) { evidenceId.value = String(id); load(String(id)); } });
 </script>
@@ -30,14 +37,17 @@ watch(() => route.params.evidenceId, (id) => { if (id) { evidenceId.value = Stri
   <div class="page">
     <div class="shell">
 
-      <div class="page-head" style="display: grid; grid-template-columns: 1fr auto; align-items: end; gap: var(--gap-5);">
-        <div>
-          <p class="index">05 — 证据详情</p>
-          <h1 class="h1">{{ evidenceId }}</h1>
+      <!-- 页头标题行：返回在左、主要操作「查看官方原文」在右；窄屏自动换到标题下方（顺序不变）。
+           主标题显示实际来源标题，证据 ID 放编号行（次要位置）。 -->
+      <div class="page-head source-head">
+        <div class="source-head-main">
+          <button type="button" class="btn-sm source-back" @click="router.back()">← 返回</button>
+          <div class="source-head-title">
+            <p class="index">05 — 证据详情 · <span class="mono">{{ evidenceId }}</span></p>
+            <h1 class="h1">{{ displayTitle }}</h1>
+          </div>
         </div>
-        <div style="display: flex; gap: var(--gap-3);">
-          <button type="button" class="btn-sm" @click="router.back()">← 返回</button>
-        </div>
+        <a v-if="data?.url" class="btn-red btn-sm evi-open-link" :href="data.url" target="_blank" rel="noopener noreferrer">查看官方原文 ↗</a>
       </div>
 
       <template v-if="loading">
@@ -62,10 +72,8 @@ watch(() => route.params.evidenceId, (id) => { if (id) { evidenceId.value = Stri
             <span v-if="data.review_state" class="tag tag-ok">{{ data.review_state }}</span>
           </div>
           <div class="box-body">
+            <!-- 发布部门 / 适用时间 / 出处：易扫读的两栏网格 -->
             <div class="evi-grid">
-              <div class="label k">标题</div>
-              <div><h2 class="h2">{{ data.title }}</h2></div>
-
               <div class="label k">发布方</div>
               <div>{{ data.issuer }}</div>
 
@@ -109,3 +117,47 @@ watch(() => route.params.evidenceId, (id) => { if (id) { evidenceId.value = Stri
     </div>
   </div>
 </template>
+
+<style scoped>
+/* 标题行：左返回 + 标题，右主要操作；窄屏换行到标题下方且保持可见顺序 */
+.source-head {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--gap-4) var(--gap-5);
+  flex-wrap: wrap;
+}
+.source-head-main {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--gap-3);
+  min-width: 0;
+  flex: 1 1 320px;
+}
+.source-back { flex: none; }
+.source-head-title { min-width: 0; }
+.evi-open-link { flex: none; }
+@media (max-width: 720px) {
+  .source-head { align-items: flex-start; flex-direction: column; }
+  .evi-open-link { align-self: flex-end; }
+}
+
+/* 页头里的“查看官方原文”按主按钮样式，但是链接：补齐按钮的边框/内距（a 不继承 button 基样式） */
+.evi-open-link {
+  display: inline-flex;
+  align-items: center;
+  padding: 5px 12px;
+  min-height: 30px;
+  font-size: 12px;
+  font-weight: 700;
+  border: 1px solid var(--vermilion);
+  border-bottom: 1px solid var(--vermilion);
+  background: var(--vermilion);
+  color: var(--on-vermilion);
+  box-shadow: none;
+}
+.evi-open-link:hover {
+  background: var(--vermilion-deep);
+  border-color: var(--vermilion-deep);
+  color: var(--on-vermilion);
+}
+</style>

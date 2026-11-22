@@ -1,13 +1,34 @@
 <script setup lang="ts">
 // STAGE W4：底部问话栏。直接用现有 useChatStore（send/pickChoice/retry/cancel/restore/
 // newSession/turns/busy），不用 useGo().ask()——那会跳到 /chat。
-import { computed, onMounted, ref } from "vue";
+// 顶栏统一后，舞台专用操作「观景 / 普通版」放在问话栏上方的工具行（沙盘控制区）：
+// 观景仍只在 3D 可用且未开减少动态时显示；普通版记入偏好后去 /classic。
+import { computed, inject, onMounted, ref } from "vue";
 import { useChatStore } from "@/stores/chat";
+import { useStageStore } from "@/stores/stage";
 import { useKbMeta } from "@/composables";
+import type { StageCtx } from "@/stage/types";
 
 const store = useChatStore();
+const stageStore = useStageStore();
 const { ready } = useKbMeta();
 const text = ref("");
+const ctx = inject<StageCtx>("stageCtx");
+
+/** 观景入口只在 3D 可用且未开减少动态时显示（原顶栏行为不变） */
+const canTour = computed(
+  () =>
+    ctx?.gate.value.mode === "scene"
+    && !(typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches)
+);
+
+/** W11：重置视角只在 3D 可用时显示（静态海报没有镜头可重） */
+const canReset = computed(() => ctx?.gate.value.mode === "scene");
+
+/** 「普通版」：记住选择再去 /classic（下次打开首页走普通版，点「进入 3D 校园」清除） */
+function preferClassic() {
+  localStorage.setItem("shzu.stage", "classic");
+}
 
 const EXAMPLES = [
   "学生证丢了去哪补办？",
@@ -38,6 +59,29 @@ onMounted(() => {
 
 <template>
   <div class="stage-dock" data-testid="stage-dock">
+    <!-- 沙盘控制区：观景 / 重置视角 / 普通版（随问话栏在观景模式下一起淡出） -->
+    <div class="stage-tools">
+      <button
+        v-if="canTour"
+        type="button"
+        class="stage-tool"
+        data-testid="stage-tool-tour"
+        @click="stageStore.setTour(true)"
+      >观景</button>
+      <button
+        v-if="canReset"
+        type="button"
+        class="stage-tool"
+        data-testid="stage-tool-reset"
+        @click="stageStore.requestResetView()"
+      >重置视角</button>
+      <router-link
+        class="stage-tool"
+        data-testid="stage-tool-classic"
+        to="/classic"
+        @click="preferClassic"
+      >普通版</router-link>
+    </div>
     <p class="stage-status" data-testid="stage-status">
       <span class="stage-status-dot" aria-hidden="true"></span>{{ statusText }}
       <button
@@ -85,6 +129,39 @@ onMounted(() => {
   flex-direction: column;
   gap: 8px;
   align-items: stretch;
+}
+/* 沙盘控制区（顶栏统一后自顶栏迁来）：右对齐的小题签式按钮，随问话栏淡出 */
+.stage .stage-tools {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin: 0;
+}
+.stage .stage-tool {
+  background: none;
+  border: 1px solid var(--st-gold3);
+  color: var(--st-moon2);
+  font-family: var(--st-hei);
+  font-size: 12px;
+  letter-spacing: 0.2em;
+  padding: 4px 12px;
+  text-decoration: none;
+  cursor: pointer;
+  min-height: 0;
+  min-width: 0;
+  box-shadow: none;
+  transform: none;
+}
+.stage .stage-tool:hover {
+  border-color: var(--st-gold2);
+  color: var(--st-moon);
+  background: none;
+  box-shadow: none;
+  transform: none;
+}
+.stage .stage-tool:focus-visible {
+  outline: 1px solid var(--st-gold2);
+  outline-offset: 2px;
 }
 .stage .stage-status {
   margin: 0 0 -1px;
@@ -141,7 +218,7 @@ onMounted(() => {
 .stage .stage-input-row {
   display: flex;
   align-items: stretch;
-  background: linear-gradient(to bottom, rgba(10, 14, 20, 0.92), rgba(7, 10, 15, 0.97));
+  background: linear-gradient(to bottom, var(--stage-dock-1), var(--stage-dock-2));
   border-top: 1px solid var(--st-gold2);
   border-bottom: 3px double var(--st-gold3);
   border-left: 1px solid var(--st-gold3);
@@ -166,13 +243,14 @@ onMounted(() => {
   flex: none;
   background: var(--st-red);
   border: 1px solid var(--st-red);
-  color: #fff;
+  color: var(--on-vermilion);
   font-family: var(--st-song);
   font-weight: 900;
   font-size: 24px;
   line-height: 1;
   cursor: pointer;
 }
+.stage .stage-ask:hover { color: var(--on-vermilion); }
 .stage .stage-ask:active {
   transform: translateY(1px);
 }

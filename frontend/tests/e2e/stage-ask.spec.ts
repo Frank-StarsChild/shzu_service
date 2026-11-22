@@ -45,6 +45,9 @@ test("2 学生证：面板出现，含答/回答/官方出处/楼名；两张公
 });
 
 test("3 公文卡与正文的舞台样式", async ({ page }) => {
+  // 主题改造后舞台界面随日/夜换色：本条断言的是舞台的签名夜间样式
+  // （宣纸公文卡 + 鎏金 .no），显式固定夜间，避免受系统外观影响。
+  await page.addInitScript(() => localStorage.setItem("shzu.theme", "dark"));
   await page.goto("/stage?3d=1&intro=0");
   await waitReady(page);
   await ask(page, "学生证丢了去哪补办");

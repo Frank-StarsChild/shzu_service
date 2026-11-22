@@ -7,10 +7,11 @@
 - find_service_workflow：办事向导适用性校验（历史演示年度 / 模板学院等硬边界）
 - lookup_official_web：联网补查官网（本地不足时）
 
-场景工具（三个，见 scenario_tools.py）：
+场景工具（四个，见 scenario_tools.py）：
 - check_award_readiness：奖助学金申请核对（清单状态 + 官方入口）
 - triage_network_issue：宿舍/校园网络故障分诊（公告核对 + 自查步骤 + 报修草稿）
 - locate_campus_place：地点定位到 3D 沙盘（buildingId）
+- student_card_reissue：学生证/乘车优惠卡补办办事单（窗口/电话/待确认事项）
 
 工具结果返回给模型组织回复；发布层仅允许引用工具返回的证据 ID（校验集合由此产生）。
 场景工具返回的 action 由发布层校验后附到 ChatResponse.actions，前端渲染卡片。
@@ -26,7 +27,8 @@ from pydantic import Field
 
 from ..knowledge.loader import get_kb
 from ..knowledge.retriever import retrieve, detect_year
-from .scenario_tools import check_award_readiness, triage_network_issue, locate_campus_place
+from .scenario_tools import (check_award_readiness, triage_network_issue,
+                             locate_campus_place, student_card_reissue)
 
 logger = logging.getLogger("shzu.tools")
 
@@ -433,7 +435,7 @@ def _issuer_of_host(url: str) -> str:
 TOOLS = {t.name: t for t in (search_campus_knowledge, list_campus_colleges,
                               find_service_workflow, lookup_official_web,
                               check_award_readiness, triage_network_issue,
-                              locate_campus_place)}
+                              locate_campus_place, student_card_reissue)}
 TOOL_LIST = [search_campus_knowledge, list_campus_colleges, find_service_workflow,
              lookup_official_web, check_award_readiness, triage_network_issue,
-             locate_campus_place]
+             locate_campus_place, student_card_reissue]

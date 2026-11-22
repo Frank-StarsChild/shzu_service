@@ -95,8 +95,11 @@ BASE_PROMPT = """你是石河子大学校园服务智能体「石大智多星」
   正文据实分诊：校区或楼栋不清时，只问一个能帮助分诊的问题。
   报修只交付草稿与官方电话，不承诺代提交。
 - locate_campus_place：地点定位。涉及具体地点/楼栋（在哪、怎么去、哪里办）且可能已登记
-  （图书馆/行政楼/保卫部/学生公寓楼号等）时调用，传含地点的问句。
-  不展示路线长度/步行时间/楼层入口（无依据数据）；未登记楼栋只用文字位置。
+   （图书馆/行政楼/保卫部/学生公寓楼号等）时调用，传含地点的问句。
+   不展示路线长度/步行时间/楼层入口（无依据数据）；未登记楼栋只用文字位置。
+- student_card_reissue：学生证/乘车优惠卡补办办事单。用户问「学生证丢了去哪补」「乘车优惠卡怎么办」
+   时调用，传用户原话。返回从官方证据取值的窗口/楼栋/电话与「出发前需确认」事项；
+   材料清单与办公时间库内未确认时如实标注，不得写成已确认。
 - 本轮工具调用有上限：不需要证据的问题（问候/身份/能力/致谢/纯对话）不要调用工具。
 
 最终回复只输出一个 JSON 对象（不输出解释、链接或 Markdown）：
@@ -459,6 +462,32 @@ def _validated_actions(state: ChatState, kb) -> tuple:
             })
             if card and card["announcement"].get("evidence_id"):
                 extra_ids.append(card["announcement"]["evidence_id"])
+        elif kind == "errand":
+            # 办事单：窗口/楼栋/电话等服务端校验存在；值全部保留工具返回
+            pl = act.get("place") or {}
+            if not pl.get("building") and not pl.get("building_id"):
+                continue
+            card.update({
+                "title": str(act.get("title") or "办事单")[:60],
+                "place": {
+                    "building": str(pl.get("building") or "")[:40],
+                    "room": (str(pl.get("room"))[:20] if pl.get("room") else None),
+                    "building_id": pl.get("building_id") or None,
+                    "campus": str(pl.get("campus") or "中区")[:12],
+                    "evidence_id": pl.get("evidence_id") if pl.get("evidence_id") in verified else None,
+                },
+                "dept": str(act.get("dept") or "")[:40] or None,
+                "service_scope": str(act.get("service_scope") or "")[:60] or None,
+                "phone": act.get("phone"),
+                "hours": (str(act.get("hours") or "")[:40] or None),
+                "materials_confirmed": bool(act.get("materials_confirmed")),
+                "confirms": [{"text": str(c.get("text") or "")[:160],
+                              "state": c.get("state") if c.get("state") in
+                              ("needs_user", "needs_office", "needs_college") else "needs_user"}
+                             for c in (act.get("confirms") or [])][:5],
+            })
+            if card and card["place"].get("evidence_id"):
+                extra_ids.append(card["place"]["evidence_id"])
         elif kind == "place":
             matches = []
             for m in act.get("matches") or []:

@@ -42,9 +42,9 @@ test.beforeEach(async ({ page }) => {
 test("1 印章已加载，显示 38×38", async ({ page }) => {
   await page.goto("/stage?3d=1&intro=0");
   await waitReady(page);
-  const nw = await page.locator('[data-testid="stage-seal"]').evaluate((el) => (el as HTMLImageElement).naturalWidth);
+  const nw = await page.locator('[data-testid="app-brand-seal"]').evaluate((el) => (el as HTMLImageElement).naturalWidth);
   expect(nw).toBeGreaterThan(0);
-  const box = await page.locator('[data-testid="stage-seal"]').boundingBox();
+  const box = await page.locator('[data-testid="app-brand-seal"]').boundingBox();
   expect(box?.width).toBe(38);
   expect(box?.height).toBe(38);
 });
@@ -53,7 +53,7 @@ test("2 顶栏名称宋体；题字含「校园办事」，大标题 62px", asyn
   await page.goto("/stage?3d=1&intro=0");
   await waitReady(page);
   await expect(page.locator('[data-testid="stage-top"]')).toContainText("石大智多星");
-  const font = await page.locator('[data-testid="stage-top"] .stage-top-name').evaluate(
+  const font = await page.locator('[data-testid="stage-top"] .app-brand-name').evaluate(
     (el) => getComputedStyle(el).fontFamily
   );
   expect(/["']?Songti SC/i.test(font)).toBe(true);
@@ -120,18 +120,18 @@ test("7 署名含「非测绘成果」", async ({ page }) => {
   await expect(page.locator('[data-testid="stage-caption"]')).toContainText("非测绘成果");
 });
 
-test("8 普通版不受影响：/classic 的 body 底色仍是 swiss.css 的暖白", async ({ page }) => {
+test("8 普通版不受影响：/classic 的 body 底色仍是日间暖纸白", async ({ page }) => {
   await page.goto("/classic");
   const bg = await page.evaluate(() => getComputedStyle(document.body).backgroundColor);
-  // swiss.css 拟物纸面层一直是 body { background-color: #fbfaf8 }（不许碰它）；
+  // 全站主题统一后，普通版底色来自 theme.css 的日间令牌 --bg #f6f3ea（暖纸白）；
   // stage.css 的变量都在 .stage 之下，不能改动这个底色。
-  expect(bg).toBe("rgb(251, 250, 248)");
+  expect(bg).toBe("rgb(246, 243, 234)");
 });
 
 test("9 ?3d=0 静态模式下外壳零件仍然成立", async ({ page }) => {
   await page.goto("/stage?3d=0");
   await page.waitForTimeout(800);
-  const nw = await page.locator('[data-testid="stage-seal"]').evaluate((el) => (el as HTMLImageElement).naturalWidth);
+  const nw = await page.locator('[data-testid="app-brand-seal"]').evaluate((el) => (el as HTMLImageElement).naturalWidth);
   expect(nw).toBeGreaterThan(0);
   await expect(page.locator('[data-testid="stage-top"]')).toContainText("石大智多星");
   await expect(page.locator('[data-testid="stage-hero"]')).toContainText("校园办事");

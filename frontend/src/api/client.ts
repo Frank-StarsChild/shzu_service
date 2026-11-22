@@ -160,6 +160,19 @@ export type ChecklistItem = {
   evidence_ids: string[];
 };
 
+export type ErrandConfirmItem = {
+  text: string;
+  state: "needs_user" | "needs_office" | "needs_college";
+};
+
+export type ErrandPlace = {
+  building?: string | null;
+  room?: string | null;
+  building_id?: string | null;
+  campus?: string | null;
+  evidence_id?: string | null;
+};
+
 export type ActionEntry = {
   label?: string | null;
   phone?: string | null;
@@ -169,7 +182,15 @@ export type ActionEntry = {
   evidence_ids: string[];
 };
 
-export type ActionFlowRef = { flow_id: string; name?: string; historical?: boolean; note?: string | null };
+export type ActionFlowRef = {
+  flow_id: string;
+  name?: string;
+  historical?: boolean;
+  note?: string | null;
+  /** 会话里学生自述过的身份事实（本科/二年级等），进入向导时作为待确认预设 */
+  preset_slots?: Record<string, any> | null;
+  preset_note?: string | null;
+};
 
 export type PlaceMatch = {
   building_id?: string | null;
@@ -181,7 +202,7 @@ export type PlaceMatch = {
 };
 
 export type ActionCard = {
-  kind: "checklist" | "repair" | "place";
+  kind: "checklist" | "repair" | "place" | "errand";
   title?: string | null;
   award?: string | null;
   year?: number | null;
@@ -197,6 +218,14 @@ export type ActionCard = {
   ambiguous?: boolean;
   matches?: PlaceMatch[];
   fallback_text?: string | null;
+  // errand（办事单）：地点/部门/电话/待确认事项全部来自后端工具核算的证据
+  place?: ErrandPlace | null;
+  dept?: string | null;
+  service_scope?: string | null;
+  phone?: string | null;
+  hours?: string | null;
+  materials_confirmed?: boolean;
+  confirms?: ErrandConfirmItem[];
 };
 
 export type ChatResponse = {
@@ -210,7 +239,8 @@ export type ChatResponse = {
   reason_code?: string | null;
   unknown_fields: string[];
   message?: string | null;
-  workflow?: { flow_id: string; flow_version: string; scope: any; historical: boolean; name: string; summary: string };
+  workflow?: { flow_id: string; flow_version: string; scope: any; historical: boolean; name: string; summary: string;
+                preset_slots?: Record<string, any> | null; preset_note?: string | null };
   citations: CitationRef[];
   actions?: ActionCard[];
   tools_used?: string[];
@@ -234,6 +264,7 @@ export type SlotSpec = {
   required: boolean;
   personal: boolean;
   note?: string | null;
+  group?: string | null;
 };
 
 export type RuleResult = {
@@ -251,7 +282,7 @@ export type WorkflowDetail = {
   historical: boolean;
   demo_notice?: string | null;
   scope: any;
-  steps: { key: string; name: string; desc: string; evidence_ids: string[] }[];
+  steps: { key: string; name: string; desc: string; slot_keys?: string[]; evidence_ids: string[] }[];
   slots: SlotSpec[];
   rule_results: RuleResult[];
   materials: { name: string; status: string; submit_or_keep: string; evidence_ids: string[] }[];

@@ -26,11 +26,16 @@ const chat = useChatStore();
 // W7：星星拖尾的共享容器（ZdxStar 写、SceneSigns 画）
 provide(STAR_TRAIL_KEY, ref<StarTrailState | null>(null));
 
-const heroVisible = computed(() => store.mode === "home");
+const heroVisible = computed(() => store.mode === "home" && !answerPanelOpen.value);
 const heroStyle = computed(() => ({
   opacity: heroVisible.value ? "1" : "0",
   pointerEvents: "none" as const,
 }));
+
+// W11：回答面板展开时题字与遮罩一起淡出给沙盘让位（回答没定位到楼时舞台仍处于
+// home，题字本会继续显示）；收起后若仍在 home，题字再回来。mode 非 home 时原有规则不变。
+const hasAssistant = computed(() => chat.turns.some((t) => t.role === "assistant"));
+const answerPanelOpen = computed(() => hasAssistant.value && store.answerOpen);
 
 // W3：题字跟着沙盘换（第 4.5 节）——当前包是默认包时用固定文案；
 // 不是默认包时，小题写「石河子大学」，大标题写包名，说明写包的 note。
@@ -65,8 +70,9 @@ watch(lastAssistantKey, () => {
   }
   if (!turn) return;
   if (turn.status === "pending") {
-    // 开始新的一问：复位（上一问的楼不能还红着）
+    // 开始新的一问：复位（上一问的楼不能还红着）；面板重新展开以便看到进度
     activeNewRequestId = turn.request_id;
+    stageAutoOpen();
     void store.showAnswer(null);
   } else if (turn.status === "done" && turn.request_id === activeNewRequestId) {
     activeNewRequestId = null;
@@ -74,6 +80,12 @@ watch(lastAssistantKey, () => {
     void store.showAnswer(response ? resolvePlace(response, places ?? EMPTY_PLACES) : null);
   }
 });
+
+/** W11：用户主动发问（新问题/选追问项/重试）→ 重新展开回答面板；
+ *  后台返回结果时不动它（用户已经收起的话保持收起） */
+function stageAutoOpen() {
+  if (!store.answerOpen) store.setAnswerOpen(true);
+}
 
 onMounted(async () => {
   // W8：舞台页锁住页面滚动（滚轮留给沙盘缩放）；离开时恢复。Esc 退出观景。
@@ -146,7 +158,7 @@ onBeforeUnmount(() => {
     >退出观景</button>
 
     <p class="stage-caption tiny" data-testid="stage-caption">
-      校园示意模型，依据公开资料复原，非测绘成果；办事地点以学校官方通知为准。底图数据 © OpenStreetMap contributors
+      当前场景为夜景示意；校园示意模型，依据公开资料复原，非测绘成果；办事地点以学校官方通知为准。底图数据 © OpenStreetMap contributors
     </p>
   </StageCanvas>
 </template>

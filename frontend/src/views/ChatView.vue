@@ -7,6 +7,7 @@ import type { CitationRef, ChatResponse } from "@/api/client";
 import AnswerBlocks from "@/components/AnswerBlocks.vue";
 import EvidencePanel from "@/components/EvidencePanel.vue";
 import ActionCards from "@/components/ActionCards.vue";
+import { setFlowPreset } from "@/stores/flowDraft";
 
 const route = useRoute();
 const router = useRouter();
@@ -49,6 +50,12 @@ function onCite(t: ChatTurn, id: string) {
 
 function closeMobileCite() {
   mobileCite.value = null;
+}
+
+/** 进入向导前登记聊天里学生自述过的身份事实（本科/二年级等），向导首屏待确认带入 */
+function enterWorkflow(flowId: string, presetSlots?: Record<string, any> | null, presetNote?: string | null) {
+  setFlowPreset(flowId, presetSlots, presetNote);
+  router.push(`/workflows/${flowId}`);
 }
 
 /** 纯聊天式回答：无任何引用且全部为 note 块 → 直接显示正文，不套结构卡片 */
@@ -165,13 +172,13 @@ const SAMPLES_EMPTY = [
 
 <template>
   <div class="page shell" style="padding-top: var(--gap-5);">
-    <!-- 页头 -->
-    <div class="page-head" style="display: grid; grid-template-columns: 1fr auto; align-items: end;">
+    <!-- 页头：标题左、「新建会话」放标题行右侧；窄屏操作换到标题下方仍可见 -->
+    <div class="page-head chat-head">
       <div>
         <p class="index">02 — 校园对话</p>
         <h1 class="h1">问答 · 每条结论都有出处</h1>
       </div>
-      <div style="display: flex; gap: var(--gap-3); align-items: center;">
+      <div class="chat-head-actions">
         <button type="button" class="btn-sm" @click="newSession">新建会话</button>
       </div>
     </div>
@@ -349,7 +356,7 @@ const SAMPLES_EMPTY = [
                     <h3 class="h3">{{ t.response.workflow.name }}</h3>
                     <p class="muted small" style="margin: 0; white-space: pre-line;">{{ t.response.workflow.summary }}</p>
                     <button type="button" class="btn-red btn-sm" style="align-self: flex-start;"
-                            @click="router.push(`/workflows/${t.response!.workflow!.flow_id}`)">进入向导 →</button>
+                            @click="enterWorkflow(t.response!.workflow!.flow_id, t.response!.workflow!.preset_slots, t.response!.workflow!.preset_note)">进入向导 →</button>
                   </div>
                 </div>
 
@@ -395,6 +402,22 @@ const SAMPLES_EMPTY = [
 </template>
 
 <style scoped>
+/* ---------- 页头标题行：1fr + 右侧操作；窄屏换行保持顺序 ---------- */
+.chat-head {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: end;
+  gap: var(--gap-4) var(--gap-5);
+}
+.chat-head-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--gap-3);
+}
+@media (max-width: 720px) {
+  .chat-head { grid-template-columns: 1fr; }
+}
+
 /* ---------- 本页消息行布局（覆盖全局 .turn 的 88px 角色栏双栏） ----------
    用户气泡靠聊天列右边；助手正文与操作在左。角色标识仅保留给读屏。 */
 .timeline .turn {

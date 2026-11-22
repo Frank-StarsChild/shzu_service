@@ -13,7 +13,9 @@ export const EMPTY_PLACES: Places = {
 };
 
 /**
- * 纯函数，严格按 5.5 节四条规则：
+ * 纯函数，按定位证据强度从高到低：
+ * 0. actions 里工具核算过的定位（place 卡 matches[0].building_id、errand 卡 place.building_id）
+ *    ——后端已把办事窗口映射到沙盘楼栋，明确可靠，优先于文字猜测；
  * 1. 只处理 status === 'answer'，别的状态返回 null。
  * 2. 按顺序看 answer.blocks 每段 text：找出 names 中出现过的名字，取出现位置
  *    最靠前的；位置相同取更长的。选中的名字对到楼号就用它；对到 null（位置
@@ -23,6 +25,15 @@ export const EMPTY_PLACES: Places = {
  */
 export function resolvePlace(response: ChatResponse, places: Places): string | null {
   if (response.status !== "answer") return null;
+  for (const a of response.actions ?? []) {
+    if (a.kind === "place") {
+      const bid = a.matches?.find((m) => m.building_id)?.building_id;
+      if (bid) return bid;
+    }
+    if (a.kind === "errand" && a.place?.building_id) {
+      return a.place.building_id;
+    }
+  }
   for (const block of response.answer?.blocks ?? []) {
     const text = block.text ?? "";
     let chosen: { name: string; id: string | null; pos: number } | null = null;

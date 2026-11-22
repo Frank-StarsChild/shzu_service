@@ -29,6 +29,11 @@ export const useStageStore = defineStore("stage", {
     otherPack: null as StageOtherPack,
     /** 当前选中的服务板块（W9 才用） */
     board: null as string | null,
+    /** W11：回答面板是否展开。只改显示状态：会话、request_id、生成进度、
+     *  已展开引用与滚动位置都在收起时保留；用户新发问题时重新展开。 */
+    answerOpen: true,
+    /** W11：界面请求重置视角的序号（StageCanvas 监听后把镜头飞回当前状态的推荐机位） */
+    resetViewSeq: 0,
     /** W8：进观景前的模式（退出时恢复） */
     tourPrev: null as StageMode | null,
     /** packs.json 的包表与 default（loadCampuses 后可用；加载前 default 取默认包名） */
@@ -100,6 +105,14 @@ export const useStageStore = defineStore("stage", {
     /** StageCanvas 同步场景就绪状态（ready 为 true；换包/加载中/出错为 false） */
     setSceneReady(on: boolean) {
       this.sceneReady = on;
+    },
+    /** W11：收起/展开右侧回答面板（不动校区、定位、对话与生成状态） */
+    setAnswerOpen(open: boolean) {
+      this.answerOpen = open;
+    },
+    /** W11：「重置视角」——只改镜头，不动校区选择、高亮与对话 */
+    requestResetView() {
+      this.resetViewSeq += 1;
     },
     goHome() {
       this.mode = "home";

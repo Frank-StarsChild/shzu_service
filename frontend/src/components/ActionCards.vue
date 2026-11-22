@@ -5,6 +5,7 @@
 import { computed, ref } from "vue";
 import { useRouter } from "vue-router";
 import type { ActionCard, ChecklistItem, PlaceMatch } from "@/api/client";
+import { setFlowPreset } from "@/stores/flowDraft";
 
 const props = defineProps<{ actions: ActionCard[] }>();
 const emit = defineEmits<{ (e: "cite", id: string): void }>();
@@ -43,6 +44,29 @@ const scopeText: Record<string, string> = {
   single: "仅我的设备",
   multi: "多台设备都断网",
   unknown: "范围未确认",
+};
+
+// 公告核对文案：库内命中 / 官网连不上 / 未找到公告 三种分开表达，不把连不上说成没有
+function announceText(a: ActionCard): string {
+  const ann = a.announcement;
+  if (!ann) return "";
+  if (ann.local) return "公告核对：库内命中，覆盖情况见下";
+  if (ann.web_state === "timeout" || ann.web_state === "error") return "官网暂时连不上，公告未能核实时以库内与自查为准";
+  if (ann.web_state === "lead") return "未找到直接覆盖的公告（官网有更新线索）";
+  return "未找到相关公告（不代表该区域无故障）";
+}
+
+/** 进入向导：登记聊天里学生自述过的身份事实（本科/二年级等），向导首屏待确认带入 */
+function enterFlow(flow: NonNullable<ActionCard["flow"]>) {
+  setFlowPreset(flow.flow_id, flow.preset_slots, flow.preset_note);
+  router.push(`/workflows/${flow.flow_id}`);
+}
+
+// errand 办事单：出发前确认事项的状态点色
+const CONFIRM_DOT: Record<string, string> = {
+  needs_user: "dot-needs_user",
+  needs_office: "dot-partial",
+  needs_college: "dot-partial",
 };
 
 // ---------- 沙盘定位 ----------
@@ -96,8 +120,8 @@ const mainActions = computed(() => props.actions.filter((a) => a.kind !== "place
             </div>
           </div>
           <div v-if="a.flow" class="act-actions">
-            <button type="button" class="btn-red btn-sm"
-                    @click="router.push(`/workflows/${a.flow.flow_id}`)">进入核对向导 →</button>
+            <button type="button" class="btn-red btn-sm" data-testid="flow-enter"
+                    @click="enterFlow(a.flow)">进入核对向导 →</button>
             <span v-if="a.flow.historical" class="tiny muted">（{{ a.flow.name }}，仅作历史参考）</span>
           </div>
         </div>
@@ -105,10 +129,9 @@ const mainActions = computed(() => props.actions.filter((a) => a.kind !== "place
 
       <template v-else-if="a.kind === 'repair'">
         <div class="box-head act-head">
-          <span class="label">{{ a.title || "网络故障分诊" }}</span>
-          <span v-if="a.announcement" class="tiny"
-                :class="{ 'st-ok-text': a.announcement.local, 'muted': !a.announcement.local }">
-            公告核对：{{ a.announcement.local ? "库内命中" : "未查到有效公告" }}
+          <span class="label">{{ a.title || "网络故障分类" }}</span>
+          <span v-if="a.announcement" class="tiny" :class="a.announcement.local ? 'st-ok-text' : 'muted'">
+            {{ announceText(a) }}
           </span>
         </div>
         <div class="box-body">
@@ -141,9 +164,71 @@ const mainActions = computed(() => props.actions.filter((a) => a.kind !== "place
           <div v-if="a.draft" class="act-draft">
             <div class="act-draft-head">
               <span class="label">报修草稿（未提交到任何系统）</span>
-              <button type="button" class="btn-sm" @click="copyDraft(a.draft)">{{ copied ? "已复制 ✓" : "复制草稿" }}</button>
+              <button type="button" class="btn-sm" data-testid="repair-copy" @click="copyDraft(a.draft)">
+                {{ copied ? "已复制报修草稿 ✓" : "复制报修草稿" }}
+              </button>
             </div>
             <pre class="tiny">{{ a.draft }}</pre>
+          </div>
+        </div>
+      </template>
+
+      <!-- 现场办事单：地点/部门/电话/待确认事项都来自证据（不写死前端） -->
+      <template v-else-if="a.kind === 'errand'">
+        <div class="box-head act-head">
+          <span class="label">{{ a.title || "现场办事单" }}</span>
+          <span class="tag tag-soft">到楼办理</span>
+        </div>
+        <div class="box-body errand-body" data-testid="errand-card">
+          <!-- ① 具体地点：房间号 + 楼名放大字号，一眼能看清去哪 -->
+          <div class="errand-block errand-place">
+            <span class="label">具体地点</span>
+            <p class="errand-loc">
+              <strong>{{ a.place?.building || "地点待确认" }}</strong>
+              <strong v-if="a.place?.room" class="errand-room" data-testid="errand-room">{{ a.place.room }}</strong>
+            </p>
+            <div class="errand-place-meta">
+              <span v-if="a.place?.campus" class="tiny muted">{{ a.place.campus }}校区</span>
+              <button v-if="a.place?.building_id" type="button" class="btn-sm" data-testid="errand-sandbox"
+                      @click="router.push({ path: '/', query: { focus: a.place!.building_id! } })">在沙盘查看</button>
+              <button v-if="a.place?.evidence_id" type="button" class="ref-mini"
+                      :title="`查看证据 ${a.place.evidence_id}`"
+                      @click="emit('cite', a.place!.evidence_id!)">{{ a.place.evidence_id }}</button>
+            </div>
+          </div>
+
+          <!-- ② 负责部门 -->
+          <div class="errand-block">
+            <span class="label">负责部门</span>
+            <p class="small errand-strong">{{ a.dept || "以现场公示为准" }}
+              <span v-if="a.service_scope" class="muted">· {{ a.service_scope }}</span>
+            </p>
+          </div>
+
+          <!-- ③ 电话 / 办公时间（从证据取值，没有就如实说待确认） -->
+          <div class="errand-block">
+            <span class="label">电话 / 办公时间</span>
+            <p class="small" style="margin: 4px 0 0; display: flex; gap: 12px; flex-wrap: wrap; align-items: baseline;">
+              <a v-if="a.phone" class="errand-phone mono" data-testid="errand-phone"
+                 :href="`tel:${a.phone.replace(/[^0-9+]/g, '')}`">{{ a.phone }}</a>
+              <span v-else class="muted">电话未在证据中登记 → 去电前先看下方「出发前确认」</span>
+              <span v-if="a.hours">办公时间：{{ a.hours }}</span>
+              <span v-else class="tiny muted">办公时间待向办公室确认</span>
+            </p>
+          </div>
+
+          <!-- ④ 出发前确认事项（库内没依据的部分如实标注，不臆造） -->
+          <div class="errand-block errand-confirms" data-testid="errand-confirms">
+            <span class="label">出发前确认事项</span>
+            <ul v-if="a.confirms?.length" class="ck-list tiny" style="margin-top: 4px;">
+              <li v-for="(c, i) in a.confirms" :key="i" class="ck-check">
+                <span class="ck-dot" :class="CONFIRM_DOT[c.state] || 'dot-not_found'"></span>
+                <span class="muted">{{ c.text }}</span>
+              </li>
+            </ul>
+            <p v-if="a.materials_confirmed === false" class="tiny" style="margin: 6px 0 0; color: var(--warn);">
+              补办材料需向办公室确认，请先电话核实后再去，避免白跑。
+            </p>
           </div>
         </div>
       </template>
@@ -172,14 +257,15 @@ const mainActions = computed(() => props.actions.filter((a) => a.kind !== "place
 
 .ck-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
 .ck-item { display: flex; gap: 10px; align-items: flex-start; }
-.ck-chip {
+  .ck-chip {
   flex: 0 0 auto; min-width: 72px; text-align: center;
   font-size: 12px; padding: 2px 8px; border: 1px solid var(--line-soft);
 }
-.st-ok { color: #0a7a3d; border-color: #0a7a3d55; background: #f2fbf6; }
-.st-user { color: var(--red); border-color: var(--red); background: #fff5f5; }
-.st-college { color: #6b5b00; border-color: #b09a2a66; background: #fffdf0; }
-.st-web { color: #0b4f8a; border-color: #0b4f8a66; background: #f0f7ff; }
+/* 状态色走全站主题令牌：日夜各自的可读文字/底色对 */
+.st-ok { color: var(--ok); border-color: color-mix(in srgb, var(--ok) 45%, transparent); background: var(--ok-bg); }
+.st-user { color: var(--err); border-color: color-mix(in srgb, var(--err) 45%, transparent); background: var(--err-bg); }
+.st-college { color: var(--warn); border-color: color-mix(in srgb, var(--warn) 45%, transparent); background: var(--warn-bg); }
+.st-web { color: var(--info); border-color: color-mix(in srgb, var(--info) 45%, transparent); background: var(--info-bg); }
 .ck-text { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
 
 .ck-refs { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 2px; }
@@ -197,13 +283,13 @@ const mainActions = computed(() => props.actions.filter((a) => a.kind !== "place
 }
 .act-actions { margin-top: 10px; display: flex; gap: 10px; align-items: center; }
 
-.ck-check { display: flex; gap: 8px; align-items: baseline; }
-.ck-dot { flex: 0 0 auto; width: 8px; height: 8px; border-radius: 50%; display: inline-block; position: relative; top: -1px; }
-.dot-done { background: #0a7a3d; }
-.dot-not_found { background: #999; }
-.dot-partial { background: #b09a2a; }
-.dot-needs_user { background: var(--red); }
-.st-ok-text { color: #0a7a3d; }
+  .ck-check { display: flex; gap: 8px; align-items: baseline; }
+  .ck-dot { flex: 0 0 auto; width: 8px; height: 8px; border-radius: 50%; display: inline-block; position: relative; top: -1px; }
+  .dot-done { background: var(--ok); }
+  .dot-not_found { background: var(--text-3); }
+  .dot-partial { background: var(--warn); }
+  .dot-needs_user { background: var(--err); }
+  .st-ok-text { color: var(--ok); }
 
 .act-tags { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 8px; }
 
@@ -216,6 +302,19 @@ const mainActions = computed(() => props.actions.filter((a) => a.kind !== "place
   margin: 0; padding: 10px 12px; font-size: 12px; line-height: 1.6;
   white-space: pre-wrap; word-break: break-word;
 }
+
+/* errand 办事单：地点/房间大字优先，其次部门、电话，最后待确认 */
+.errand-body { display: flex; flex-direction: column; gap: 12px; }
+.errand-block { display: flex; flex-direction: column; gap: 4px; }
+.errand-block > .label { font-size: 11px; }
+.errand-place { border: 1px solid var(--line-soft); background: var(--paper-2); padding: 10px 12px; }
+.errand-loc { margin: 0; display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.errand-loc strong:first-child { font-size: 19px; letter-spacing: 0.02em; }
+.errand-room { font-size: 22px !important; color: var(--red); font-family: var(--mono, monospace); }
+.errand-place-meta { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-top: 2px; }
+.errand-strong { margin: 2px 0 0; font-weight: 700; }
+.errand-phone { font-size: 16px; font-weight: 700; color: var(--red); text-decoration: underline; }
+.errand-confirms { border-top: 1px dashed var(--line-soft); padding-top: 10px; }
 
 .place-card {
   margin-top: 8px; display: flex; flex-wrap: wrap; gap: 8px; align-items: center;

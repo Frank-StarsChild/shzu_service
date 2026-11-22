@@ -161,6 +161,17 @@ const scaleLabel = computed(() => meta.value?.look.hud.scaleLabel ?? "");
   flex-direction: column;
   gap: 3px;
 }
+/* 日间：读数/比例尺悬在（恒为夜景的）画布上，给纸色衬底保证可读；
+   夜间保持原样（月白文字直落在墨色画布上） */
+html[data-theme="light"] .stage-read,
+html[data-theme="light"] .stage-scale {
+  background: var(--stage-chrome-bg);
+  border: 1px solid var(--stage-chrome-border);
+  padding: 8px 12px;
+}
+html[data-theme="light"] .stage-scale {
+  padding: 6px 10px;
+}
 .stage-read-title {
   font-family: var(--st-song);
   font-weight: 600;
