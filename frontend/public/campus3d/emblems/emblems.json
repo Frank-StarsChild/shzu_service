@@ -1,0 +1,735 @@
+{
+ "version": "v4",
+ "size": 256,
+ "colleges": [
+  {
+   "no": 1,
+   "name": "化学化工学院",
+   "short": "化工",
+   "zone": "ZQ",
+   "buildingIds": [
+    "ZQ-B032",
+    "ZQ-B033"
+   ],
+   "located": true,
+   "source": "化学化工学院.jpg",
+   "sourcePx": [
+    2368,
+    2368
+   ],
+   "tone": "#005097",
+   "inkShare": 0.652,
+   "color": "emblems/01.webp",
+   "mask": "emblems/01-mask.png",
+   "kind": "emblem",
+   "year": 2005,
+   "note": null,
+   "dial": {
+    "slot": 7,
+    "mountain": "乙",
+    "deg": 105,
+    "bearing": 194.1,
+    "distance": 331,
+    "from": "scene"
+   }
+  },
+  {
+   "no": 2,
+   "name": "机械电气工程学院",
+   "short": "机电",
+   "zone": "BY",
+   "buildingIds": [
+    "BY-B029"
+   ],
+   "located": true,
+   "source": "机械电气工程学院.jpg",
+   "sourcePx": [
+    452,
+    452
+   ],
+   "tone": "#184279",
+   "inkShare": 0.557,
+   "color": "emblems/02.webp",
+   "mask": "emblems/02-mask.png",
+   "kind": "emblem",
+   "year": null,
+   "note": null,
+   "dial": {
+    "slot": 0,
+    "mountain": "子",
+    "deg": 0,
+    "bearing": 355.8,
+    "distance": 809,
+    "from": "scene"
+   }
+  },
+  {
+   "no": 3,
+   "name": "水利建筑工程学院",
+   "short": "水建",
+   "zone": "BY",
+   "buildingIds": [
+    "BY-B029"
+   ],
+   "located": true,
+   "source": "水利建筑工程学院.jpg",
+   "sourcePx": [
+    640,
+    640
+   ],
+   "tone": "#05c532",
+   "inkShare": 0.645,
+   "color": "emblems/03.webp",
+   "mask": "emblems/03-mask.png",
+   "kind": "emblem",
+   "year": null,
+   "note": null,
+   "dial": {
+    "slot": 1,
+    "mountain": "癸",
+    "deg": 15,
+    "bearing": 355.8,
+    "distance": 809,
+    "from": "scene"
+   }
+  },
+  {
+   "no": 4,
+   "name": "食品学院",
+   "short": "食品",
+   "zone": "BQ",
+   "buildingIds": [
+    "BQ-B025",
+    "BQ-B022"
+   ],
+   "located": true,
+   "source": "食品学院.jpg",
+   "sourcePx": [
+    640,
+    640
+   ],
+   "tone": "#34bf1d",
+   "inkShare": 0.524,
+   "color": "emblems/04.webp",
+   "mask": "emblems/04-mask.png",
+   "kind": "emblem",
+   "year": 1985,
+   "note": null,
+   "dial": {
+    "slot": 3,
+    "mountain": "艮",
+    "deg": 45,
+    "bearing": 352.4,
+    "distance": 188,
+    "from": "scene"
+   }
+  },
+  {
+   "no": 5,
+   "name": "信息科学与技术学院（网络空间安全学院）",
+   "short": "信息",
+   "zone": "BQ",
+   "buildingIds": [
+    "BQ-B013"
+   ],
+   "located": true,
+   "source": "信息科学与技术学院.jpg",
+   "sourcePx": [
+    1280,
+    1280
+   ],
+   "tone": "#3345e5",
+   "inkShare": 0.475,
+   "color": "emblems/05.webp",
+   "mask": "emblems/05-mask.png",
+   "kind": "emblem",
+   "year": 1984,
+   "note": null,
+   "dial": {
+    "slot": 21,
+    "mountain": "乾",
+    "deg": 315,
+    "bearing": 320.3,
+    "distance": 525,
+    "from": "scene"
+   }
+  },
+  {
+   "no": 6,
+   "name": "农学院",
+   "short": "农学",
+   "zone": "BY",
+   "buildingIds": [
+    "BY-B032",
+    "BY-B018"
+   ],
+   "located": true,
+   "source": "农学院.jpg",
+   "sourcePx": [
+    640,
+    640
+   ],
+   "tone": "#02853d",
+   "inkShare": 0.675,
+   "color": "emblems/06.webp",
+   "mask": "emblems/06-mask.png",
+   "kind": "emblem",
+   "year": 1959,
+   "note": null,
+   "dial": {
+    "slot": 23,
+    "mountain": "壬",
+    "deg": 345,
+    "bearing": 344.7,
+    "distance": 834,
+    "from": "scene"
+   }
+  },
+  {
+   "no": 7,
+   "name": "动物科技学院",
+   "short": "动科",
+   "zone": "BY",
+   "buildingIds": [
+    "BY-B027"
+   ],
+   "located": true,
+   "source": "动物科技学院.jpg",
+   "sourcePx": [
+    640,
+    640
+   ],
+   "tone": "#921d23",
+   "inkShare": 0.585,
+   "color": "emblems/07.webp",
+   "mask": "emblems/07-mask.png",
+   "kind": "emblem",
+   "year": 1959,
+   "note": null,
+   "dial": {
+    "slot": 22,
+    "mountain": "亥",
+    "deg": 330,
+    "bearing": 341.2,
+    "distance": 840,
+    "from": "scene"
+   }
+  },
+  {
+   "no": 8,
+   "name": "医学院",
+   "short": "医学",
+   "zone": "NQ",
+   "buildingIds": [
+    "NQ-B012",
+    "NQ-B009",
+    "NQ-B013",
+    "NQ-B015",
+    "NQ-B010"
+   ],
+   "located": true,
+   "source": "医学院.jpg",
+   "sourcePx": [
+    305,
+    305
+   ],
+   "tone": "#372f79",
+   "inkShare": 0.578,
+   "color": "emblems/08.webp",
+   "mask": "emblems/08-mask.png",
+   "kind": "emblem",
+   "year": 1949,
+   "note": null,
+   "dial": {
+    "slot": 14,
+    "mountain": "未",
+    "deg": 210,
+    "bearing": 209.6,
+    "distance": 1093,
+    "from": "scene"
+   }
+  },
+  {
+   "no": 9,
+   "name": "药学院",
+   "short": "药学",
+   "zone": "NQ",
+   "buildingIds": [
+    "NQ-B016",
+    "NQ-B013"
+   ],
+   "located": true,
+   "source": "药学院.jpg",
+   "sourcePx": [
+    545,
+    545
+   ],
+   "tone": "#034d02",
+   "inkShare": 0.573,
+   "color": "emblems/09.webp",
+   "mask": "emblems/09-mask.png",
+   "kind": "emblem",
+   "year": null,
+   "note": null,
+   "dial": {
+    "slot": 15,
+    "mountain": "坤",
+    "deg": 225,
+    "bearing": 210.6,
+    "distance": 1174,
+    "from": "scene"
+   }
+  },
+  {
+   "no": 10,
+   "name": "生命科学学院",
+   "short": "生科",
+   "zone": "BQ",
+   "buildingIds": [
+    "BQ-B110",
+    "ZQ-B031"
+   ],
+   "located": true,
+   "source": "生命科学学院.jpg",
+   "sourcePx": [
+    639,
+    639
+   ],
+   "tone": "#787878",
+   "inkShare": 0.41,
+   "color": "emblems/10.webp",
+   "mask": "emblems/10-mask.png",
+   "kind": "emblem",
+   "year": null,
+   "note": null,
+   "dial": {
+    "slot": 20,
+    "mountain": "戌",
+    "deg": 300,
+    "bearing": 286.0,
+    "distance": 417,
+    "from": "scene"
+   }
+  },
+  {
+   "no": 11,
+   "name": "理学院",
+   "short": "理学",
+   "zone": "ZQ",
+   "buildingIds": [
+    "ZQ-B020"
+   ],
+   "located": true,
+   "source": "理学院.jpg",
+   "sourcePx": [
+    196,
+    196
+   ],
+   "tone": "#253a54",
+   "inkShare": 0.611,
+   "color": "emblems/11.webp",
+   "mask": "emblems/11-mask.png",
+   "kind": "emblem",
+   "year": null,
+   "note": "原图只有 196×196，256 是放大的",
+   "dial": {
+    "slot": 18,
+    "mountain": "酉",
+    "deg": 270,
+    "bearing": 234.3,
+    "distance": 358,
+    "from": "scene"
+   }
+  },
+  {
+   "no": 12,
+   "name": "经济与管理学院",
+   "short": "经管",
+   "zone": "DQ",
+   "buildingIds": [
+    "DQ-B009"
+   ],
+   "located": true,
+   "source": "经济与管理学院.jpg",
+   "sourcePx": [
+    640,
+    640
+   ],
+   "tone": "#19823d",
+   "inkShare": 0.475,
+   "color": "emblems/12.webp",
+   "mask": "emblems/12-mask.png",
+   "kind": "emblem",
+   "year": 1959,
+   "note": null,
+   "dial": {
+    "slot": 5,
+    "mountain": "甲",
+    "deg": 75,
+    "bearing": 81.0,
+    "distance": 650,
+    "from": "scene"
+   }
+  },
+  {
+   "no": 13,
+   "name": "师范学院",
+   "short": "师范",
+   "zone": "JJ",
+   "buildingIds": [
+    "JJ-B018"
+   ],
+   "located": true,
+   "source": "师范学院.jpg",
+   "sourcePx": [
+    640,
+    640
+   ],
+   "tone": "#089140",
+   "inkShare": 0.548,
+   "color": "emblems/13.webp",
+   "mask": "emblems/13-mask.png",
+   "kind": "emblem",
+   "year": 1975,
+   "note": null,
+   "dial": {
+    "slot": 10,
+    "mountain": "巳",
+    "deg": 150,
+    "bearing": 170.8,
+    "distance": 7588,
+    "from": "geo"
+   }
+  },
+  {
+   "no": 14,
+   "name": "文学艺术学院（新闻传播学院）",
+   "short": "文艺",
+   "zone": "JJ",
+   "buildingIds": [
+    "JJ-B019"
+   ],
+   "located": true,
+   "source": "文学艺术学院.jpg",
+   "sourcePx": [
+    316,
+    316
+   ],
+   "tone": "#410408",
+   "inkShare": 0.461,
+   "color": "emblems/14.webp",
+   "mask": "emblems/14-mask.png",
+   "kind": "emblem",
+   "year": null,
+   "note": null,
+   "dial": {
+    "slot": 12,
+    "mountain": "午",
+    "deg": 180,
+    "bearing": 171.5,
+    "distance": 7580,
+    "from": "geo"
+   }
+  },
+  {
+   "no": 15,
+   "name": "马克思主义学院",
+   "short": "马院",
+   "zone": "ZQ",
+   "buildingIds": [
+    "ZQ-B014"
+   ],
+   "located": true,
+   "source": "马克思主义学院.jpg",
+   "sourcePx": [
+    1280,
+    1260
+   ],
+   "tone": "#971e28",
+   "inkShare": 0.478,
+   "color": "emblems/15.webp",
+   "mask": "emblems/15-mask.png",
+   "kind": "emblem",
+   "year": null,
+   "note": "图上只有「石河子大学 1949」，没有学院名，像是校徽，不像马克思主义学院自己的院徽；待确认",
+   "dial": {
+    "slot": 2,
+    "mountain": "丑",
+    "deg": 30,
+    "bearing": 245.0,
+    "distance": 319,
+    "from": "scene"
+   }
+  },
+  {
+   "no": 16,
+   "name": "法学院",
+   "short": "法学",
+   "zone": "ZQ",
+   "buildingIds": [
+    "ZQ-B018"
+   ],
+   "located": true,
+   "source": "法学院.jpg",
+   "sourcePx": [
+    640,
+    640
+   ],
+   "tone": "#a97b3f",
+   "inkShare": 0.495,
+   "color": "emblems/16.webp",
+   "mask": "emblems/16-mask.png",
+   "kind": "emblem",
+   "year": null,
+   "note": "原图是金色烫印的照片，不是电子稿；蒙版按金色笔画提取",
+   "dial": {
+    "slot": 6,
+    "mountain": "卯",
+    "deg": 90,
+    "bearing": 220.2,
+    "distance": 203,
+    "from": "scene"
+   }
+  },
+  {
+   "no": 17,
+   "name": "外国语学院",
+   "short": "外语",
+   "zone": "ZQ",
+   "buildingIds": [
+    "ZQ-B013"
+   ],
+   "located": true,
+   "source": "外国语学院.jpg",
+   "sourcePx": [
+    640,
+    640
+   ],
+   "tone": "#5ca6d0",
+   "inkShare": 0.366,
+   "color": "emblems/17.webp",
+   "mask": "emblems/17-mask.png",
+   "kind": "emblem",
+   "year": 2005,
+   "note": null,
+   "dial": {
+    "slot": 17,
+    "mountain": "庚",
+    "deg": 255,
+    "bearing": 252.2,
+    "distance": 428,
+    "from": "scene"
+   }
+  },
+  {
+   "no": 18,
+   "name": "体育学院",
+   "short": "体育",
+   "zone": "ZQ",
+   "buildingIds": [
+    "ZQ-B039",
+    "ZQ-B036",
+    "ZQ-B037"
+   ],
+   "located": true,
+   "source": "体育学院.jpg",
+   "sourcePx": [
+    80,
+    80
+   ],
+   "tone": "#f85957",
+   "inkShare": 0.752,
+   "color": "emblems/18.webp",
+   "mask": "emblems/18-mask.png",
+   "kind": "emblem+seal",
+   "year": null,
+   "note": "原图只有 80×80，不是圆形院徽，放大发糊；蒙版改用院名章，原色图只适合 40 像素以下，最好换一张清楚的",
+   "dial": {
+    "slot": 8,
+    "mountain": "辰",
+    "deg": 120,
+    "bearing": 192.5,
+    "distance": 528,
+    "from": "scene"
+   }
+  },
+  {
+   "no": 19,
+   "name": "继续教育学院",
+   "short": "继教",
+   "zone": "BQ",
+   "buildingIds": [
+    "BQ-B032"
+   ],
+   "located": true,
+   "color": null,
+   "mask": "emblems/19-mask.png",
+   "kind": "fallback",
+   "tone": "#e8c98a",
+   "source": null,
+   "year": null,
+   "note": "没有找到院徽，用院名章代替",
+   "dial": {
+    "slot": 19,
+    "mountain": "辛",
+    "deg": 285,
+    "bearing": 280.5,
+    "distance": 664,
+    "from": "scene"
+   }
+  },
+  {
+   "no": 20,
+   "name": "能源与材料学院",
+   "short": "能材",
+   "zone": "JJ",
+   "buildingIds": [
+    "JJ-B006"
+   ],
+   "located": true,
+   "source": "能源与材料学院.jpg",
+   "sourcePx": [
+    1280,
+    1280
+   ],
+   "tone": "#0f6ab3",
+   "inkShare": 0.739,
+   "color": "emblems/20.webp",
+   "mask": "emblems/20-mask.png",
+   "kind": "emblem",
+   "year": null,
+   "note": null,
+   "dial": {
+    "slot": 11,
+    "mountain": "丙",
+    "deg": 165,
+    "bearing": 167.8,
+    "distance": 7246,
+    "from": "geo"
+   }
+  },
+  {
+   "no": 21,
+   "name": "城市与环境学院",
+   "short": "城环",
+   "zone": "JJ",
+   "buildingIds": [
+    "JJ-B013"
+   ],
+   "located": true,
+   "source": "城市与环境学院.jpg",
+   "sourcePx": [
+    744,
+    726
+   ],
+   "tone": "#186765",
+   "inkShare": 0.633,
+   "color": "emblems/21.webp",
+   "mask": "emblems/21-mask.png",
+   "kind": "emblem",
+   "year": null,
+   "note": "原图右下角有图库水印，裁圆后已在圆外",
+   "dial": {
+    "slot": 9,
+    "mountain": "巽",
+    "deg": 135,
+    "bearing": 171.5,
+    "distance": 7429,
+    "from": "geo"
+   }
+  },
+  {
+   "no": 22,
+   "name": "公共卫生学院",
+   "short": "公卫",
+   "zone": "NQ",
+   "buildingIds": [
+    "NQ-B001"
+   ],
+   "located": false,
+   "source": "公共卫生学院.jpg",
+   "sourcePx": [
+    1290,
+    1280
+   ],
+   "tone": "#469858",
+   "inkShare": 0.683,
+   "color": "emblems/22.webp",
+   "mask": "emblems/22-mask.png",
+   "kind": "emblem",
+   "year": 1958,
+   "note": null,
+   "dial": {
+    "slot": 16,
+    "mountain": "申",
+    "deg": 240,
+    "bearing": 225.1,
+    "distance": 1155,
+    "from": "scene"
+   }
+  },
+  {
+   "no": 23,
+   "name": "临床医学院",
+   "short": "临床",
+   "zone": "FY",
+   "buildingIds": [
+    "FY-B041",
+    "FY-B040"
+   ],
+   "located": true,
+   "source": "临床医学院.jpg",
+   "sourcePx": [
+    640,
+    640
+   ],
+   "tone": "#288d54",
+   "inkShare": 0.37,
+   "color": "emblems/23.webp",
+   "mask": "emblems/23-mask.png",
+   "kind": "emblem",
+   "year": 1949,
+   "note": "图上是「石河子大学第一附属医院」的院徽（临床医学院和一附院同址）；待确认能不能代表临床医学院",
+   "dial": {
+    "slot": 13,
+    "mountain": "丁",
+    "deg": 195,
+    "bearing": 209.1,
+    "distance": 928,
+    "from": "scene"
+   }
+  },
+  {
+   "no": 24,
+   "name": "护理学院（筹）",
+   "short": "护理",
+   "zone": "HX",
+   "buildingIds": [],
+   "located": false,
+   "color": null,
+   "mask": "emblems/24-mask.png",
+   "kind": "fallback",
+   "tone": "#e8c98a",
+   "source": null,
+   "year": null,
+   "note": "没有找到院徽，用院名章代替",
+   "dial": {
+    "slot": 4,
+    "mountain": "寅",
+    "deg": 60,
+    "bearing": 180.0,
+    "distance": 0,
+    "from": "none"
+   }
+  }
+ ],
+ "dial": {
+  "mountains": "子癸丑艮寅甲卯乙辰巽巳丙午丁未坤申庚酉辛戌乾亥壬",
+  "stepDeg": 15,
+  "svg": "ui/dial.svg",
+  "viewBox": 1000,
+  "emblemRadius": 372,
+  "emblemSize": 76,
+  "note": "徽章放在半径 emblemRadius 的圆上（单位是 dial.svg 的 viewBox，盘面宽 1000），角度是 dial.deg，正北为 0、顺时针为正；整个盘面和徽章一起按 −方位角 旋转"
+ }
+}
