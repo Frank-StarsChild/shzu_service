@@ -16,6 +16,8 @@
   --st-paper: var(--stage-doc-paper);/* 宣纸：公文卡与用户问话（日夜同色，卡上墨字不变） */
   --st-paper-ink: var(--stage-doc-ink);
   --st-glass: var(--stage-glass);    /* 面板底色 */
+  /* 院徽的鎏金（ALIVE 3.1）：全站唯一金属渐变，只许用在院徽的鎏金样子上 */
+  --st-gilt: linear-gradient(135deg, #f7e6bd 0%, #e8c98a 38%, #b48a52 62%, #f0d6a0 100%);
 
   /* 三种字（3.2 节） */
   --st-song: "Songti SC", "STSong", "SimSun", "Noto Serif CJK SC", serif;
@@ -508,4 +510,24 @@ html[data-theme="light"] .stage .stage-caption {
 }
 .stage .stage-tour-exit:hover {
   border-color: var(--st-gold2);
+}
+
+/* ALIVE A1：?emblems=1 的自查排版（左上角、顶栏下面；仅开发自查，两行各 24 枚 40px） */
+.stage .stage-emblem-sheet {
+  position: fixed;
+  top: 72px;
+  left: 20px;
+  z-index: 6;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px;
+  background: var(--st-glass);
+  border: 1px solid var(--st-gold3);
+}
+.stage .stage-emblem-sheet .stage-emblem-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  max-width: 46vw;
 }

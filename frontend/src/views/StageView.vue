@@ -17,6 +17,8 @@ import { useStageStore } from "@/stores/stage";
 import { useChatStore } from "@/stores/chat";
 import { loadPlaces, type Places } from "@/stage/packs";
 import { resolvePlace, EMPTY_PLACES } from "@/stage/places";
+import { loadEmblems } from "@/stage/emblems";
+import EmblemMark from "@/components/stage/EmblemMark.vue";
 import "@/styles/stage.css";
 import { provide, ref } from "vue";
 
@@ -92,7 +94,20 @@ onMounted(async () => {
   document.body.style.overflow = "hidden";
   window.addEventListener("keydown", onKeyDown);
   places = await loadPlaces().catch(() => null);
+  // ALIVE A1： 拉 24 学院院徽清单。失败保持 null（后面的卡看到 null 一律不画院徽），
+  // 舞台照常工作，只在控制台留一条警告。
+  try {
+    store.emblems = await loadEmblems();
+  } catch (e) {
+    console.warn("[stage] emblems.json 加载失败，院徽不渲染", e);
+  }
 });
+
+// A1 自查：?emblems=1 时左上角临时排出两行院徽（锿金/本色），对照 emblems-contact.jpg
+// （响应式：emblems 异步载入后才亮出来；不带参数永不渲染）
+const emblemSheet = computed(
+  () => new URLSearchParams(location.search).get("emblems") === "1" && !!store.emblems
+);
 
 /** W8：Esc 退出观景 */
 function onKeyDown(e: KeyboardEvent) {
@@ -160,5 +175,17 @@ onBeforeUnmount(() => {
     <p class="stage-caption tiny" data-testid="stage-caption">
       当前场景为夜景示意；校园示意模型，依据公开资料复原，非测绘成果；办事地点以学校官方通知为准。底图数据 © OpenStreetMap contributors
     </p>
+
+    <!-- A1 自查排版：?emblems=1 时左上角两行各 24 枚（锿金/本色），仅开发自查用 -->
+    <div v-if="emblemSheet" class="stage-emblem-sheet" data-testid="stage-emblem-sheet">
+      <div class="stage-emblem-row">
+        <EmblemMark v-for="c in store.emblems?.colleges ?? []" :key="'g' + c.no"
+                    :college="c" :size="40" tone="gilt" />
+      </div>
+      <div class="stage-emblem-row">
+        <EmblemMark v-for="c in store.emblems?.colleges ?? []" :key="'c' + c.no"
+                    :college="c" :size="40" tone="color" />
+      </div>
+    </div>
   </StageCanvas>
 </template>

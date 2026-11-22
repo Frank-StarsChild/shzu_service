@@ -13,6 +13,7 @@ import { defineStore } from "pinia";
 import { watch } from "vue";
 import { loadPackIndex, loadPlaces, type CampusZoneRef, type Pack, type Places } from "@/stage/packs";
 import type { CampusMeta } from "@/campus3d/meta";
+import type { Emblems } from "@/stage/emblems";
 
 export type StageMode = "home" | "campus" | "answer" | "tour";
 
@@ -45,6 +46,10 @@ export const useStageStore = defineStore("stage", {
     /** places.json（W5；showAnswer 会先自动加载） */
     places: null as Places | null,
     placesLoaded: false,
+    /** ALIVE A1：24 学院院徽清单；加载失败保持 null，后面的卡看到 null 一律不画院徽 */
+    emblems: null as Emblems | null,
+    /** 当前选中的学院（显示本色的那一个）；goHome/pickCampus/switchPack 清成 null */
+    collegeNo: null as number | null,
     /** 当前包的元数据：换包的那一刻（switchPack）清成 null，新的取回后由 StageCanvas 放进来 */
     meta: null as CampusMeta | null,
     /** 场景是否就绪（StageCanvas 同步进来；换包/加载中/出错为 false）。
@@ -120,6 +125,7 @@ export const useStageStore = defineStore("stage", {
       this.place = null;
       this.otherPack = null;
       this.board = null; // W9
+      this.collegeNo = null; // ALIVE 8.3
     },
     /** 换沙盘：packId 改掉、meta 清 null，其余同 goHome()。
      *  传进来的就是当前 packId 时只做 goHome()。 */
@@ -163,6 +169,7 @@ export const useStageStore = defineStore("stage", {
         this.place = null;
         this.otherPack = null;
         this.board = null; // W9
+        this.collegeNo = null; // ALIVE 8.3
         return;
       }
       this.switchPack(c.pack);
@@ -186,6 +193,14 @@ export const useStageStore = defineStore("stage", {
     /** W9：效果同 showAnswer，但不关联回答、也不清 board（学院/板块面板的入口用）。 */
     async showBuilding(buildingId: string) {
       await this.applyPlace(buildingId);
+    },
+    /** ALIVE A1：选中一个学院——设 collegeNo，并把镜头落到它的第一栋在当前沙盘上的楼。 */
+    async showCollege(no: number) {
+      this.collegeNo = no;
+      const college = this.emblems?.colleges.find((c) => c.no === no);
+      if (!college) return;
+      const bid = college.buildingIds.find((id) => !!this.meta?.buildings[id]);
+      if (bid) await this.showBuilding(bid);
     },
     /** W10：在回答里「近看」——换成这栋楼所在校区自己的沙盘，等它准备好再落回这栋楼。
      *  nearPack 为 null 时什么都不做。 */

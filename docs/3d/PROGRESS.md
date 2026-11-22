@@ -1051,3 +1051,33 @@ stage 8/8 及全部既有回归）。视觉自查 W2-shell.png：印章顶栏、
 `3d(assets)` 425f7ae（v4 资产，SHA256 47/47 对上 ASSET_SHA256_V4.txt）。
 
 > AI生成
+
+## A1 院徽资产和 EmblemMark — 2026-11-23（feat/campus-alive）
+
+按 `cards/A1.md` 完成，页面本身（不带 `?emblems=1`）看不出变化：
+
+- `stage.css`：`.stage` 下新增 `--st-gilt`（全站唯一金属渐变，只用于院徽鎏金）。
+- 新建 `src/stage/emblems.ts`：`loadEmblems()`（Promise 缓存、colleges≠24 抛错、
+  失败不缓存可重试）、`emblemUrl()`（绝对地址，CSS 变量里 url() 按样式表位置解析）、
+  `shortName()`（去全角括号）、`collegesOfBuilding()`（按 no 升序）、
+  `collegeForPlace()`（按 text 分段找名字，段内比位置，前段优先；都没出现取 no 最小）。
+- 新建 `EmblemMark.vue`：鎏金 = 渐变圆 + mask 抠形（`-webkit-mask`/`mask` 两行都写）；
+  本色 = 原色图；`color` 为 null（19 继教、24 护理）本色回落鎏金；`data-tone` 写实际
+  用的样子；ring 用 `--st-gold2` / `--st-red`。
+- `stores/stage.ts`：新增 `emblems`（加载失败保持 null，舞台照常）、`collegeNo`、
+  `showCollege(no)`（落到学院在当前沙盘的第一栋楼，走 W9 的 showBuilding）；
+  `goHome`/`pickCampus` 清 collegeNo（switchPack 经 goHome 兜住）。
+- `StageView`：挂载时拉 emblems（失败 console.warn）；`?emblems=1` 左上角自查排版
+  （两行各 24 枚 40px，鎏金/本色），存 `docs/3d/shots/A1-sheet.png`。
+
+验证：单测 `emblems.test.ts` 5 条（24 条契约 + PNG/RIFF 文件头 + 七包 meta 一致性
++ BY-B029=[2,3] + collegeForPlace 四例）；e2e `stage-emblems.spec.ts` 5 条（48 枚、
+19/24 回落鎏金、no.5 鎏金金色像素 >25% 且纯白 <2%——像素统计用 node:zlib 手写
+最小 PNG 解码，不引依赖、404 降级照常 ready）。夜间主题固定跑（日间浅底会混入
+白像素，首跑 3.4% 即此因）。全量 verify：vue-tsc/构建/红线/单测 167/e2e 199 全绿。
+
+反向验证（-webkit-mask）：删前缀行后像素用例**仍绿**——Chromium 159.0.8154.6
+（Playwright 1.65.1）已支持无前缀 `mask`。按卡说明记录版本号，两行仍都保留（Safari
+需要前缀，且成本为零）。
+
+> AI生成
