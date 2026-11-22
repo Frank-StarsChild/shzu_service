@@ -157,13 +157,7 @@ def chat(req: M.ChatRequest):
         text_hint = req.message
         keep_query = (req.message or "")
 
-    # 最近对话（供模型理解上下文：会话追问、混合问法、多轮语境）
-    history = []
-    try:
-        for m in store.list_messages(req.session_id)[-6:]:
-            history.append({"role": m["role"], "text": m["text"] or ""})
-    except Exception:
-        history = []
+    history = _history_for(req.session_id)
 
     result = graph.run_turn(req.session_id, req.request_id, query or "",
                             slots=slots, entrypoint="vue", history=history)
@@ -173,7 +167,7 @@ def chat(req: M.ChatRequest):
     # 办事体验改造：进入向导的响应上附带「会话里学生自述过的身份事实」
     # （本科/二年级）。仅取学生自己说过的第一人称事实，后说的覆盖先说的；
     # 旧会话/普通回答不受影响（字段只附在 workflow 与 checklist 的 flow 引用上）。
-    _attach_preset(final, req.session_id)
+    _attach_preset(final, req.session_id, text_hint or "")
 
     store.add_turn(req.session_id, req.request_id, "user", text_hint or "", status="done")
     store.add_turn(req.session_id, req.request_id, "assistant", final.get("message") or "",
@@ -187,10 +181,26 @@ def chat(req: M.ChatRequest):
 MAX_PRESET_TURNS = 12
 
 
-def _attach_preset(final: dict, session_id: str):
+def _history_for(session_id: str) -> list:
+    """最近对话（供模型理解上下文：会话追问、混合问法、多轮语境）。
+
+    A0：跳过 status 为 error / model_unavailable 的助手轮次——技术错误提示
+    （模型响应超时等）不是模型说过的话，进历史会误导下一轮。"""
+    history = []
+    try:
+        for m in store.list_messages(session_id)[-6:]:
+            if m["role"] == "assistant" and m.get("status") in ("error", "model_unavailable"):
+                continue
+            history.append({"role": m["role"], "text": m["text"] or ""})
+    except Exception:
+        return []
+    return history
+
+
+def _attach_preset(final: dict, session_id: str, current_text: str = ""):
     """把会话中用户自述的身份事实附到向导入口（workflow 响应 / checklist 卡的 flow）。
 
-    只在响应里真的出现了向导入口时才抽；抽取规则见 agent.seed_slots。"
+    只在响应里真的出现了向导入口时才抽；抽取规则见 agent.seed_slots。"""
     flows = get_kb().flows
     targets = []  # [(flow_id, holder)]
     if final.get("status") == "workflow" and final.get("workflow"):
@@ -203,11 +213,11 @@ def _attach_preset(final: dict, session_id: str):
     try:
         user_texts = [m["text"] for m in store.list_messages(session_id)
                       if m["role"] == "user"][-MAX_PRESET_TURNS:]
-        # 本轮用户输入在 add_turn 之前还不在库里，补在末尾
-        last_user = next((m for m in reversed(store.list_messages(session_id))
-                          if m["role"] == "user"), None)
     except Exception:
-        user_texts, last_user = [], None
+        user_texts = []
+    # 本轮用户输入在 add_turn 之前还不在库里，补在末尾（后说的覆盖先说的）
+    if current_text and (not user_texts or user_texts[-1] != current_text):
+        user_texts.append(current_text)
     facts = extract_student_facts(user_texts)
     if not facts:
         return

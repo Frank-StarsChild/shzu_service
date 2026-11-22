@@ -16,6 +16,8 @@ export type ChatTurn = {
   status: "pending" | "done" | "error" | "cancelled";
   errorText?: string;
   retryable?: boolean;
+  /** 追问选项轮：记住选项 id（重试时发 choice_id 而不是选项文字） */
+  choiceId?: string;
 };
 
 export const useChatStore = defineStore("chat", {
@@ -59,6 +61,17 @@ export const useChatStore = defineStore("chat", {
     },
     async restore() {
       const savedId = localStorage.getItem(SESSION_KEY) || "";
+      // A0：正在等回答时切去别的页面再回来（舞台→全部对话等重挂载场景），
+      // 不要用服务器的记录覆盖本地轮次——否则 pending 那一轮被冲掉，
+      // 迟到的回答无处落地。其余情况照旧从服务器恢复（刷新后要能回放）。
+      if (
+        this.turns.length > 0
+        && savedId === this.sessionId
+        && this.sessionId !== ""
+        && this.turns.some((t) => t.status === "pending")
+      ) {
+        return;
+      }
       this.sessionId = savedId;
       if (!savedId) {
         await this.ensureSession();
@@ -115,24 +128,27 @@ export const useChatStore = defineStore("chat", {
       this.pendingRequestId = requestId;
       this.busy = true;
       const label = this.lastClarify?.clarify?.choices.find((c) => c.id === choiceId)?.label || choiceId;
-      this.turns.push({ request_id: requestId, seq: this.turns.length + 1, role: "user", text: `[选择] ${label}`, response: null, status: "done" });
+      // 记住选项 id（choiceId）：重试时发 choice_id，后端幂等比对的是 id 而非文字
+      this.turns.push({ request_id: requestId, seq: this.turns.length + 1, role: "user", text: `[选择] ${label}`, response: null, status: "done", choiceId });
       this.turns.push({ request_id: requestId, seq: this.turns.length + 1, role: "assistant", text: "", response: null, status: "pending" });
       await this._doRequest(requestId, { session_id: this.sessionId, request_id: requestId, choice_id: choiceId });
     },
     async retry(requestId: string) {
       const userTurn = this.turns.find((t) => t.request_id === requestId && t.role === "user");
       if (!userTurn) return;
-      const msg = userTurn.text.replace(/^\[选择\]\s*/, "");
-      const isChoice = userTurn.text.startsWith("[选择]");
+      // A0：追问选项轮必须用记下的选项 id 重发（choice_id）；
+      // 后端存的是选项 id，从显示文字里取会把选项标签当成 id 发出去，永远 409。
+      const body: { session_id: string; request_id: string; message?: string; choice_id?: string } = {
+        session_id: this.sessionId, request_id: requestId,
+      };
+      if (userTurn.choiceId) body.choice_id = userTurn.choiceId;
+      else body.message = userTurn.text;
       // 基于原 request_id 的幂等重试（方案 4.2）
       this.busy = true;
       this.pendingRequestId = requestId;
       const assistant = this.turns.find((t) => t.request_id === requestId && t.role === "assistant");
       if (assistant) assistant.status = "pending";
-      await this._doRequest(requestId, {
-        session_id: this.sessionId, request_id: requestId,
-        ...(isChoice ? { choice_id: msg } : { message: msg }),
-      });
+      await this._doRequest(requestId, body);
     },
     async _doRequest(requestId: string, body: { session_id: string; request_id: string; message?: string; choice_id?: string }) {
       const assistant = this.turns.find((t) => t.request_id === requestId && t.role === "assistant");

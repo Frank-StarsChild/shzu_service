@@ -141,6 +141,9 @@ class ChatState(TypedDict, total=False):
     knowledge_version: str
     model_calls: int
     messages: List[BaseMessage]
+    # 规则校验提示（年度/时间窗/机构/歧义）：prepare 写入、_system_message 注入系统提示。
+    # 必须在此声明，否则 LangGraph 丢弃未声明字段，校验提示进不了模型。
+    notes: List[str]
     evidence_ids: List[str]          # 本轮工具返回的合法证据集合
     workflows: List[str]             # 本轮工具确认可用的向导
     actions: List[Dict[str, Any]]    # 本轮场景工具产生的动作卡片（待发布层校验）
@@ -690,20 +693,16 @@ def run_turn(session_id: str, request_id: str, query: str,
     if _COMPILED is not None:
         result = _COMPILED.invoke(state)
         return {"final": result["final"], "slots": result.get("slots") or {}}
-    for node in (node_prepare, node_model, node_tools, node_publish):
-        if node is node_model:
-            if state.get("model_error"):
-                continue
-            state.update(node_model(state, None))
-        elif node is node_tools:
-            if state.get("model_error") or not state.get("messages"):
-                continue
-            last = state["messages"][-1]
-            if isinstance(last, AIMessage) and not (last.tool_calls or last.invalid_tool_calls):
-                continue
-            state.update(node_tools(state, None))
-        else:
-            state.update(node(state))
+    # langgraph 不可用：顺序执行同样节点、同样校验；模型↔工具按 _route_after_model 循环
+    # （模型调了工具就带着工具结果回到模型；模型调用次数上限在路由里）。A0：旧版把
+    # 四个节点各跑一遍，工具结果从未回到模型，导致带工具的回答一律报 model_response。
+    state.update(node_prepare(state))
+    while True:
+        state.update(node_model(state, None))
+        if _route_after_model(state) != "tools":
+            break
+        state.update(node_tools(state, None))
+    state.update(node_publish(state))
     return {"final": state["final"], "slots": state.get("slots") or {}}
 
 
