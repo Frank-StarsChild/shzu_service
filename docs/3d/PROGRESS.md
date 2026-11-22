@@ -1024,3 +1024,30 @@ stage 8/8 及全部既有回归）。视觉自查 W2-shell.png：印章顶栏、
 
 
 > AI生成
+
+
+## A0 修六个现有问题 — 2026-11-23（feat/campus-alive）
+
+按 `ALIVE.md` 6.1 节与 `cards/A0.md` 完成，六项全部落地：
+
+1. `requirements.txt` 补齐六项锁定版本（venv `pip freeze` 实测口径：langchain 1.5.0 /
+   langchain-core 1.8.2 / langchain-openai 1.8.1 / langgraph 1.2.22 / openai 3.54.0 /
+   python-dotenv 1.2.4）。
+2. `ChatState` 声明 `notes: List[str]`——用 langgraph StateGraph 复现确认修复前
+   `node_prepare` 写入的校验提示在下一节点读作 `None`。
+3. 退化路径改为 prepare →（模型↔工具按 `_route_after_model` 循环）→ publish；
+   假模型两连调（第一次工具调用、第二次最终 JSON）断言 `answer` + 调用 2 次。
+4. `v1._history_for(session_id)` 跳过 `error`/`model_unavailable` 助手轮；顺带修了
+   HEAD 上 `v1.py` docstring 未闭合的语法错误与 `_attach_preset` 首轮未入库的抽出缺口
+   （同会话第二轮才有 preset 的原因）。
+5. `chat.ts`：`ChatTurn.choiceId` + `retry` 按选项 id 重发；`restore()` 有 pending
+   轮次且会话未变时不被服务器记录覆盖。
+6. 验证：`scripts/check_a0.py` 13 断言全过；两项反向验证均按预期红（删 `notes` →
+   第 2 条 FAIL；retry 改回文字取 id → `chat-store.test.ts` 第 5 条 FAIL）后恢复；
+   `chat-store.test.ts` 4 条；后端 smoke_backend 27/27 + smoke_v1 正常；
+   前端 vue-tsc/构建/红线/单测 162/e2e 194 全绿。
+
+提交：`fix(A0)` 7bb2d8f；同分支另有 `fix(errand)` 7f7a256（办事体验收尾）、
+`3d(assets)` 425f7ae（v4 资产，SHA256 47/47 对上 ASSET_SHA256_V4.txt）。
+
+> AI生成
