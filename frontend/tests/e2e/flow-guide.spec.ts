@@ -191,7 +191,7 @@ test("11 沙盘：问学生证补办 → 面板出办事单并自动落楼（大
   await page.waitForFunction(() => window.__campus3d?.status === "ready", undefined, { timeout: 40_000 });
   await page.fill('[data-testid="stage-input"]', "我的学生证丢了怎么办");
   await page.press('[data-testid="stage-input"]', "Enter");
-  await expect(page.getByTestId("stage-errand")).toBeVisible({ timeout: 10_000 });
+  await expect(page.getByTestId("stage-act-errand")).toBeVisible({ timeout: 10_000 });
   await expect(page.getByTestId("stage-errand-place")).toContainText("大学生活动中心（南楼）");
   await expect(page.getByTestId("stage-errand-phone")).toHaveAttribute("href", "tel:09932058029");
   await expect(page.getByTestId("stage-errand-confirms")).toContainText("办公时间");

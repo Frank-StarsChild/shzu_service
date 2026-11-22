@@ -69,6 +69,14 @@ const CONFIRM_DOT: Record<string, string> = {
   needs_college: "dot-partial",
 };
 
+/** 拨号链接：证据里可能带多个号码（如 2057898/2057899），取第一组再留数字；
+ *  连字符（0993-2058029）是同一号码的一部分，不作为分组符。 */
+function telHref(phone: string | null | undefined): string {
+  if (!phone) return "";
+  const first = String(phone).split(/[/;；,，\s]+/)[0] || String(phone);
+  return `tel:${first.replace(/[^0-9+]/g, "")}`;
+}
+
 // ---------- 沙盘定位 ----------
 function viewSandbox(m: PlaceMatch) {
   if (!m.building_id) return;
@@ -113,7 +121,7 @@ const mainActions = computed(() => props.actions.filter((a) => a.kind !== "place
             <span class="small"><strong>官方入口</strong>：{{ a.entry.label }}
               <template v-if="a.entry.person">（{{ a.entry.person }}）</template>
             </span>
-            <a v-if="a.entry.phone" class="mono" :href="`tel:${a.entry.phone.replace(/[^0-9+]/g, '')}`">{{ a.entry.phone }}</a>
+            <a v-if="a.entry.phone" class="mono" :href="telHref(a.entry.phone)">{{ a.entry.phone }}</a>
             <div v-if="a.entry.evidence_ids?.length" class="ck-refs">
               <button v-for="eid in a.entry.evidence_ids.slice(0, 3)" :key="eid" type="button"
                       class="ref-mini" @click="emit('cite', eid)">{{ eid }}</button>
@@ -155,7 +163,7 @@ const mainActions = computed(() => props.actions.filter((a) => a.kind !== "place
           </ol>
           <div v-if="a.entry" class="act-entry">
             <span class="small"><strong>官方报修入口</strong>：{{ a.entry.label }}</span>
-            <a v-if="a.entry.phone" class="mono" :href="`tel:${a.entry.phone.replace(/[^0-9+]/g, '')}`">{{ a.entry.phone }}</a>
+            <a v-if="a.entry.phone" class="mono" :href="telHref(a.entry.phone)">{{ a.entry.phone }}</a>
             <div v-if="a.entry.evidence_ids?.length" class="ck-refs">
               <button v-for="eid in a.entry.evidence_ids.slice(0, 3)" :key="eid" type="button"
                       class="ref-mini" @click="emit('cite', eid)">{{ eid }}</button>
@@ -210,7 +218,7 @@ const mainActions = computed(() => props.actions.filter((a) => a.kind !== "place
             <span class="label">电话 / 办公时间</span>
             <p class="small" style="margin: 4px 0 0; display: flex; gap: 12px; flex-wrap: wrap; align-items: baseline;">
               <a v-if="a.phone" class="errand-phone mono" data-testid="errand-phone"
-                 :href="`tel:${a.phone.replace(/[^0-9+]/g, '')}`">{{ a.phone }}</a>
+                 :href="telHref(a.phone)">{{ a.phone }}</a>
               <span v-else class="muted">电话未在证据中登记 → 去电前先看下方「出发前确认」</span>
               <span v-if="a.hours">办公时间：{{ a.hours }}</span>
               <span v-else class="tiny muted">办公时间待向办公室确认</span>

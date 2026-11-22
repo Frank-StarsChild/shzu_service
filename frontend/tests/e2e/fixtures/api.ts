@@ -162,7 +162,7 @@ export async function mockApi(page: Page): Promise<void> {
         status: "answer",
         answer: {
           blocks: [
-            { kind: "office", text: "学生证补办在大学生活动中心（南楼）301-302室学生事务管理办公室窗口办理，可同时办理乘车优惠卡。", citation_ids: ["xg-ks-c1"] },
+            { kind: "office", text: "学生证补办：到大学生活动中心南楼301-302室学生事务管理办公室窗口办理，可同时补办乘车优惠卡。", citation_ids: ["xg-ks-c1"] },
             { kind: "note", text: "所需材料与办公时间请以办公室当期公示为准。", citation_ids: ["xg-ks-c1"] },
           ],
           unknown_fields: [],
@@ -176,6 +176,16 @@ export async function mockApi(page: Page): Promise<void> {
             published_at: "2025-09-01",
             locator: "第 2 条",
             excerpt: "学生事务管理办公室（大学生活动中心南楼301-302室）电话0993-2058029，负责学生证、乘车优惠卡办理。",
+            time_condition: null,
+          },
+          {
+            id: "xg-ks-c2",
+            title: "学生事务服务指南",
+            issuer: "石河子大学学生处",
+            url: "https://www.shzu.edu.cn/xg/guide",
+            published_at: "2025-09-01",
+            locator: null,
+            excerpt: null,
             time_condition: null,
           },
         ],
@@ -202,7 +212,7 @@ export async function mockApi(page: Page): Promise<void> {
             fallback_text: null,
           },
         ],
-        timing_ms: 1600,
+        timing_ms: 1800,
       });
       return;
     }

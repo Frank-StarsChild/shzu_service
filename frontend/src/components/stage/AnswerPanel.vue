@@ -129,6 +129,14 @@ function repairAnnounce(a: { announcement?: any }): string {
   return "未找到相关公告（不代表该区域无故障）";
 }
 
+/** 拨号链接：证据里可能带多个号码（如 2057898/2057899），取第一组再留数字，
+ *  连字符（0993-2058029）不是分组符——它是同一个号码的一部分。 */
+function telHref(phone: string | null | undefined): string {
+  if (!phone) return "";
+  const first = String(phone).split(/[/;；,，\s]+/)[0] || String(phone);
+  return `tel:${first.replace(/[^0-9+]/g, "")}`;
+}
+
 const repairCopied = ref(false);
 async function copyRepairDraft(text: string | null | undefined) {
   if (!text) return;
@@ -364,7 +372,7 @@ onBeforeUnmount(() => {
           <p v-if="missingText" class="stage-panel-text soft">{{ missingText }}</p>
 
           <!-- 沙盘办事单：errand（场景一）/ repair（场景二）卡片，先于长正文（去哪/带什么/报修入口优先） -->
-          <div v-for="(a, ai) in stageActions" :key="'act' + ai" class="stage-act" data-testid="stage-errand">
+          <div v-for="(a, ai) in stageActions" :key="'act' + ai" class="stage-act" :data-testid="`stage-act-${a.kind}`">
             <!-- 场景一：现场办事单（具体地点→负责部门→出发前确认；正文与官方原文在其后） -->
             <template v-if="a.kind === 'errand'">
               <p class="stage-subtitle">办事单 · 到楼办理</p>
@@ -376,7 +384,7 @@ onBeforeUnmount(() => {
               <p class="stage-act-line">{{ a.dept || "以现场公示为准" }}<template v-if="a.service_scope"> · {{ a.service_scope }}</template></p>
               <p class="stage-act-line">
                 <a v-if="a.phone" class="stage-act-phone" data-testid="stage-errand-phone"
-                   :href="`tel:${a.phone.replace(/[^0-9+]/g, '')}`">{{ a.phone }}</a>
+                   :href="telHref(a.phone)">{{ a.phone }}</a>
                 <span v-else class="stage-act-meta">电话见证据原文</span>
                 <span v-if="!a.hours" class="stage-act-meta"> · 办公时间待向办公室确认</span>
               </p>
@@ -400,7 +408,7 @@ onBeforeUnmount(() => {
               <p v-if="a.entry" class="stage-act-line">
                 {{ a.entry.label }}
                 <a v-if="a.entry.phone" class="stage-act-phone" data-testid="stage-repair-phone"
-                   :href="`tel:${a.entry.phone!.replace(/[^0-9+]/g, '')}`">{{ a.entry.phone }}</a>
+                   :href="telHref(a.entry.phone)">{{ a.entry.phone }}</a>
               </p>
               <button v-if="a.draft" type="button" class="stage-act-copy" data-testid="stage-repair-copy"
                       @click="copyRepairDraft(a.draft)">{{ repairCopied ? "已复制报修草稿 ✓" : "复制报修草稿" }}</button>

@@ -231,7 +231,7 @@ const materials = computed(() => d.value?.materials ?? []);
                 <span class="label">来自对话的信息 BRING-IN</span>
               </div>
               <div class="box-body">
-                <p class="small" style="margin: 0 0 10px;">{{ store.presetNote || "你在对话里提到过以下信息" }}。已帮你带到对应填写项，可先修改再确认。</p>
+                <p class="small" style="margin: 0 0 10px;">你在对话里提到过：<q class="wiz-preset-q">{{ store.presetNote || "自己身份的信息" }}</q>。已帮你带到对应填写项，可先修改再确认。</p>
                 <div class="grid grid-2" style="gap: var(--gap-4);">
                   <label v-for="k in store.pendingPresetKeys" :key="k" class="field">
                     <span class="flabel"><span>{{ slotOf(k)?.label || k }}</span></span>
@@ -544,6 +544,7 @@ const materials = computed(() => d.value?.materials ?? []);
 /* 预设确认卡：来自聊天的事实待确认 */
 .wiz-preset { border-color: var(--link); border-width: 2px; }
 .wiz-preset .box-head { border-bottom-color: color-mix(in srgb, var(--link) 40%, transparent); }
+.wiz-preset-q { color: var(--text-2); }
 
 /* 双排名组：同一组的名次与总人数并排 */
 .wiz-rank { border: 1px solid var(--line-soft); margin: var(--gap-4) 0 0; padding: 10px 14px 12px; }
