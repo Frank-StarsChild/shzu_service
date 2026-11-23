@@ -85,6 +85,11 @@ const missingText = computed(() => {
 /** 展开的公文卡（citation id） */
 const openDoc = ref<string | null>(null);
 
+/** ALIVE A9：每轮回答换一个 key，让公文卡（连盖章动画）随新回答重播 */
+const docsKey = computed(
+  () => `${lastAssistant.value?.request_id ?? ""}:${resp.value?.citations.length ?? 0}`
+);
+
 function toggleDoc(id: string) {
   openDoc.value = openDoc.value === id ? null : id;
 }
@@ -463,7 +468,7 @@ onBeforeUnmount(() => {
 
           <template v-if="resp.citations.length > 0">
             <p class="stage-subtitle">官方出处</p>
-            <div class="stage-docs">
+            <div class="stage-docs" :key="docsKey">
               <article
                 v-for="(c, i) in resp.citations"
                 :key="c.id"
@@ -471,6 +476,7 @@ onBeforeUnmount(() => {
                 :class="{ 'is-open': openDoc === c.id }"
                 :data-testid="`stage-doc-${i + 1}`"
                 :data-doc-id="c.id"
+                :style="{ '--stamp-delay': `${260 + 120 * i}ms` }"
                 @click="toggleDoc(c.id)"
               >
                 <img
