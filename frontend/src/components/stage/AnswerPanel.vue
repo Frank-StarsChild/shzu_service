@@ -8,6 +8,8 @@ import { useStageStore } from "@/stores/stage";
 import type { StageCtx } from "@/stage/types";
 import type { CitationRef } from "@/api/client";
 import AnswerBlocks from "@/components/AnswerBlocks.vue";
+import EmblemMark from "@/components/stage/EmblemMark.vue";
+import { shortName } from "@/stage/emblems";
 import { setFlowPreset } from "@/stores/flowDraft";
 
 const store = useChatStore();
@@ -164,6 +166,22 @@ const placeZoneName = computed(() => {
   const zoneId = m?.buildings[bid]?.zone;
   if (!zoneId) return "";
   return m?.zones?.find((z) => z.id === zoneId)?.name ?? "";
+});
+
+/** ALIVE A3：这栋楼对应的学院（collegeNo 由 stage store 按楼+回答文字判定） */
+const placeCollege = computed(() => {
+  if (stage.collegeNo === null || !stage.emblems) return null;
+  return stage.emblems.colleges.find((c) => c.no === stage.collegeNo) ?? null;
+});
+
+/** 第二行：「片区 · 楼名 楼」（楼名去掉括号，已带「楼」字就不重复） */
+const placeMetaLine = computed(() => {
+  const raw = (stage.place?.name ?? "")
+    .replace(/（[^）]*）/g, "")
+    .replace(/\([^)]*\)/g, "")
+    .trim();
+  const building = raw ? (raw.endsWith("楼") ? raw : `${raw} 楼`) : "";
+  return [placeZoneName.value, building].filter(Boolean).join(" · ");
 });
 
 const otherPackName = computed(() => {
@@ -347,8 +365,15 @@ onBeforeUnmount(() => {
           <!-- W5：办理地点（place 在本包时）/ 换过去的钮（楼在另一个沙盘时） -->
           <div v-if="stage.place" ref="placeEl" class="stage-place" data-testid="stage-panel-place">
             <p class="stage-subtitle">办理地点</p>
-            <p class="stage-place-line">
-              <span class="stage-place-square" aria-hidden="true"></span>{{ stage.place.name }}
+            <!-- ALIVE A3：楼就是某个学院的楼时，左边 48px 本色院徽 + 两行（学院简称 / 片区·楼） -->
+            <p v-if="placeCollege" class="stage-place-emblem-line">
+              <span class="stage-place-emblem" data-testid="stage-place-emblem">
+                <EmblemMark :college="placeCollege" :size="48" tone="color" />
+              </span>
+              <span class="stage-place-text">
+                <span class="stage-place-college">{{ shortName(placeCollege) }}</span>
+                <span class="stage-place-meta">{{ placeMetaLine }}</span>
+              </span>
               <!-- W10：楼名右边的「近看」钮（当前是默认包且楼在另一个非默认包上时） -->
               <button
                 v-if="nearPack"
@@ -358,7 +383,19 @@ onBeforeUnmount(() => {
                 @click="stage.enterPlace()"
               >近看</button>
             </p>
-            <p v-if="placeZoneName" class="stage-place-zone">{{ placeZoneName }}</p>
+            <template v-else>
+              <p class="stage-place-line">
+                <span class="stage-place-square" aria-hidden="true"></span>{{ stage.place.name }}
+                <button
+                  v-if="nearPack"
+                  type="button"
+                  class="stage-place-near"
+                  data-testid="stage-place-near"
+                  @click="stage.enterPlace()"
+                >近看</button>
+              </p>
+              <p v-if="placeZoneName" class="stage-place-zone">{{ placeZoneName }}</p>
+            </template>
           </div>
           <button
             v-else-if="stage.otherPack"

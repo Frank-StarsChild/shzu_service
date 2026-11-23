@@ -1191,3 +1191,31 @@ stage 8/8 及全部既有回归）。视觉自查 W2-shell.png：印章顶栏、
   校区题签与 4 枚灯牌收起，面板行仍可点。
 
 > AI生成
+
+
+## A3 学院判定、办理地点与题签院徽 — 2026-11-23
+
+- `stores/stage.ts`：`showAnswer(buildingId)` 落楼后，按「楼 + 最后一条回答的 answer.blocks 正文」
+  用 `collegeForPlace` 定 `collegeNo`（同楼多学院靠学院名/简称出现位置区分）；无楼或换到
+  另一沙盘时清空。`showCollege(no)` 走 `showBuilding` → `applyPlace`，不经过 showAnswer，
+  不会被覆盖。回答正文由 store 内的 `lastAnswerTexts()` 从 chat store 取，不新增字段。
+- `AnswerPanel.vue`：`collegeNo` 有效时「办理地点」改为 48px 本色院徽 + 两行（宋体 700
+  18px 学院简称 / 12px「片区 · 楼名 楼」）；无学院时仍是朱红小方块 + 楼名。红色引线
+  起点仍是这一节左缘往下 36px（`placeEl` 未动）。
+- `SceneSigns.vue`：楼题签顶部加 44px 本色院徽（朱红圈 + 22px 辉光）+ 8px 朱红短线，
+  底端位置不变（整块往上长）；避让高度估算加 72px。横排短签形态不带院徽。
+- `CampusPanel.vue`：学院行序号与名字之间加 24px 鎏金院徽（`row.emblem` 为空不画），
+  行上下内边距各 +2；网格改为「序号 / 院徽 / 名称」三列。
+- `stage.css`：办理地点两行样式（`.stage-place-emblem(-line)/-text/-college/-meta`）。
+- 单测 `stage-store.test.ts` 追加 4 条：北区信息学院→5、BQ-B999→null、北苑工科楼按文字
+  判到 3、复位清空。反向验证：`lastAnswerTexts()` 返回空数组（等于永远取 no 最小）时第 3
+  条按预期变红，恢复后绿。
+- e2e `stage-college-place.spec.ts` 4 条全过：办理地点院内院徽（`data-tone=color`）+ 面板
+  文字「信息科学与技术学院/绿2」+ 题签院徽；院徽中心对 anchor+lift 投影 ±3px 且在文字框
+  上方；学生证→大学生活动中心无院徽仍是朱红方块；北区 4 行各有一枚 24px 鎏金院徽。
+  截图 `docs/3d/shots/A3-college.png`。
+- 回归：单测 187；build / check:bundle 通过；e2e stage-college-place 4 + stage-place 12 +
+  stage-near 8 + stage-colleges 9 + stage-emblems 5 + stage-avoid 6 + stage-framing 7 +
+  stage-lanterns 7 + stage-shell 9 + theme 6 全过（分组跑）。
+
+> AI生成

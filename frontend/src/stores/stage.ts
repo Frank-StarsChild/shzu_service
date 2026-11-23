@@ -13,7 +13,20 @@ import { defineStore } from "pinia";
 import { watch } from "vue";
 import { loadPackIndex, loadPlaces, type CampusZoneRef, type Pack, type Places } from "@/stage/packs";
 import type { CampusMeta } from "@/campus3d/meta";
-import type { Emblems } from "@/stage/emblems";
+import { collegeForPlace, type Emblems } from "@/stage/emblems";
+import { useChatStore } from "@/stores/chat";
+
+/** 最后一条有正文的回答段落（A3：同一栋楼有多个学院时，按回答里的学院名判定） */
+function lastAnswerTexts(): string[] {
+  const chat = useChatStore();
+  for (let i = chat.turns.length - 1; i >= 0; i--) {
+    const t = chat.turns[i];
+    if (t.role !== "assistant") continue;
+    const blocks = t.response?.answer?.blocks;
+    if (blocks && blocks.length > 0) return blocks.map((b) => b.text).filter((s) => !!s);
+  }
+  return [];
+}
 
 export type StageMode = "home" | "campus" | "answer" | "tour";
 
@@ -190,11 +203,20 @@ export const useStageStore = defineStore("stage", {
     },
     /** W5：回答落到哪栋楼（buildingId 为 null 时只复位）。
      *  W9：新发问题时把 board 一并清掉（面板从板块面板换回回答面板）。
-     *  楼在当前沙盘 → answer 态；在另一个沙盘 → otherPack（面板显示换包钮，不自动切）；
-     *  packOf 里没有的楼（只有测试入口会传）当作当前沙盘。 */
+     *  ALIVE A3：落到楼上时按「楼 + 最后一条回答的正文」定 collegeNo（同楼多学院靠文字区分）；
+     *  showCollege(no) 走 showBuilding，不经过这里，所以不会被覆盖。 */
     async showAnswer(buildingId: string | null) {
       this.board = null; // W9
       await this.applyPlace(buildingId);
+      const bid = this.place?.buildingId;
+      if (this.mode === "answer" && bid) {
+        this.collegeNo = this.emblems
+          ? collegeForPlace(this.emblems, bid, lastAnswerTexts())?.no ?? null
+          : null;
+      } else if (!bid) {
+        // 复位（无楼 / 换到了另一个沙盘）：学院选择一起清掉
+        this.collegeNo = null;
+      }
     },
     /** W9：效果同 showAnswer，但不关联回答、也不清 board（学院/板块面板的入口用）。 */
     async showBuilding(buildingId: string) {

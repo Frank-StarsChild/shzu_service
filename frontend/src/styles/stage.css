@@ -470,6 +470,37 @@
   letter-spacing: 0.14em;
   color: var(--st-moon2);
 }
+/* ALIVE A3：办理地点 —— 48px 本色院徽 + 两行（学院简称 / 片区 · 楼） */
+.stage .stage-place-emblem-line {
+  margin: 0 0 4px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.stage .stage-place-emblem {
+  flex: none;
+  display: flex;
+}
+.stage .stage-place-text {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+.stage .stage-place-college {
+  font-family: var(--st-song);
+  font-weight: 700;
+  font-size: 18px;
+  line-height: 1.25;
+  letter-spacing: 0.04em;
+  color: var(--st-moon);
+}
+.stage .stage-place-meta {
+  font-size: 12px;
+  line-height: 1.45;
+  letter-spacing: 0.04em;
+  color: var(--st-moon2);
+}
 .stage .stage-other-pack {
   margin: 0 0 12px;
   background: none;

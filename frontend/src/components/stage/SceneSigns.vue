@@ -13,6 +13,7 @@ import { useStageStore } from "@/stores/stage";
 import { LABEL_BOARD_KEY } from "@/stage/labelBoard";
 import { shiftOf, type LabelSpec } from "@/stage/labels";
 import { STAR_TRAIL_KEY, type StarTrailState } from "@/components/stage/ZdxStar.vue";
+import EmblemMark from "@/components/stage/EmblemMark.vue";
 
 const ctx = inject<StageCtx>("stageCtx");
 const store = useStageStore();
@@ -63,6 +64,12 @@ const buildingSign = computed(() => {
 
 const showLayer = computed(() => ctx?.sceneStatus.value === "ready");
 const layouts = computed(() => board?.layouts.value ?? {});
+
+/** ALIVE A3：楼题签顶上的本色院徽（collegeNo 由 store 按楼 + 回答文字定） */
+const signCollege = computed(() => {
+  if (store.mode !== "answer" || store.collegeNo === null || !store.emblems) return null;
+  return store.emblems.colleges.find((c) => c.no === store.collegeNo) ?? null;
+});
 
 /** 竖排题签的尺寸估算（只算文字框，不含引线；引线绝对定位在框下） */
 function signSize(name: string, _line: number, small = false) {
@@ -142,6 +149,8 @@ function buildSpecs(): LabelSpec[] {
     const p = handle.project(b.anchor);
     const s = signSize(b.name, 60);
     const c = shortSign(b.name);
+    // 题签顶上还有院徽（44 + 6 边）+ 8px 红线 + 两段间距：整块往上长，底端不动
+    if (signCollege.value) s.h += 72;
     list.push({
       id: `building-${b.id}`,
       priority: 100,
@@ -317,6 +326,10 @@ onBeforeUnmount(() => {
         ? compactStyle(`building-${buildingSign.id}`)
         : signStyle(`building-${buildingSign.id}`)"
     >
+      <span v-if="signCollege && !isCompact(`building-${buildingSign.id}`)" class="stage-sign-emblem" data-testid="stage-sign-emblem">
+        <EmblemMark :college="signCollege" :size="44" tone="color" />
+      </span>
+      <span v-if="signCollege && !isCompact(`building-${buildingSign.id}`)" class="stage-sign-emblem-line" aria-hidden="true"></span>
       <span class="stage-sign-label">{{ buildingSign.name }}</span>
       <span
         v-if="!shifted(`building-${buildingSign.id}`)"
@@ -387,6 +400,20 @@ onBeforeUnmount(() => {
   width: 1px;
   background: linear-gradient(to bottom, var(--st-ov-gold), rgba(232, 201, 138, 0));
   pointer-events: none;
+}
+/* ALIVE A3：楼题签顶上的本色院徽（朱红圈 + 8px 朱红短线），底端位置不变 */
+.stage .stage-sign-emblem {
+  display: flex;
+  padding: 3px;
+  border-radius: 50%;
+  background: var(--st-ov-bg);
+  box-shadow: 0 0 0 2px var(--st-red), 0 0 22px rgba(226, 0, 26, 0.55);
+}
+.stage .stage-sign-emblem-line {
+  display: block;
+  width: 2px;
+  height: 8px;
+  background: var(--st-red);
 }
 /* 错开后的短引线：从底边中点回锚点（角度由布局结果算） */
 .stage .stage-sign-leader {

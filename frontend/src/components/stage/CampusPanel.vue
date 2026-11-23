@@ -11,6 +11,7 @@ import { useStageStore } from "@/stores/stage";
 import { useChatStore } from "@/stores/chat";
 import { cnNumber } from "@/stage/hud";
 import { collegeEntries, type CollegeEntry } from "@/stage/collegeIndex";
+import EmblemMark from "@/components/stage/EmblemMark.vue";
 import { api, type ServiceEntry } from "@/api/client";
 
 const store = useStageStore();
@@ -150,6 +151,9 @@ function askSample(q: string) {
               @click="pickCollege(row)"
             >
               <span class="stage-college-no">{{ cnNumber(row.index) }}</span>
+              <span v-if="row.emblem" class="stage-college-emblem" aria-hidden="true">
+                <EmblemMark :college="row.emblem" :size="24" tone="gilt" />
+              </span>
               <span class="stage-college-name">{{ row.name }}<span v-if="!row.confirmed" class="stage-college-unconf">（位置待确认）</span></span>
               <span class="stage-college-bld">{{ row.buildingName }}</span>
             </button>
@@ -243,7 +247,7 @@ function askSample(q: string) {
    选中/聚焦行用朱砂左侧细线强调，不只靠颜色 */
 .stage .stage-college {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-columns: auto auto minmax(0, 1fr);
   column-gap: 10px;
   row-gap: 3px;
   align-items: start;
@@ -253,7 +257,7 @@ function askSample(q: string) {
   border: none;
   border-bottom: 1px solid var(--st-gold3);
   border-left: 2px solid transparent;
-  padding: 9px 2px 8px 6px;
+  padding: 11px 2px 10px 6px;
   cursor: pointer;
 }
 .stage .stage-college:hover {
@@ -280,11 +284,18 @@ function askSample(q: string) {
   line-height: 1.4;
   color: var(--gold-text);
 }
+/* ALIVE A3：序号与名字之间的 24px 鐿金院徽（拿不到 emblems 时不渲染） */
+.stage .stage-college-emblem {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  display: flex;
+  align-self: center;
+}
 .stage .stage-college.is-active .stage-college-no {
   color: var(--st-red);
 }
 .stage .stage-college-name {
-  grid-column: 2;
+  grid-column: 3;
   grid-row: 1;
   font-family: var(--st-hei);
   font-size: 15px;
@@ -300,7 +311,7 @@ function askSample(q: string) {
   color: var(--st-moon2);
 }
 .stage .stage-college-bld {
-  grid-column: 2;
+  grid-column: 3;
   grid-row: 2;
   margin-left: 0;
   font-family: var(--st-hei);

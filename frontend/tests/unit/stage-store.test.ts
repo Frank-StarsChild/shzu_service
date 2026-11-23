@@ -5,6 +5,7 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { createPinia, setActivePinia } from "pinia";
 import { useStageStore } from "@/stores/stage";
+import { useChatStore } from "@/stores/chat";
 import { parseMeta } from "@/campus3d/meta";
 
 const packsJson = readFileSync(resolve(__dirname, "../../public/campus3d/packs.json"), "utf-8");
@@ -346,5 +347,81 @@ describe("stores/stage.showBuilding 与 board（W9）", () => {
     expect(s.board).toBeNull();
     await s.showAnswer(null);
     expect(s.board).toBeNull();
+  });
+});
+
+
+// ALIVE A3：落楼时按「楼 + 最后一条回答的正文」定 collegeNo（同一栋楼多个学院靠文字区分）
+describe("stores/stage.showAnswer · 学院判定（A3）", () => {
+  beforeEach(() => {
+    setActivePinia(createPinia());
+  });
+
+  function seedAnswer(text: string) {
+    const chat = useChatStore();
+    chat.turns.push({
+      request_id: "a3-req",
+      seq: 1,
+      role: "assistant",
+      text,
+      status: "done",
+      response: {
+        status: "answer",
+        session_id: "sess-a3",
+        request_id: "a3-req",
+        trace_id: "trace-a3",
+        knowledge_version: "kb-a3",
+        answer: { blocks: [{ kind: "office", text, citation_ids: [] }], unknown_fields: [] },
+        unknown_fields: [],
+        citations: [],
+      },
+    });
+  }
+
+  it("北区：信息科学与技术学院在北区绿2楼 → BQ-B013 的 collegeNo = 5", async () => {
+    const s = useStageStore();
+    s.emblems = emblemsRaw;
+    s.packId = "bq";
+    s.setMeta(parseMeta(bqMetaRaw));
+    seedAnswer("信息科学与技术学院在北区绿2楼。");
+    await s.showAnswer("BQ-B013");
+    expect(s.mode).toBe("answer");
+    expect(s.collegeNo).toBe(5);
+  });
+
+  it("楼不在沙盘上（BQ-B999）：collegeNo 为 null", async () => {
+    const s = useStageStore();
+    s.emblems = emblemsRaw;
+    s.packId = "bq";
+    s.setMeta(parseMeta(bqMetaRaw));
+    await s.showAnswer("BQ-B999");
+    expect(s.collegeNo).toBeNull();
+  });
+
+  it("北苑新区：工科楼有 2/3 两院，文字提到水利建筑工程学院时 collegeNo = 3", async () => {
+    const s = useStageStore();
+    const byMetaRaw = JSON.parse(
+      readFileSync(resolve(__dirname, "../../public/campus3d/by/campus.meta.json"), "utf-8")
+    );
+    s.emblems = emblemsRaw;
+    s.packId = "by";
+    s.setMeta(parseMeta(byMetaRaw));
+    seedAnswer("水利建筑工程学院的办公室在工科楼。");
+    await s.showAnswer("BY-B029");
+    expect(s.mode).toBe("answer");
+    expect(s.place?.buildingId).toBe("BY-B029");
+    expect(s.collegeNo).toBe(3);
+  });
+
+  it("复位（showAnswer(null)）：collegeNo 一并清掉", async () => {
+    const s = useStageStore();
+    s.emblems = emblemsRaw;
+    s.packId = "bq";
+    s.setMeta(parseMeta(bqMetaRaw));
+    seedAnswer("信息科学与技术学院在北区绿2楼。");
+    await s.showAnswer("BQ-B013");
+    expect(s.collegeNo).toBe(5);
+    await s.showAnswer(null);
+    expect(s.collegeNo).toBeNull();
   });
 });
