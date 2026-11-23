@@ -294,3 +294,49 @@ test("1 盖章：两枚章 260/380ms 依次盖下，起点 1.8 倍 −4° 透明
   });
   await page.screenshot({ path: "../docs/3d/shots/A9-stamp.png" });
 });
+
+test("4 空闲：2 秒无输入进入观景（无退出钮、界面不隐去），一动鼠标就回首页", async ({ page }) => {
+  await page.goto("/stage?3d=1&intro=0&idle=2");
+  await waitReady(page);
+  await page.waitForTimeout(3000);
+  expect(await page.evaluate(() => window.__campus3d?.tour)).toBe(true);
+  await expect(page.locator('[data-testid="stage-tour-exit"]')).toHaveCount(0);
+  await expect(page.locator('[data-testid="stage-dock"]')).toBeVisible();
+  const dockOpacity = await page.evaluate(() =>
+    Number(getComputedStyle(document.querySelector('[data-testid="stage-dock"]') as HTMLElement).opacity)
+  );
+  expect(dockOpacity).toBe(1);
+
+  await page.mouse.move(400, 400);
+  await page.waitForFunction(() => window.__campus3d?.tour === false, undefined, { timeout: 5000 });
+  await page.waitForFunction(
+    () => window.__campus3d?.moving === false && window.__campus3d?.stop === "home",
+    undefined,
+    { timeout: 40_000 }
+  );
+  expect(await page.evaluate(() => window.__campus3d?.stop)).toBe("home");
+});
+
+test("5 减少动态：章直接是最终样子；不做空闲转动", async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await mockTwoDocs(page);
+  await page.goto("/stage?3d=1&intro=0&idle=2");
+  await waitReady(page);
+  await ask(page, "学生证丢了去哪补办");
+  await expect(page.locator('[data-testid="stage-doc-1"]')).toBeVisible();
+
+  const stamps = await page.evaluate(() =>
+    Array.from(document.querySelectorAll(".stage-doc-stamp")).map((el) => ({
+      opacity: Number(getComputedStyle(el as HTMLElement).opacity),
+      anims: (el as HTMLElement).getAnimations().length,
+    }))
+  );
+  expect(stamps.length).toBeGreaterThan(0);
+  for (const s of stamps) {
+    expect(s.anims).toBe(0);
+    expect(Math.abs(s.opacity - 0.86)).toBeLessThanOrEqual(0.01);
+  }
+
+  await page.waitForTimeout(3000);
+  expect(await page.evaluate(() => window.__campus3d?.tour)).toBe(false);
+});

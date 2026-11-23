@@ -28,7 +28,7 @@ export interface CampusSceneHandle {
   /** W8：允许鼠标拖动旋转、滚轮缩放（OrbitControls，参数来自 meta.look.orbit）。 */
   setOrbit(enabled: boolean): void;
   /** W8：观景——绕当前目标点的竖直轴匀速转；关时 900ms 回到开启前的机位。 */
-  setTour(on: boolean): void;
+    setTour(on: boolean, degPerSec?: number): void;
   /** W11：构图偏移——把模型整体向左挪 offsetPx 个 CSS 像素（回答面板展开时腾位）。
    *  只改相机投影（setViewOffset），不动机位、旋转、缩放与平移目标。
    *  普通版 CampusHero 不调用它，恒为零偏移。 */
@@ -138,6 +138,8 @@ interface Runtime {
   tourActive: boolean;
   /** 开观景时的机位快照（关时回到这里） */
   tourSaved: { pos: THREE.Vector3; target: THREE.Vector3; stop: string } | null;
+  /** ALIVE A9：本次观景的转速（度/秒）；null = 用 meta.look.tour.degPerSec */
+  tourDegPerSec: number | null;
   // ---- W11：构图偏移与平移边界 ----
   /** 当前构图偏移（CSS 像素；0 = 不偏移，普通版永远不调用 setFraming） */
   framingOffset: number;
@@ -238,8 +240,9 @@ export function createCampusScene(
       // W8
       controls: null,
       orbitWanted: false,
-      tourActive: false,
-      tourSaved: null,
+  tourActive: false,
+  tourSaved: null,
+  tourDegPerSec: null,
       // W11
       framingOffset: 0,
       panBounds: null,
@@ -717,7 +720,7 @@ export function createCampusScene(
     function rotateTour(dtSec: number) {
       const cfg = meta.look.tour;
       if (!cfg) return;
-      const rad = (cfg.degPerSec * dtSec * Math.PI) / 180;
+      const rad = ((rt.tourDegPerSec ?? cfg.degPerSec) * dtSec * Math.PI) / 180;
       const target = rt.currentTarget;
       const r = Math.hypot(camera.position.x - target.x, camera.position.z - target.z);
       if (r < 1e-6) return;
@@ -728,13 +731,14 @@ export function createCampusScene(
       camera.lookAt(target);
     }
 
-    function setTour(on: boolean) {
+    function setTour(on: boolean, degPerSec?: number) {
       if (rt.disposed) return;
       if (on) {
         if (rt.tourActive) return;
         rt.move = null;
         if (rt.controls) rt.controls.enabled = false;
         rt.tourActive = true;
+        rt.tourDegPerSec = degPerSec ?? null;
         rt.tourSaved = {
           pos: camera.position.clone(),
           target: rt.currentTarget.clone(),
@@ -744,6 +748,7 @@ export function createCampusScene(
       } else {
         if (!rt.tourActive) return;
         rt.tourActive = false;
+        rt.tourDegPerSec = null;
         const saved = rt.tourSaved;
         rt.tourSaved = null;
         if (saved) {

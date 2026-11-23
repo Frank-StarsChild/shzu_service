@@ -51,6 +51,10 @@ export const useStageStore = defineStore("stage", {
     resetViewSeq: 0,
     /** W8：进观景前的模式（退出时恢复） */
     tourPrev: null as StageMode | null,
+    /** ALIVE A9：本次观景的转速（null = 用 meta.look.tour.degPerSec） */
+    tourDegPerSec: null as number | null,
+    /** ALIVE A9：这次观景是不是「空闲自动进入」（不显示退出钮、界面不隐去） */
+    idleTour: false,
     /** packs.json 的包表与 default（loadCampuses 后可用；加载前 default 取默认包名） */
     packs: [] as Pack[],
     default: "all",
@@ -170,6 +174,7 @@ export const useStageStore = defineStore("stage", {
     },
     goHome() {
       this.closeDial(); // ALIVE A4
+      this.idleTour = false;
       this.mode = "home";
       this.zoneId = null;
       this.place = null;
@@ -192,16 +197,18 @@ export const useStageStore = defineStore("stage", {
     },
     /** W8：观景。开：记下原来的 mode，置为 tour；关：恢复。
      *  镜头的进入/退出由 StageCanvas 调 scene.setTour 处理。 */
-    setTour(on: boolean) {
+    setTour(on: boolean, degPerSec?: number) {
       if (on) {
         if (this.mode === "tour") return;
         this.closeDial(); // ALIVE A4
         this.tourPrev = this.mode;
         this.mode = "tour";
+        this.tourDegPerSec = degPerSec ?? null;
       } else {
         if (this.mode !== "tour") return;
         this.mode = this.tourPrev ?? "home";
         this.tourPrev = null;
+        this.tourDegPerSec = null;
       }
     },
     /** 点一个校区，从上到下命中第一条（W3 卡第 2 条）：

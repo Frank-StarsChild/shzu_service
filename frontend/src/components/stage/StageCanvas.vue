@@ -169,7 +169,7 @@ async function initScene() {
       // W8：就绪后允许拖动旋转；加载期间点过观景的话补上
       if (gate.value.mode === "scene") handle.setOrbit(true);
       if (store.mode === "tour") {
-        handle.setTour(true);
+        handle.setTour(true, store.tourDegPerSec ?? undefined);
       } else if (store.mode !== "home") {
         applyStageMode();
       }
@@ -198,7 +198,7 @@ function finalizeIntro() {
   // W8：开场结束同样允许拖动旋转；开场期间点过观景的话补上
   if (gate.value.mode === "scene") sceneHandle?.setOrbit(true);
   if (store.mode === "tour") {
-    sceneHandle?.setTour(true);
+    sceneHandle?.setTour(true, store.tourDegPerSec ?? undefined);
   } else if (store.mode !== "home") {
     applyStageMode();
   }
@@ -291,7 +291,7 @@ watch([() => store.mode, () => store.zoneId, () => store.collegeNo], ([m], [prev
   touchHook({ mode: store.mode, college: store.collegeNo });
   if (m === "tour") {
     if (sceneStatus.value === "ready" && gate.value.mode === "scene") {
-      sceneHandle?.setTour(true);
+      sceneHandle?.setTour(true, store.tourDegPerSec ?? undefined);
     }
     return;
   }
@@ -310,6 +310,11 @@ watch(() => store.trace.phase, (p) => touchHook({ phase: p }), { immediate: true
 
 // ALIVE A4：罗盘开合进调试钩子
 watch(() => store.dialOpen, (on) => touchHook({ dial: on }), { immediate: true });
+
+// ALIVE A9：空闲观景结束 → 回到首页机位
+watch(() => store.idleTour, (on, prev) => {
+  if (prev && !on && sceneStatus.value === "ready") sceneHandle?.goTo("home");
+});
 
 // W10：把场景就绪状态同步给 store（enterPlace / otherPack 的等待逻辑用）
 watch(sceneStatus, (s) => store.setSceneReady(s === "ready"), { immediate: true });
@@ -451,7 +456,7 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div class="stage" data-testid="stage" :data-mode="store.mode" :class="{ 'is-tour': store.mode === 'tour' }" :style="frameStyle">
+  <div class="stage" data-testid="stage" :data-mode="store.mode" :class="{ 'is-tour': store.mode === 'tour', 'is-idle-tour': store.mode === 'tour' && store.idleTour }" :style="frameStyle">
     <img ref="posterEl" data-testid="stage-poster" class="stage-poster"
          :src="posterSrc" alt="石河子大学校园沙盘（示意）" />
     <canvas v-if="canvasMounted" ref="canvasRef" data-testid="stage-canvas"

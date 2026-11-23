@@ -180,6 +180,9 @@ onMounted(async () => {
   // W8：舞台页锁住页面滚动（滚轮留给沙盘缩放）；离开时恢复。Esc 退出观景。
   document.body.style.overflow = "hidden";
   window.addEventListener("keydown", onKeyDown);
+  // ALIVE A9：空闲转动——监听挂在 window 上（挂着画布会漏掉界面上的移动）
+  for (const ev of IDLE_EVENTS) window.addEventListener(ev, onIdleInput, { passive: true });
+  armIdle();
   places = await loadPlaces().catch(() => null);
   // ALIVE A1： 拉 24 学院院徽清单。失败保持 null（后面的卡看到 null 一律不画院徽），
   // 舞台照常工作，只在控制台留一条警告。
@@ -201,6 +204,65 @@ function onKeyDown(e: KeyboardEvent) {
   if (e.key === "Escape" && store.mode === "tour") store.setTour(false);
 }
 
+// ---- ALIVE A9：空闲转动。首页 N 秒（默认 30，网址 idle=<秒> 可调）没有任何输入 →
+// 以每秒 1 度绕转；之后任何输入就退出、回首页机位并重新计时。减少动态不做。 ----
+const IDLE_DEFAULT_S = 30;
+const idleSeconds = (() => {
+  const raw = Number(new URLSearchParams(location.search).get("idle") ?? "");
+  return Number.isFinite(raw) && raw > 0 ? raw : IDLE_DEFAULT_S;
+})();
+let idleTimer = 0;
+let lastInputAt = 0;
+
+function waitingAnswer(): boolean {
+  return chat.turns.some((t) => t.role === "assistant" && t.status === "pending");
+}
+
+function canIdle(): boolean {
+  return store.mode === "home"
+    && !waitingAnswer()
+    && !store.dialOpen
+    && !reducedMotion
+    && !store.idleTour;
+}
+
+function exitIdleTour() {
+  if (!store.idleTour) return;
+  store.idleTour = false;
+  store.setTour(false);
+}
+
+function armIdle() {
+  window.clearTimeout(idleTimer);
+  if (!canIdle()) return;
+  idleTimer = window.setTimeout(() => {
+    if (!canIdle()) return;
+    store.idleTour = true;
+    store.setTour(true, 1); // 每秒 1 度
+  }, idleSeconds * 1000);
+}
+
+function onIdleInput() {
+  if (store.idleTour) {
+    exitIdleTour();
+    lastInputAt = performance.now();
+    armIdle();
+    return;
+  }
+  const now = performance.now();
+  if (now - lastInputAt < 250) return;
+  lastInputAt = now;
+  armIdle();
+}
+
+const IDLE_EVENTS = ["pointerdown", "pointermove", "wheel", "keydown", "touchstart"] as const;
+
+// 状态变化（进出回答、开合罗盘、离开首页）时重新评估计时
+watch(
+  () => [store.mode, store.dialOpen, waitingAnswer()],
+  () => armIdle()
+);
+
 // W6：离开舞台（去 /chat、/services、/workflows 或「普通版」）时把舞台状态归位。
 // stage store 是全局的，SPA 往返回来后 StageView 重新挂裁：不复位的话，加载期间
 // applyStageMode 会按残留的 answer/campus 态把镜头重新飞走（W6 验证第 7 条专门盯这个）。
@@ -208,6 +270,8 @@ function onKeyDown(e: KeyboardEvent) {
 // 对话记录在 chat store 里，面板回来仍是那轮回答。
 onBeforeUnmount(() => {
   window.removeEventListener("keydown", onKeyDown);
+  for (const ev of IDLE_EVENTS) window.removeEventListener(ev, onIdleInput);
+  window.clearTimeout(idleTimer);
   document.body.style.overflow = "";
   clearTraceTimers();
   store.goHome();
@@ -257,7 +321,7 @@ onBeforeUnmount(() => {
 
     <!-- W8：观景时的退出钮（界面其余零件都淡去，只剩它） -->
     <button
-      v-if="store.mode === 'tour'"
+      v-if="store.mode === 'tour' && !store.idleTour"
       type="button"
       class="stage-tour-exit"
       data-testid="stage-tour-exit"

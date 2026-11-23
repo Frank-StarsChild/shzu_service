@@ -542,17 +542,18 @@
 .stage .stage-caption {
   transition: opacity 300ms;
 }
-.stage.is-tour .stage-top,
-.stage.is-tour .stage-rail,
-.stage.is-tour .stage-hero,
-.stage.is-tour .stage-hero-mask,
-.stage.is-tour .stage-dock,
-.stage.is-tour .stage-answer,
-.stage.is-tour .stage-hud-widget,
-.stage.is-tour .stage-signs,
-.stage.is-tour .stage-sign, /* 题签自身设了 pointer-events:auto，得单独盖掉 */
-.stage.is-tour .stage-star,
-.stage.is-tour .stage-caption {
+/* ALIVE A9：空闲自动进入的观景（is-idle-tour）界面不隐去，只缓慢转动 */
+.stage.is-tour:not(.is-idle-tour) .stage-top,
+.stage.is-tour:not(.is-idle-tour) .stage-rail,
+.stage.is-tour:not(.is-idle-tour) .stage-hero,
+.stage.is-tour:not(.is-idle-tour) .stage-hero-mask,
+.stage.is-tour:not(.is-idle-tour) .stage-dock,
+.stage.is-tour:not(.is-idle-tour) .stage-answer,
+.stage.is-tour:not(.is-idle-tour) .stage-hud-widget,
+.stage.is-tour:not(.is-idle-tour) .stage-signs,
+.stage.is-tour:not(.is-idle-tour) .stage-sign, /* 题签自身设了 pointer-events:auto，得单独盖掉 */
+.stage.is-tour:not(.is-idle-tour) .stage-star,
+.stage.is-tour:not(.is-idle-tour) .stage-caption {
   opacity: 0;
   pointer-events: none;
 }
