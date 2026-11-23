@@ -76,7 +76,12 @@ function scheduleLights(fromIntro: boolean) {
     window.setTimeout(() => store.startLights(), 300);
     return;
   }
-  if (!fromIntro || lightsPlayed) return; // intro=0、换沙盘、回首页都不再点
+  // intro=0：这次打开页面没有点灯（直接全亮），记为「已经点过」，换沙盘重播开场时也不再点
+  if (!fromIntro) {
+    lightsPlayed = true;
+    return;
+  }
+  if (lightsPlayed) return;
   lightsPlayed = true;
   store.startLights();
 }
@@ -311,6 +316,9 @@ watch(() => store.trace.phase, (p) => touchHook({ phase: p }), { immediate: true
 // ALIVE A4：罗盘开合进调试钩子
 watch(() => store.dialOpen, (on) => touchHook({ dial: on }), { immediate: true });
 
+// ALIVE A8：打字预判进调试钩子
+watch(() => store.mention, (m) => touchHook({ mention: m?.buildingId ?? null }), { immediate: true });
+
 // ALIVE A9：空闲观景结束 → 回到首页机位
 watch(() => store.idleTour, (on, prev) => {
   if (prev && !on && sceneStatus.value === "ready") sceneHandle?.goTo("home");
@@ -404,6 +412,7 @@ onMounted(async () => {
     phase: "idle",
     threads: 0,
     dial: false,
+    mention: null,
     frames: 0,
     drawCalls: 0,
     triangles: 0,

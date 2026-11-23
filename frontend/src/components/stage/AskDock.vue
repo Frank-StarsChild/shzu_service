@@ -3,11 +3,12 @@
 // newSession/turns/busy），不用 useGo().ask()——那会跳到 /chat。
 // 顶栏统一后，舞台专用操作「观景 / 普通版」放在问话栏上方的工具行（沙盘控制区）：
 // 观景仍只在 3D 可用且未开减少动态时显示；普通版记入偏好后去 /classic。
-import { computed, inject, onMounted, ref } from "vue";
+import { computed, inject, onBeforeUnmount, onMounted, ref } from "vue";
 import { useChatStore } from "@/stores/chat";
 import { useStageStore } from "@/stores/stage";
 import { useKbMeta } from "@/composables";
 import type { StageCtx } from "@/stage/types";
+import { findMention } from "@/stage/emblems";
 import PhaseLine from "@/components/stage/PhaseLine.vue";
 
 const store = useChatStore();
@@ -38,6 +39,83 @@ const EXAMPLES = [
   "借教室要提前几天申请？",
 ];
 
+// ---- ALIVE A8：打字预判（不调后端，只用 places.names 与学院名在输入里找） ----
+let mentionTimer = 0;
+let composing = false;
+
+function scheduleMention(value: string) {
+  window.clearTimeout(mentionTimer);
+  if (composing) return;
+  if (!value.trim()) {
+    stageStore.setMention(null);
+    return;
+  }
+  mentionTimer = window.setTimeout(() => {
+    if (composing) return;
+    stageStore.setMention(
+      findMention(value, stageStore.places, stageStore.emblems, ctx?.meta.value ?? null)
+    );
+  }, 250);
+}
+
+function onInput(e: Event) {
+  const v = (e.target as HTMLInputElement).value;
+  if (!stageStore.placesLoaded) {
+    void stageStore.loadPlacesData().then(() => scheduleMention(v)).catch(() => undefined);
+  }
+  scheduleMention(v);
+}
+
+function onCompositionStart() {
+  composing = true;
+  window.clearTimeout(mentionTimer);
+}
+
+function onCompositionEnd(e: CompositionEvent) {
+  composing = false;
+  scheduleMention((e.target as HTMLInputElement).value);
+}
+
+/** 「会4（法学院楼） · 中区」 */
+const mentionMeta = computed(() => {
+  const m = stageStore.mention;
+  const meta = ctx?.meta.value;
+  if (!m || !meta) return "";
+  const b = meta.buildings[m.buildingId];
+  if (!b) return "";
+  const name = (b.name ?? "")
+    .replace(/（[^）]*）/g, "")
+    .replace(/\([^)]*\)/g, "")
+    .trim();
+  const zone = b.zone ? meta.zones?.find((z) => z.id === b.zone)?.name ?? "" : "";
+  return [name, zone].filter(Boolean).join(" · ");
+});
+
+/** 点预判提示：有学院就落到学院，否则落到这栋楼（输入框里的字不动） */
+function flyMention() {
+  const m = stageStore.mention;
+  if (!m) return;
+  if (m.collegeNo !== null) void stageStore.showCollege(m.collegeNo);
+  else void stageStore.showBuilding(m.buildingId);
+}
+
+/** ALIVE A8：校区态换成这个片区的学院问题（前三个 + 有哪些学院） */
+const examples = computed(() => {
+  if (stageStore.mode !== "campus" || !stageStore.zoneId) return EXAMPLES;
+  const meta = ctx?.meta.value;
+  const zoneId = stageStore.zoneId;
+  const colleges = (meta?.colleges ?? [])
+    .filter((c) => c.zone === zoneId)
+    .slice()
+    .sort((a, b) => a.no - b.no);
+  const list = colleges.slice(0, 3).map((c) => {
+    const nm = c.name.replace(/（[^）]*）/g, "").replace(/\([^)]*\)/g, "").trim();
+    return `${nm}在哪栋楼？`;
+  });
+  list.push("这个校区有哪些学院？");
+  return list;
+});
+
 const statusText = computed(() => {
   if (store.busy) return "正在翻查审定资料…";
   if (ready.value) {
@@ -49,12 +127,17 @@ const statusText = computed(() => {
 function ask(msg?: string) {
   const value = (msg ?? text.value).trim();
   if (!value || store.busy) return;
+  stageStore.setMention(null); // ALIVE A8：发出提问就清掉预判
   void store.send(value);
   text.value = "";
 }
 
 onMounted(() => {
   void store.restore();
+});
+
+onBeforeUnmount(() => {
+  window.clearTimeout(mentionTimer);
 });
 </script>
 
@@ -97,9 +180,21 @@ onMounted(() => {
         >普通版</router-link>
       </div>
     </div>
-    <div v-if="store.turns.length === 0" class="stage-examples">
+    <!-- ALIVE A8：打字预判——与示例问题占同一位置，预判出现时示例问题隐藏 -->
+    <button
+      v-if="stageStore.mention"
+      type="button"
+      class="stage-mention"
+      data-testid="stage-mention"
+      @click="flyMention"
+    >
+      <span class="stage-mention-k">你说的可能是</span>
+      <strong class="stage-mention-name">{{ stageStore.mention.label }}</strong>
+      <span v-if="mentionMeta" class="stage-mention-meta">{{ mentionMeta }}</span>
+    </button>
+    <div v-else-if="store.turns.length === 0" class="stage-examples">
       <button
-        v-for="q in EXAMPLES"
+        v-for="q in examples"
         :key="q"
         type="button"
         class="stage-example"
@@ -114,6 +209,9 @@ onMounted(() => {
         type="text"
         autocomplete="off"
         placeholder="想办什么事？例如：学生证丢了去哪补办"
+        @input="onInput"
+        @compositionstart="onCompositionStart"
+        @compositionend="onCompositionEnd"
       />
       <button class="stage-ask" data-testid="stage-ask" type="submit">问</button>
     </form>
@@ -218,6 +316,41 @@ onMounted(() => {
   gap: 8px;
   justify-content: center;
   margin: 0;
+}
+/* ALIVE A8：打字预判提示（与示例问题同一位置） */
+.stage .stage-mention {
+  align-self: center;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 7px 14px;
+  background: var(--st-ov-bg-strong);
+  border: 1px solid var(--st-ov-gold);
+  box-shadow: var(--st-ov-shadow);
+  cursor: pointer;
+}
+.stage .stage-mention-k {
+  font-family: var(--st-hei);
+  font-size: 12.5px;
+  letter-spacing: 0.08em;
+  color: var(--st-ov-gold);
+}
+.stage .stage-mention-name {
+  font-family: var(--st-song);
+  font-weight: 700;
+  font-size: 13.5px;
+  color: #fff;
+}
+.stage .stage-mention-meta {
+  font-family: var(--st-hei);
+  font-size: 12.5px;
+  letter-spacing: 0.04em;
+  color: var(--st-ov-gold);
+}
+.stage .stage-mention:hover { border-color: #fff; }
+.stage .stage-mention:focus-visible {
+  outline: 2px solid var(--st-ov-gold);
+  outline-offset: 2px;
 }
 .stage .stage-example {
   background: var(--st-ov-bg);

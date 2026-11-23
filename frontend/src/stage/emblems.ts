@@ -1,5 +1,7 @@
 // ALIVE A1（3.1/7.2 节）：读 24 个学院的院徽清单。纯函数 + 一次性加载。
 // 后面的卡（灯牌/罗盘/题签/办理地点）都从这里拿学院数据；emblems 为 null 时一律不画。
+import type { Places } from "@/stage/packs";
+import type { CampusMeta } from "@/campus3d/meta";
 
 export type College = {
   no: number;
@@ -107,4 +109,61 @@ export function collegeForPlace(emblems: Emblems, buildingId: string, texts: str
   }
   // 没有一个名字出现：no 最小的
   return best ?? list[0];
+}
+
+/** ALIVE A8：打字预判命中的地点 */
+export type Mention = {
+  buildingId: string;
+  collegeNo: number | null;
+  /** 命中的那个名字（原样） */
+  label: string;
+};
+
+/**
+ * ALIVE A8：在输入里找地点名（纯前端，不调后端）。
+ * 候选：places.names 里有楼号的名字 + 24 个学院去掉括号的全名（不用两字简称，
+ * 「理学」会误中「物理学」）。取出现位置最靠前的；同位置取更长的；楼不在当前
+ * 沙盘上的候选直接跳过。collegeNo 优先用命中的学院，否则用这栋楼上第一个学院。
+ */
+export function findMention(
+  text: string,
+  places: Places | null,
+  emblems: Emblems | null,
+  meta: CampusMeta | null
+): Mention | null {
+  if (!text || !meta) return null;
+  type Cand = { name: string; buildingId: string; collegeNo: number | null };
+  const cands: Cand[] = [];
+  for (const [name, bid] of places?.names ?? []) {
+    if (!bid || name.length < 2) continue;
+    cands.push({ name, buildingId: bid, collegeNo: null });
+  }
+  for (const c of emblems?.colleges ?? []) {
+    const nm = shortName(c);
+    if (!nm || nm.length < 2) continue;
+    const bid = c.buildingIds.find((id) => !!meta.buildings[id]);
+    if (!bid) continue;
+    cands.push({ name: nm, buildingId: bid, collegeNo: c.no });
+  }
+
+  let best: { pos: number; len: number; cand: Cand } | null = null;
+  for (const cand of cands) {
+    if (!meta.buildings[cand.buildingId]) continue;
+    const pos = text.indexOf(cand.name);
+    if (pos < 0) continue;
+    if (
+      !best
+      || pos < best.pos
+      || (pos === best.pos && cand.name.length > best.len)
+    ) {
+      best = { pos, len: cand.name.length, cand };
+    }
+  }
+  if (!best) return null;
+
+  let collegeNo = best.cand.collegeNo;
+  if (collegeNo === null && emblems) {
+    collegeNo = collegesOfBuilding(emblems, best.cand.buildingId)[0]?.no ?? null;
+  }
+  return { buildingId: best.cand.buildingId, collegeNo, label: best.cand.name };
 }

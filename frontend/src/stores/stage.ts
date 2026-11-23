@@ -13,7 +13,7 @@ import { defineStore } from "pinia";
 import { watch } from "vue";
 import { loadPackIndex, loadPlaces, type CampusZoneRef, type Pack, type Places } from "@/stage/packs";
 import type { CampusMeta } from "@/campus3d/meta";
-import { collegeForPlace, type Emblems } from "@/stage/emblems";
+import { collegeForPlace, type Emblems, type Mention } from "@/stage/emblems";
 import { IDLE_TRACE, type Trace } from "@/stage/trace";
 import { useChatStore } from "@/stores/chat";
 
@@ -82,6 +82,8 @@ export const useStageStore = defineStore("stage", {
     dialHover: null as number | null,
     /** ALIVE A9：点灯序号（每次开场播完 / 测试入口加一；组件看到 >0 才点亮） */
     lightSeq: 0,
+    /** ALIVE A8：打字预判命中的地点（只影响灯牌与虚线圈，不碰镜头与外壳） */
+    mention: null as Mention | null,
     /** 每次 applyPlace（showAnswer/showBuilding）加一；换包后等待落楼时用它判断「作废」 */
     placeSeq: 0,
   }),
@@ -164,6 +166,10 @@ export const useStageStore = defineStore("stage", {
     startLights() {
       this.lightSeq += 1;
     },
+    /** ALIVE A8：设置/清空打字预判 */
+    setMention(m: Mention | null) {
+      this.mention = m;
+    },
     /** W11：收起/展开右侧回答面板（不动校区、定位、对话与生成状态） */
     setAnswerOpen(open: boolean) {
       this.answerOpen = open;
@@ -175,6 +181,7 @@ export const useStageStore = defineStore("stage", {
     goHome() {
       this.closeDial(); // ALIVE A4
       this.idleTour = false;
+      this.mention = null; // ALIVE A8
       this.mode = "home";
       this.zoneId = null;
       this.place = null;
@@ -186,6 +193,7 @@ export const useStageStore = defineStore("stage", {
      *  传进来的就是当前 packId 时只做 goHome()。 */
     switchPack(packId: string) {
       this.closeDial(); // ALIVE A4
+      this.mention = null; // ALIVE A8
       if (packId === this.packId) {
         this.goHome();
         return;

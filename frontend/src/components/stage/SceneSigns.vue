@@ -6,7 +6,7 @@
 //  - 校区沙盘首页：地标题签（固定锚点，不被挤走）
 //  - 回答定位：楼的题签唯一一块，朱砂边；被面板挤到时先用横排短签，再收起
 // 题签的锚点（线底端）不动；需要错开时从文字框边缘画一根短引线回锚点。
-import { computed, inject, onBeforeUnmount, onMounted, type Ref } from "vue";
+import { computed, inject, onBeforeUnmount, onMounted, ref, watch, type Ref } from "vue";
 import type { StageCtx } from "@/stage/types";
 import type { ZoneInfo } from "@/campus3d/meta";
 import { useStageStore } from "@/stores/stage";
@@ -173,6 +173,44 @@ function buildSpecs(): LabelSpec[] {
 
 function updateFrame() {
   board?.publish("signs", buildSpecs());
+  updateMentionRing();
+}
+
+// ---- ALIVE A8：打字预判的虚线圈（楼脚，y=1 平面上的 48 边形） ----
+const mention = computed(() => store.mention);
+const showMentionRing = computed(
+  () => !!mention.value
+    && ctx?.gate.value.mode === "scene"
+    && (store.mode === "home" || store.mode === "campus")
+);
+const ringPoints = ref("");
+const RING_N = 48;
+const RING_R = 62;
+
+function updateMentionRing() {
+  const m = mention.value;
+  const meta = ctx?.meta.value;
+  const handle = ctx?.getHandle();
+  if (!showMentionRing.value || !m || !meta || !handle) {
+    ringPoints.value = "";
+    return;
+  }
+  const a = meta.buildings[m.buildingId]?.anchor;
+  if (!a) {
+    ringPoints.value = "";
+    return;
+  }
+  const pts: string[] = [];
+  for (let i = 0; i < RING_N; i++) {
+    const th = (i / RING_N) * Math.PI * 2;
+    const p = handle.project([
+      a[0] + RING_R * Math.cos(th),
+      1,
+      a[2] + RING_R * Math.sin(th),
+    ]);
+    pts.push(`${p.x.toFixed(1)},${p.y.toFixed(1)}`);
+  }
+  ringPoints.value = pts.join(" ");
 }
 
 function layoutOf(id: string) {
@@ -244,7 +282,20 @@ function onLandmarkClick(buildingId: string) {
 }
 
 /** ALIVE A9：点灯（首页五块校区题签）——按标记点到原点水平距离由近到远，每盏错开 60ms */
-const lit = computed(() => store.lightSeq > 0);
+const lighting = ref(false);
+let lightTimer = 0;
+watch(
+  () => store.lightSeq,
+  (seq) => {
+    if (seq <= 0) return;
+    lighting.value = true;
+    window.clearTimeout(lightTimer);
+    lightTimer = window.setTimeout(() => {
+      lighting.value = false;
+    }, 2400);
+  },
+  { immediate: true }
+);
 const zoneLightDelays = computed(() => {
   const map = new Map<string, number>();
   const arr = zones.value
@@ -264,6 +315,7 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
   offFrame?.();
+  window.clearTimeout(lightTimer);
 });
 </script>
 
@@ -285,12 +337,23 @@ onBeforeUnmount(() => {
       </defs>
       <path :d="starTrail.d" fill="none" stroke="url(#stage-star-trail-grad)" stroke-width="1.5" />
     </svg>
+    <!-- ALIVE A8：打字预判的楼脚虚线圈 -->
+    <svg v-if="ringPoints" class="stage-signs-ring" aria-hidden="true">
+      <polygon
+        data-testid="stage-mention-ring"
+        :points="ringPoints"
+        fill="rgba(232, 201, 138, 0.10)"
+        stroke="var(--st-gold)"
+        stroke-width="2"
+        stroke-dasharray="7 5"
+      />
+    </svg>
     <button
       v-for="z in zones"
       :key="z.id"
       type="button"
       class="stage-sign"
-      :class="{ 'is-selected': store.mode === 'campus', 'is-lighting': lit }"
+      :class="{ 'is-selected': store.mode === 'campus', 'is-lighting': lighting }"
       :data-testid="`stage-sign-${z.id}`"
       :aria-hidden="hidden(`zone-${z.id}`) ? 'true' : undefined"
       :tabindex="hidden(`zone-${z.id}`) ? -1 : undefined"
@@ -393,6 +456,14 @@ onBeforeUnmount(() => {
   pointer-events: auto;
 }
 /* ALIVE A9：开场点灯——由近到远，每块 240ms 从 0.6 倍、透明到原样 */
+/* ALIVE A8：打字预判的楼脚虚线圈（连线层，不接鼠标） */
+.stage .stage-signs-ring {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  pointer-events: none;
+}
 .stage .stage-sign.is-lighting {
   animation: stage-sign-light-in 240ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
   animation-delay: var(--light-delay, 0ms);

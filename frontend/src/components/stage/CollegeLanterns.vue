@@ -118,7 +118,7 @@ function isCompact(no: number): boolean {
 }
 
 function discSize(no: number): number {
-  if (hoverNo.value === no && !isCompact(no)) return 50;
+  if (isHi(no) && !isCompact(no)) return 50;
   return isCompact(no) ? 30 : 40;
 }
 
@@ -176,6 +176,28 @@ const lightDelays = computed(() => {
   arr.forEach((x, i) => map.set(x.no, i * 60));
   return map;
 });
+
+/** 点灯动画约 1.4 秒内结束，之后撤掉 class，免得动画的终值压住别的透明度（观景淡出、A8 变暗） */
+const lighting = ref(false);
+let lightTimer = 0;
+watch(
+  () => store.lightSeq,
+  (seq) => {
+    if (seq <= 0) return;
+    lighting.value = true;
+    window.clearTimeout(lightTimer);
+    lightTimer = window.setTimeout(() => {
+      lighting.value = false;
+    }, 2400);
+  },
+  { immediate: true }
+);
+
+/** ALIVE A8：打字预判——命中的学院用悬停样子，其余灯牌变暗 */
+const mentionNo = computed(() => store.mention?.collegeNo ?? null);
+function isHi(no: number): boolean {
+  return hoverNo.value === no || mentionNo.value === no;
+}
 
 /** 题签靠右会出屏时翻到左边 */
 function tagLeft(no: number): boolean {
@@ -284,6 +306,7 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
   offFrame?.();
+  window.clearTimeout(lightTimer);
   const hook = (window as unknown as { __campus3d?: Record<string, unknown> }).__campus3d;
   if (hook) hook.lanterns = 0;
 });
@@ -297,9 +320,10 @@ onBeforeUnmount(() => {
       type="button"
       class="stage-lantern"
       :class="{
-        'is-hover': hoverNo === l.college.no,
+        'is-hover': isHi(l.college.no),
         'is-compact': isCompact(l.college.no),
-        'is-lighting': lit,
+        'is-lighting': lighting,
+        'is-dim': mentionNo !== null && mentionNo !== l.college.no,
       }"
       :data-testid="`stage-lantern-${l.college.no}`"
       :data-lantern-id="`lantern-${l.college.no}`"
@@ -409,6 +433,10 @@ onBeforeUnmount(() => {
   background: var(--st-ov-bg);
   box-shadow: 0 0 0 1px var(--st-ov-gold-soft), 0 6px 18px rgba(0, 0, 0, 0.6);
   transition: box-shadow 160ms;
+}
+/* ALIVE A8：打字预判——未命中的灯牌变暗（点灯动画未撤时也压过动画终值） */
+.stage .stage-lantern.is-dim {
+  opacity: 0.42 !important;
 }
 /* 与右侧面板对应的行号（右下角小角标） */
 .stage .stage-lantern-no {

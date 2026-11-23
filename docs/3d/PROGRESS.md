@@ -1264,3 +1264,19 @@ stage 8/8 及全部既有回归）。视觉自查 W2-shell.png：印章顶栏、
 - 截图 `docs/3d/shots/A9-stamp.png`（章盖好后的回答面板）。
 
 > AI生成
+
+## A8 打字预判、跟着校区换示例问题 — 2026-11-23
+
+- `stage/emblems.ts`：`findMention(text, places, emblems, meta)`——候选是 `places.names` 里有楼号的名字 + 24 个学院去掉括号的全名（**不用两字简称**，否则「理学」会误中「物理学」）；取出现位置最靠前的，同位置取更长的，楼不在当前沙盘上的候选直接跳过；`collegeNo` 优先用命中的学院，否则取这栋楼上第一个学院。新增 `Mention` 类型。
+- `stores/stage.ts`：`mention` 字段 + `setMention()`；`goHome()`、`switchPack()` 清空（`AskDock.ask()` 发出提问时也清）。
+- `AskDock.vue`：输入后 250ms 防抖算一次；`compositionstart` 到 `compositionend` 之间不算（拼音没上屏不匹配）；`mention` 出现时用 `stage-mention`（近黑底、1px 金边、「你说的可能是 + 学院/楼名 + 楼名 · 片区」）替换示例问题，点了有学院走 `showCollege`、否则 `showBuilding`，输入框的字不动；`mode === 'campus'` 时示例问题换成该片区学院（按 no）前三个「…在哪栋楼？」+「这个校区有哪些学院？」。
+- `CollegeLanterns.vue`：`mention.collegeNo` 的灯牌用悬停样子（50px、发光），其余灯牌 `opacity: .42`（加 `!important`，压过尚未撤掉的点灯动画终值）。点灯 class 在 2.4 秒后自动撤掉，免得动画终值一直盖住观景淡出与预判变暗。`SceneSigns.vue` 同样处理点灯 class 的撤销。
+- `SceneSigns.vue`：连线层加 `stage-mention-ring`——以楼 `anchor` 为中心、`y = 1` 平面半径 62 取 48 点，每帧投影成 `polygon`，填充 10% 金、2px 金边、`7 5` 虚线；只在 3D 且 `mode` 是 home/campus 时画。
+- `StageCanvas.vue`：钩子加 `mention`（命中楼号或 null）。
+- 顺手修 A9 的一个边界：`intro=0` 打开的页面在换沙盘重播开场后不应再点灯——`scheduleLights(false)` 时把「已点过」记成 true。
+- 单测 `mention.test.ts` 5 条：法学院（ZQ-B018 / 16 / label 法学院）、物理学不误中理学院、图书馆靠前、「信息学院在中区」为 null、空串为 null。反向验证：临时把两字简称加进候选 → 第 2 条按预期红（`expected 11 not to be 11`），改回后绿。
+- e2e `stage-mention.spec.ts` 4 条全过：打「法学院在哪」→ `mention === 'ZQ-B018'`、提示含「法学院」「会4」、`stage-emblem-16` 宽 50±1、`stage-lantern-11` 的 opacity 0.42、有虚线圈，`shell/pin` 仍为 null 且 `stop` 未变；48 点平均值与 `projectPoint([anchor,1])` 差 ≤4px；点提示落到 `ZQ-B018` 且输入框字不动；清空 100ms 内提示消失、mention 归零；IME：拼音阶段不预判、上屏后 250ms 预判；选北区后示例含「食品学院在哪栋楼？」「这个校区有哪些学院？」。截图 `docs/3d/shots/A8-mention.png`。
+- 全量：单测 201 / 201（18 文件）、build ✓、check:bundle ✓（51 个测试文件无 skip/only/fixme）；回归 ask 11 + avoid 6、lanterns 7 + colleges 9、campus 7、place 12 + star 7、near 8、dial 9、trace 4 + impact 5、shell 9 + theme 6 + orbit 8、framing 7 + mention 4 + emblems 5，全过。
+- 会收起 / 不出现的情况：输入为空立即清；拼音未上屏不预判；预判与示例问题占同一位置（预判出现时示例隐藏）；预判只动灯牌与虚线圈，不碰红色外壳、图钉与镜头。
+
+> AI生成
