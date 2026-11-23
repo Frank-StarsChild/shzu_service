@@ -296,6 +296,8 @@ export function createCampusScene(
         target: [rt.currentTarget.x, rt.currentTarget.y, rt.currentTarget.z],
         fov: camera.fov,
       };
+      // ALIVE A9：飞行的每帧相机位置（e2e 观察弧线抬升）
+      hook.cameraPosition = [camera.position.x, camera.position.y, camera.position.z];
       hook.projectPoint = project;
     }
 
@@ -346,7 +348,14 @@ export function createCampusScene(
         m.to,
         e
       );
-      camera.position.set(s.position[0], s.position[1], s.position[2]);
+      // ALIVE A9：远距离飞行中途抬高再俯冲（目标点仍线性插值，不加拱起）
+      const d = Math.hypot(
+        m.to.position[0] - m.fromPos.x,
+        m.to.position[1] - m.fromPos.y,
+        m.to.position[2] - m.fromPos.z
+      );
+      const lift = d > 200 ? Math.sin(Math.PI * e) * d * 0.12 : 0;
+      camera.position.set(s.position[0], s.position[1] + lift, s.position[2]);
       rt.currentTarget.set(s.target[0], s.target[1], s.target[2]);
       camera.lookAt(rt.currentTarget);
       if (raw >= 1) {
@@ -1070,7 +1079,7 @@ export function createCampusScene(
     // W2：测试入口（只给 e2e 用，做完也留着）
     const hookObj = (window as unknown as { __campus3d?: Record<string, unknown> }).__campus3d;
     if (hookObj) {
-      hookObj.debugGoTo = (stop: string) => goTo(stop);
+      hookObj.debugGoTo = (stop: string | Stop, opts?: { durationMs?: number }) => goTo(stop, opts);
     }
   });
 }

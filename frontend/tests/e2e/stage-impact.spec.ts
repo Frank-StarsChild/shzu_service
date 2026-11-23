@@ -1,6 +1,11 @@
 // ALIVE A9 验证：盖章、弧线飞行、开场点灯、空闲转动。
 import { expect, test, type Page } from "@playwright/test";
+import { readFileSync } from "node:fs";
 import { mockApi } from "./fixtures/api";
+
+const allMeta = JSON.parse(
+  readFileSync(new URL("../../public/campus3d/all/campus.meta.json", import.meta.url), "utf-8")
+) as { stops: Record<string, { position: [number, number, number] }> };
 
 // 说明：无头软渲染下一帧要 800ms 以上，180–240ms 的 CSS 动画无法用墙上时间观察。
 // 盖章与点灯的时序改用 Web Animations API 把动画定点到指定毫秒再读计算样式，
@@ -123,6 +128,71 @@ async function stampTiming(page: Page) {
 
 test.beforeEach(async ({ page }) => {
   await mockApi(page);
+});
+
+test("2 弧线：远距离飞行中途抬高（高于两端直线中点 d×0.08 以上），近距离不拱起", async ({ page }) => {
+  // 软渲染一帧要 800ms 以上，900ms 的飞行采不到中间帧；这一条用调试入口把同一条
+  // 插值放慢到 8 秒（只改时长，不改插值公式），便于逐帧采样。
+  // 备注：现有停靠点从 home 出发时终点的 Y 都比 home 低 500–900，拱起（0.12d）会被
+  // 线性下降吃掉，因此按「飞行路径高于两端直线中点」验证抬升；这仍是卡片想表达的
+  // 「中途抬高再俯冲」。
+  await page.goto("/stage?3d=1&intro=0");
+  await waitReady(page);
+  const dq = allMeta.stops.dq.position;
+  const dqTarget = (allMeta.stops.dq as unknown as { target: [number, number, number] }).target;
+  const home = allMeta.stops.home.position;
+  const d = Math.hypot(dq[0] - home[0], dq[1] - home[1], dq[2] - home[2]);
+  expect(d).toBeGreaterThan(600);
+
+  const fromY = await page.evaluate(() => window.__campus3d?.camera?.position?.[1] ?? null);
+  expect(fromY).not.toBeNull();
+
+  const startSampling = () =>
+    page.evaluate(() => {
+      const hook = window.__campus3d as unknown as Record<string, unknown>;
+      const pts: [number, number][] = [];
+      hook.__flyPts = pts;
+      const loop = () => {
+        const pos = hook.cameraPosition as number[] | undefined;
+        if (pos) pts.push([performance.now(), pos[1]]);
+        requestAnimationFrame(loop);
+      };
+      requestAnimationFrame(loop);
+    });
+
+  await startSampling();
+  const t0 = await page.evaluate(() => {
+    const hook = window.__campus3d as unknown as { debugGoTo?: (s: unknown, o?: unknown) => void };
+    hook.debugGoTo?.("dq", { durationMs: 8000 });
+    return performance.now();
+  });
+  await page.waitForFunction(() => window.__campus3d?.moving === false, undefined, { timeout: 40_000 });
+
+  const pts = await page.evaluate(() => (window.__campus3d as unknown as { __flyPts?: [number, number][] }).__flyPts ?? []);
+  const toY = await page.evaluate(() => window.__campus3d?.camera?.position?.[1] ?? 0);
+  const mid = ((fromY as number) + toY) / 2;
+  // 只取飞行中段（调用后 3.2–4.8 秒，缓动后约 e≈0.5）：有拱起时这里比直线中点高 0.12d
+  const band = pts.filter(([t]) => t >= t0 + 3200 && t <= t0 + 4800).map(([, y]) => y);
+  console.log("fly samples", pts.length, "band", band.length, "band-max", band.length ? Math.max(...band).toFixed(1) : "n/a", "mid", mid.toFixed(1), "d", d.toFixed(0));
+  expect(pts.length).toBeGreaterThan(10);
+  expect(band.length).toBeGreaterThan(0);
+  expect(Math.max(...band)).toBeGreaterThan(mid + d * 0.08);
+
+  // 近距离（d < 200）：不加拱起，Y 不超过两端较大的那个 + 1
+  const nearFromY = toY;
+  await startSampling();
+  await page.evaluate((t) => {
+    const hook = window.__campus3d as unknown as { debugGoTo?: (s: unknown, o?: unknown) => void };
+    hook.debugGoTo?.({ position: [t[0] + 150, t[1], t[2]], target: [t[0], t[1] - 200, t[2]] }, { durationMs: 4000 });
+  }, [dq[0], dq[1], dq[2]]);
+  await page.waitForFunction(() => window.__campus3d?.moving === false, undefined, { timeout: 30_000 });
+  const pts2 = await page.evaluate(() => (window.__campus3d as unknown as { __flyPts?: [number, number][] }).__flyPts ?? []);
+  const ys2 = pts2.map(([, y]) => y);
+  const nearToY = await page.evaluate(() => window.__campus3d?.camera?.position?.[1] ?? 0);
+  console.log("near samples", ys2.length, "max", Math.max(...ys2).toFixed(1), "from", nearFromY, "to", nearToY);
+  expect(ys2.length).toBeGreaterThan(1);
+  expect(Math.max(...ys2)).toBeLessThanOrEqual(Math.max(nearFromY, nearToY) + 1);
+  void dqTarget;
 });
 
 test("1 盖章：两枚章 260/380ms 依次盖下，起点 1.8 倍 −4° 透明、终点 0.86 与 −12°", async ({ page }) => {
