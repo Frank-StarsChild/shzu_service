@@ -195,6 +195,64 @@ test("2 弧线：远距离飞行中途抬高（高于两端直线中点 d×0.08 
   void dqTarget;
 });
 
+/** 把灯牌的点灯动画定点到 t 毫秒；返回可见灯牌的 delay 与 opacity */
+async function seekLanterns(page: Page, t: number) {
+  return page.evaluate((ms) => {
+    const els = Array.from(
+      document.querySelectorAll('[data-testid^="stage-lantern-"]')
+    ) as HTMLElement[];
+    const out: { id: string; delay: number; opacity: number }[] = [];
+    for (const el of els) {
+      if (el.style.display === "none") continue;
+      const a = el.getAnimations()[0];
+      if (!a) continue;
+      a.pause();
+      a.currentTime = ms;
+      const timing = a.effect?.getTiming();
+      out.push({
+        id: el.dataset.testid ?? "",
+        delay: Number(timing?.delay ?? 0),
+        opacity: Number(getComputedStyle(el).opacity),
+      });
+    }
+    return out;
+  }, t);
+}
+
+test("3 点灯：中区沙盘由近到远亮起（近的先亮），2 秒后全亮", async ({ page }) => {
+  await page.goto("/stage?3d=1&intro=0&light=1");
+  await waitReady(page);
+  await page.waitForTimeout(400);
+  // 首页的五块校区题签也在点灯（SceneSigns）
+  const signsLit = await page.evaluate(
+    () => document.querySelectorAll(".stage-sign.is-lighting").length
+  );
+  expect(signsLit).toBeGreaterThanOrEqual(4);
+
+  // 换到中区自己的沙盘
+  await page.click('[data-testid="stage-rail-ZQ"]');
+  await page.click('[data-testid="stage-rail-enter"]');
+  await page.waitForFunction(
+    () => window.__campus3d?.pack === "zq" && window.__campus3d?.status === "ready",
+    undefined,
+    { timeout: 60_000 }
+  );
+  await page.waitForTimeout(400); // 测试入口：就绪后 300ms 点灯
+
+  const early = await seekLanterns(page, 100);
+  console.log("lanterns", early.length, JSON.stringify(early.slice(0, 6)));
+  expect(early.length).toBeGreaterThan(1);
+  expect(early.some((x) => x.opacity < 1)).toBe(true);
+  const nearest = early.reduce((a, b) => (b.delay < a.delay ? b : a));
+  const farthest = early.reduce((a, b) => (b.delay > a.delay ? b : a));
+  expect(nearest.delay).toBe(0);
+  expect(nearest.opacity).toBeGreaterThan(farthest.opacity);
+
+  const later = await seekLanterns(page, 2000);
+  expect(later.length).toBeGreaterThan(1);
+  for (const x of later) expect(Math.abs(x.opacity - 1)).toBeLessThanOrEqual(0.01);
+});
+
 test("1 盖章：两枚章 260/380ms 依次盖下，起点 1.8 倍 −4° 透明、终点 0.86 与 −12°", async ({ page }) => {
   await mockTwoDocs(page);
   await page.goto("/stage?3d=1&intro=0");

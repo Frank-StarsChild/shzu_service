@@ -66,6 +66,21 @@ let introFinishedEarly = false;
  *  由下一次 initScene 消费；不然 decideIntro 的 sessionStorage 会把新包开场吞掉。 */
 let pendingIntro: { play: boolean; reason: string } | null = null;
 
+// ---- ALIVE A9：开场点灯。只在这一页第一次开场播完时点；网址带 light=1（测试）时每次就绪后 300ms 点。 ----
+let lightsPlayed = false;
+const lightQuery = typeof location !== "undefined"
+  && new URLSearchParams(location.search).get("light") === "1";
+function scheduleLights(fromIntro: boolean) {
+  if (lastInput?.reducedMotion) return; // 减少动态：不点，直接全亮
+  if (lightQuery) {
+    window.setTimeout(() => store.startLights(), 300);
+    return;
+  }
+  if (!fromIntro || lightsPlayed) return; // intro=0、换沙盘、回首页都不再点
+  lightsPlayed = true;
+  store.startLights();
+}
+
 // ---- W2：向 slot 里的界面层暴露场景访问（provide/inject；不传 three 对象进响应式）----
 const frameListeners = new Set<() => void>();
 provide<StageCtx>("stageCtx", {
@@ -158,6 +173,7 @@ async function initScene() {
       } else if (store.mode !== "home") {
         applyStageMode();
       }
+      scheduleLights(false); // 没有开场：只有测试入口才点
     }
   } catch {
     if (!canvasEl || (sceneStatus.value !== "loading" && sceneStatus.value !== "intro")) return;
@@ -186,6 +202,7 @@ function finalizeIntro() {
   } else if (store.mode !== "home") {
     applyStageMode();
   }
+  scheduleLights(true); // 开场播完的那一刻点灯
 }
 
 function fadeInCanvas() {

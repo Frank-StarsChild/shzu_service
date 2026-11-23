@@ -243,6 +243,18 @@ function onLandmarkClick(buildingId: string) {
   void store.showBuilding(buildingId);
 }
 
+/** ALIVE A9：点灯（首页五块校区题签）——按标记点到原点水平距离由近到远，每盏错开 60ms */
+const lit = computed(() => store.lightSeq > 0);
+const zoneLightDelays = computed(() => {
+  const map = new Map<string, number>();
+  const arr = zones.value
+    .filter((z) => z.label)
+    .map((z) => ({ id: z.id, d: Math.hypot(z.label![0], z.label![2]) }));
+  arr.sort((a, b) => a.d - b.d);
+  arr.forEach((x, i) => map.set(x.id, i * 60));
+  return map;
+});
+
 let offFrame: (() => void) | null = null;
 
 onMounted(() => {
@@ -278,11 +290,14 @@ onBeforeUnmount(() => {
       :key="z.id"
       type="button"
       class="stage-sign"
-      :class="{ 'is-selected': store.mode === 'campus' }"
+      :class="{ 'is-selected': store.mode === 'campus', 'is-lighting': lit }"
       :data-testid="`stage-sign-${z.id}`"
       :aria-hidden="hidden(`zone-${z.id}`) ? 'true' : undefined"
       :tabindex="hidden(`zone-${z.id}`) ? -1 : undefined"
-      :style="signStyle(`zone-${z.id}`)"
+      :style="{
+        ...signStyle(`zone-${z.id}`),
+        '--light-delay': `${zoneLightDelays.get(z.id) ?? 0}ms`,
+      }"
       @click="onClick(z.id)"
     >
       <span class="stage-sign-label">{{ z.name }}</span>
@@ -376,6 +391,18 @@ onBeforeUnmount(() => {
   box-shadow: var(--st-ov-shadow);
   cursor: pointer;
   pointer-events: auto;
+}
+/* ALIVE A9：开场点灯——由近到远，每块 240ms 从 0.6 倍、透明到原样 */
+.stage .stage-sign.is-lighting {
+  animation: stage-sign-light-in 240ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  animation-delay: var(--light-delay, 0ms);
+}
+@keyframes stage-sign-light-in {
+  from { opacity: 0; transform: translate(-50%, -100%) scale(0.6); }
+  to { opacity: 1; transform: translate(-50%, -100%) scale(1); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .stage .stage-sign.is-lighting { animation: none; }
 }
 .stage .stage-sign:focus-visible {
   outline: 2px solid var(--st-ov-gold);

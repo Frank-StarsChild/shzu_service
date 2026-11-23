@@ -164,6 +164,19 @@ function leaderStyle(no: number): Record<string, string> {
 const hoverNo = ref<number | null>(null);
 const hoverMark = ref<number | null>(null);
 
+/** ALIVE A9：点灯——按楼到沙盘原点的水平距离由近到远，每盏错开 60ms */
+const lit = computed(() => store.lightSeq > 0);
+const lightDelays = computed(() => {
+  const map = new Map<number, number>();
+  const arr = lanterns.value.map((l) => ({
+    no: l.college.no,
+    d: Math.hypot(l.anchor[0], l.anchor[2]),
+  }));
+  arr.sort((a, b) => a.d - b.d);
+  arr.forEach((x, i) => map.set(x.no, i * 60));
+  return map;
+});
+
 /** 题签靠右会出屏时翻到左边 */
 function tagLeft(no: number): boolean {
   const L = layoutOf(no);
@@ -283,10 +296,17 @@ onBeforeUnmount(() => {
       :key="l.college.no"
       type="button"
       class="stage-lantern"
-      :class="{ 'is-hover': hoverNo === l.college.no, 'is-compact': isCompact(l.college.no) }"
+      :class="{
+        'is-hover': hoverNo === l.college.no,
+        'is-compact': isCompact(l.college.no),
+        'is-lighting': lit,
+      }"
       :data-testid="`stage-lantern-${l.college.no}`"
       :data-lantern-id="`lantern-${l.college.no}`"
-      :style="lanternStyle(l.college.no)"
+      :style="{
+        ...lanternStyle(l.college.no),
+        '--light-delay': `${lightDelays.get(l.college.no) ?? 0}ms`,
+      }"
       :aria-label="ariaOf(l)"
       :aria-hidden="isHidden(l.college.no) ? 'true' : undefined"
       :tabindex="isHidden(l.college.no) ? -1 : undefined"
@@ -368,6 +388,18 @@ onBeforeUnmount(() => {
 .stage .stage-lantern:focus-visible {
   outline: 2px solid var(--st-ov-gold);
   outline-offset: 3px;
+}
+/* ALIVE A9：开场点灯——由近到远，每盏 240ms 从 0.6 倍、透明到原样 */
+.stage .stage-lantern.is-lighting {
+  animation: stage-light-in 240ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  animation-delay: var(--light-delay, 0ms);
+}
+@keyframes stage-light-in {
+  from { opacity: 0; transform: translate(-50%, -100%) scale(0.6); }
+  to { opacity: 1; transform: translate(-50%, -100%) scale(1); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .stage .stage-lantern.is-lighting { animation: none; }
 }
 /* 深色底 + 细金边的圆，里面放鎏金院徽（固定深墨蓝，不随页面主题变） */
 .stage .stage-lantern-disc {

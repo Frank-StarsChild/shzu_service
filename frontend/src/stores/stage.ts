@@ -76,6 +76,8 @@ export const useStageStore = defineStore("stage", {
     /** ALIVE A4：二十四院罗盘是否展开、指着哪个学院 */
     dialOpen: false,
     dialHover: null as number | null,
+    /** ALIVE A9：点灯序号（每次开场播完 / 测试入口加一；组件看到 >0 才点亮） */
+    lightSeq: 0,
     /** 每次 applyPlace（showAnswer/showBuilding）加一；换包后等待落楼时用它判断「作废」 */
     placeSeq: 0,
   }),
@@ -153,6 +155,10 @@ export const useStageStore = defineStore("stage", {
     /** ALIVE A4：指着一个院徽（no 为 null 时清掉） */
     hoverDial(no: number | null) {
       this.dialHover = no;
+    },
+    /** ALIVE A9：点灯（开场播完那一刻；组件按距离由近到远依次亮起） */
+    startLights() {
+      this.lightSeq += 1;
     },
     /** W11：收起/展开右侧回答面板（不动校区、定位、对话与生成状态） */
     setAnswerOpen(open: boolean) {
