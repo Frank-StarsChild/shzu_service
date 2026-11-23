@@ -14,6 +14,7 @@ import StageLabelDriver from "@/components/stage/StageLabelDriver.vue";
 import AskDock from "@/components/stage/AskDock.vue";
 import AnswerPanel from "@/components/stage/AnswerPanel.vue";
 import CampusPanel from "@/components/stage/CampusPanel.vue";
+import AgentTrace from "@/components/stage/AgentTrace.vue";
 import { STAR_TRAIL_KEY, type StarTrailState } from "@/components/stage/ZdxStar.vue";
 import { useStageStore } from "@/stores/stage";
 import { useChatStore } from "@/stores/chat";
@@ -21,6 +22,7 @@ import { loadPlaces, type Places } from "@/stage/packs";
 import { resolvePlace, EMPTY_PLACES } from "@/stage/places";
 import { loadEmblems } from "@/stage/emblems";
 import { createLabelBoard, LABEL_BOARD_KEY } from "@/stage/labelBoard";
+import { IDLE_TRACE, queryOf, traceFromResponse } from "@/stage/trace";
 import EmblemMark from "@/components/stage/EmblemMark.vue";
 import "@/styles/stage.css";
 import { provide, ref } from "vue";
@@ -60,6 +62,20 @@ const boardPanelActive = computed(() => store.mode === "answer" && store.board !
 let places: Places | null = null;
 let activeNewRequestId: string | null = null;
 
+// ---- ALIVE A5：在想的回放（读题 → 翻查 → 核证 → 作答）。
+// 所有等待按 requestId 作废；新的一问、换包、离开页面都清掉。 ----
+const reducedMotion = typeof window !== "undefined"
+  && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+let traceTimers: number[] = [];
+
+function clearTraceTimers() {
+  for (const t of traceTimers) window.clearTimeout(t);
+  traceTimers = [];
+}
+function traceLater(ms: number, fn: () => void) {
+  traceTimers.push(window.setTimeout(fn, ms));
+}
+
 /** 读 request_id + status（computed 依赖这两个字段，状态变化时才会重新求值） */
 const lastAssistantKey = computed(() => {
   for (let i = chat.turns.length - 1; i >= 0; i--) {
@@ -68,6 +84,28 @@ const lastAssistantKey = computed(() => {
   }
   return "";
 });
+
+/** 这一轮用户问的原话（翻查题签用） */
+function questionOf(requestId: string): string {
+  const user = chat.turns.find((t) => t.request_id === requestId && t.role === "user");
+  return user?.text ?? "";
+}
+
+/** 镜头停下 1.2 秒后回到 idle（requestId 已变就作废） */
+function idleAfterCamera(requestId: string) {
+  const check = () => {
+    if (store.trace.requestId !== requestId) return;
+    const hook = (window as unknown as { __campus3d?: { moving?: boolean } }).__campus3d;
+    if (hook?.moving === false) {
+      traceLater(1200, () => {
+        if (store.trace.requestId === requestId) store.setTrace({ ...IDLE_TRACE });
+      });
+      return;
+    }
+    traceLater(120, check);
+  };
+  traceLater(120, check);
+}
 
 watch(lastAssistantKey, () => {
   let turn: (typeof chat.turns)[number] | null = null;
@@ -80,13 +118,54 @@ watch(lastAssistantKey, () => {
   if (!turn) return;
   if (turn.status === "pending") {
     // 开始新的一问：复位（上一问的楼不能还红着）；面板重新展开以便看到进度
+    clearTraceTimers();
     activeNewRequestId = turn.request_id;
     stageAutoOpen();
     void store.showAnswer(null);
-  } else if (turn.status === "done" && turn.request_id === activeNewRequestId) {
-    activeNewRequestId = null;
-    const response = turn.response;
-    void store.showAnswer(response ? resolvePlace(response, places ?? EMPTY_PLACES) : null);
+    const rid = turn.request_id;
+    store.setTrace({ ...IDLE_TRACE, phase: "read", requestId: rid });
+    if (reducedMotion) {
+      store.setTrace({ phase: "search", query: queryOf(questionOf(rid)) });
+    } else {
+      traceLater(400, () => {
+        if (store.trace.requestId !== rid || store.trace.phase !== "read") return;
+        store.setTrace({ phase: "search", query: queryOf(questionOf(rid)) });
+      });
+    }
+    return;
+  }
+  if (turn.status !== "done" || turn.request_id !== activeNewRequestId) return;
+
+  activeNewRequestId = null;
+  const rid = turn.request_id;
+  const response = turn.response;
+  const failed = !response || response.status === "error" || response.status === "model_unavailable";
+  if (failed) {
+    store.setTrace({ phase: "error" });
+    traceLater(1500, () => {
+      if (store.trace.requestId === rid) store.setTrace({ ...IDLE_TRACE });
+    });
+    void store.showAnswer(null);
+    return;
+  }
+
+  const target = resolvePlace(response, places ?? EMPTY_PLACES);
+  const { hits, evidence } = traceFromResponse(response, places ?? EMPTY_PLACES, store.meta);
+  const withBuilding = hits.filter((h) => h.buildingId !== null).length;
+
+  if (withBuilding > 0 && !reducedMotion) {
+    store.setTrace({ phase: "verify", hits, evidence });
+    const wait = 450 + 90 * (withBuilding - 1);
+    traceLater(wait, () => {
+      if (store.trace.requestId !== rid || store.trace.phase !== "verify") return;
+      store.setTrace({ phase: "answer" });
+      void store.showAnswer(target);
+      idleAfterCamera(rid);
+    });
+  } else {
+    store.setTrace({ phase: "answer", hits, evidence });
+    void store.showAnswer(target);
+    idleAfterCamera(rid);
   }
 });
 
@@ -129,6 +208,7 @@ function onKeyDown(e: KeyboardEvent) {
 onBeforeUnmount(() => {
   window.removeEventListener("keydown", onKeyDown);
   document.body.style.overflow = "";
+  clearTraceTimers();
   store.goHome();
 });
 </script>
@@ -163,6 +243,7 @@ onBeforeUnmount(() => {
     <CollegeLanterns />
     <StageLabelDriver />
     <ZdxStar />
+    <AgentTrace />
 
     <StageTop />
     <StageHud />

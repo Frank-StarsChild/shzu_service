@@ -8,6 +8,7 @@ import { useChatStore } from "@/stores/chat";
 import { useStageStore } from "@/stores/stage";
 import { useKbMeta } from "@/composables";
 import type { StageCtx } from "@/stage/types";
+import PhaseLine from "@/components/stage/PhaseLine.vue";
 
 const store = useChatStore();
 const stageStore = useStageStore();
@@ -62,7 +63,8 @@ onMounted(() => {
     <!-- 状态与沙盘控制（观景/重置视角/普通版）收在同一张窄底板上：一行内左状态、右按钮，
          窄屏或短窗口自动换行 -->
     <div class="stage-meta-plate">
-      <p class="stage-status" data-testid="stage-status">
+      <PhaseLine v-if="stageStore.trace.phase !== 'idle'" />
+      <p v-else class="stage-status" data-testid="stage-status">
         <span class="stage-status-dot" aria-hidden="true"></span>{{ statusText }}
         <button
           v-if="store.busy"

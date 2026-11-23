@@ -182,7 +182,7 @@ onBeforeUnmount(() => {
     :data-dim="dim ? 'true' : 'false'"
     aria-hidden="true"
   >
-    <span class="stage-star-name">智多星</span>
+    <span v-if="store.trace.phase === 'idle'" class="stage-star-name">智多星</span>
   </div>
 </template>
 

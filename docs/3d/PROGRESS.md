@@ -1219,3 +1219,19 @@ stage 8/8 及全部既有回归）。视觉自查 W2-shell.png：印章顶栏、
   stage-lanterns 7 + stage-shell 9 + theme 6 全过（分组跑）。
 
 > AI生成
+
+## A5 智多星在想（回放版） — 2026-11-23
+
+- `src/stage/trace.ts`：`TracePhase` / `TraceHit` / `Trace` / `IDLE_TRACE`、`issuerLabel`（全角或半角括号取括号内；否则去「石河子大学」「党委」前缀）、`traceFromResponse`（按 `citations` 顺序按 `issuer` 合并计数、最多 5 条、楼号查 `places.issuers` 且不在 `meta.buildings` 时记 null、只认 `answer` / `insufficient`）、`queryOf`（trim 后前 10 字）。
+- `stores/stage.ts`：`trace` 字段（初值 `IDLE_TRACE`）、`setTrace(patch)` 合并、`switchPack()` 复位。
+- `views/StageView.vue`：驱动。`pending` → `read`，400ms 后（仍是同 `requestId` 且仍是 `read`）→ `search`；`error` → `error` 后 1.5s 复位；完成且有带楼命中 → `verify`，等 `450 + 90 × (有楼的条数 − 1)` ms → `answer` 并在这时才 `showAnswer`；无带楼命中 → 直接 `answer` + `showAnswer`；镜头 `moving` 变回 false 后 1.2s → `idle`。计时器一律先比 `requestId`，卸载时 `clearTraceTimers()`。减少动态：无 400ms 与 verify 等待，`showAnswer` 立刻调。回答面板仍按 W4 在回答回来时立刻出现。
+- `components/stage/AgentTrace.vue`：`stage-trace` + `data-phase`，`phase` 为 `idle` 或静态模式不渲染。圈字 120×120（半径 42 金环 18% / 半径 52 虚线 2 5、金 10% / `textPath` 宋体 600 10.5px 字距 .2em，8s 一圈）；翻查竖排题签在星右侧 44、下 20；金线二次贝塞尔（控制点按卡片公式），`pathLength=1` + `stroke-dashoffset` 360ms 生长、90ms 错峰，终点空心 5 + 实心 1.8；部门题签「label + N 条」在终点上方 14，无楼的竖排在题签下；`answer` 时命中楼那根变 `#e2001a` 1.8px、其余 300ms 淡出；写 `__campus3d.threads`。
+- `components/stage/PhaseLine.vue`：`stage-phase` + `data-phase`，四词宋体 600 12px 字距 .24em，当前金色带 10px 光晕，之前月白 66%、之后 38%；`verify` 后缀「N 个部门 · M 条审定资料」；`error` 整行「这一轮没有答出来」。
+- `AskDock.vue`：`trace.phase !== "idle"` 时用 `PhaseLine` 换掉 `stage-status`。`ZdxStar.vue`：trace 非 idle 时隐藏「智多星」三字。`StageCanvas.vue`：钩子加 `phase` / `threads`。`styles/stage.css`：A5 全部样式与 reduced-motion 覆盖。
+- 新增测试：`tests/unit/trace.test.ts` 5 条（真实 `places.json` + `all` / `bq` 元数据）、`tests/e2e/stage-trace.spec.ts` 4 条（含 7b 专门抓 `verify` 截图；软渲染下 `waitForFunction` 会跳过约 540ms 的 verify 窗口，改为 50ms 采样式轮询）。
+- 第 12 条回归：stage-framing 7 + stage-near 8 + stage-place 12 + stage-star 7 + stage-ask 11 + stage-avoid 6 + stage-college-place 4 + stage-shell 9 + stage-colleges / stage-lanterns / stage-campus / stage-emblems / theme 共 99 条全过。**没有改任何等待时间**：现有 W5 / W7 断言都在轮询窗口里，0.45–1.2s 的延后不影响。
+- 反向验证：`traceFromResponse` 的 `meta.buildings` 判断临时去掉 → 单测第 3 条按预期红（`expected null, received ZQ-B023`），改回后绿。
+- 全量：单测 192 / 192（17 文件）、build ✓、check:bundle ✓（47 个测试文件无 skip/only/fixme）。截图 `docs/3d/shots/A5-verify.png`。
+- 会收起 / 不出现的情况：`trace` 为 `idle` 时整层不渲染、问话栏上方回到 W4 的 `stage-status`；减少动态下不画圈字、无读题 400ms 与核证等待；`error` 1.5s 后自行复位；金线只画有楼的部门，无楼部门只出竖排题签。
+
+> AI生成

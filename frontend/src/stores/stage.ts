@@ -14,6 +14,7 @@ import { watch } from "vue";
 import { loadPackIndex, loadPlaces, type CampusZoneRef, type Pack, type Places } from "@/stage/packs";
 import type { CampusMeta } from "@/campus3d/meta";
 import { collegeForPlace, type Emblems } from "@/stage/emblems";
+import { IDLE_TRACE, type Trace } from "@/stage/trace";
 import { useChatStore } from "@/stores/chat";
 
 /** 最后一条有正文的回答段落（A3：同一栋楼有多个学院时，按回答里的学院名判定） */
@@ -70,6 +71,8 @@ export const useStageStore = defineStore("stage", {
     sceneReady: false,
     /** 当前镜头停靠点（scene 每帧写入；比例尺取校准线的键，必须走响应式路径） */
     sceneStop: "home",
+    /** ALIVE A5：智多星在想的回放状态（读题/翻查/核证/作答） */
+    trace: { ...IDLE_TRACE } as Trace,
     /** 每次 applyPlace（showAnswer/showBuilding）加一；换包后等待落楼时用它判断「作废」 */
     placeSeq: 0,
   }),
@@ -130,6 +133,10 @@ export const useStageStore = defineStore("stage", {
     setSceneStop(stop: string) {
       if (stop && stop !== this.sceneStop) this.sceneStop = stop;
     },
+    /** ALIVE A5：合并更新回放阶段（组件只读 trace） */
+    setTrace(patch: Partial<Trace>) {
+      this.trace = { ...this.trace, ...patch };
+    },
     /** W11：收起/展开右侧回答面板（不动校区、定位、对话与生成状态） */
     setAnswerOpen(open: boolean) {
       this.answerOpen = open;
@@ -155,6 +162,7 @@ export const useStageStore = defineStore("stage", {
       }
       this.packId = packId;
       this.meta = null;
+      this.trace = { ...IDLE_TRACE };
       this.goHome();
     },
     /** W8：观景。开：记下原来的 mode，置为 tour；关：恢复。

@@ -288,6 +288,9 @@ watch([() => store.mode, () => store.zoneId, () => store.collegeNo], ([m], [prev
 // W5：把当前包元数据同步给 store（showAnswer 取楼名用）
 watch(meta, (m) => store.setMeta(m), { immediate: true });
 
+// ALIVE A5：回放阶段进调试钩子（e2e 与自查读它）
+watch(() => store.trace.phase, (p) => touchHook({ phase: p }), { immediate: true });
+
 // W10：把场景就绪状态同步给 store（enterPlace / otherPack 的等待逻辑用）
 watch(sceneStatus, (s) => store.setSceneReady(s === "ready"), { immediate: true });
 
@@ -373,6 +376,8 @@ onMounted(async () => {
     moving: false,
     lanterns: 0,
     college: null,
+    phase: "idle",
+    threads: 0,
     frames: 0,
     drawCalls: 0,
     triangles: 0,
