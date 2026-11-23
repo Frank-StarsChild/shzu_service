@@ -177,52 +177,59 @@ onBeforeUnmount(() => {
   outline: 1px solid var(--st-gold2);
   outline-offset: 3px;
 }
-/* 深色底 + 细金边的圆，里面放鎏金院徽 */
+/* 深色底 + 细金边的圆，里面放鎏金院徽（固定深墨蓝，不随页面主题变） */
 .stage .stage-lantern-disc {
   display: flex;
   padding: 3px;
-  background: rgba(7, 10, 15, 0.86);
-  box-shadow: 0 0 0 1px var(--st-gold2), 0 6px 18px rgba(0, 0, 0, 0.6);
+  background: var(--st-ov-bg);
+  box-shadow: 0 0 0 1px var(--st-ov-gold-soft), 0 6px 18px rgba(0, 0, 0, 0.6);
   transition: box-shadow 160ms;
 }
 /* 悬停/聚焦：圆发光（院徽尺寸在组件里切到 50） */
 .stage .stage-lantern.is-hover .stage-lantern-disc {
-  box-shadow: 0 0 0 1.5px var(--st-gold), 0 0 26px 4px rgba(232, 201, 138, 0.55);
+  box-shadow: 0 0 0 1.5px var(--st-ov-gold), 0 0 26px 4px rgba(232, 201, 138, 0.55);
 }
 /* 落到楼顶的细金线：1px，从金渐变到透明（长度每帧按投影算） */
 .stage .stage-lantern-line {
   width: 1px;
   min-height: 12px;
-  background: linear-gradient(to bottom, var(--st-gold), rgba(232, 201, 138, 0));
+  background: linear-gradient(to bottom, var(--st-ov-gold), rgba(232, 201, 138, 0));
 }
-/* 悬停题签：竖排小签（宋体 600 12px、字距 0.24em），近黑底、1px 淡金边、顶边 1.5px 金线 */
+/* 悬停题签：横排（黑体 13px 600、行高 1.4、内边距 6×10），固定深墨蓝底、淡金边；
+   长名最多两行（短名一般一行），全名由按钮 aria-label 与右侧面板提供 */
 .stage .stage-lantern-tag {
   position: absolute;
   left: calc(100% + 10px);
-  top: 0;
+  top: 2px;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  gap: 6px;
-  padding: 7px 4px 9px;
-  background: rgba(5, 8, 13, 0.92);
-  border: 1px solid var(--st-gold2);
-  border-top: 1.5px solid var(--st-gold);
+  align-items: flex-start;
+  gap: 2px;
+  max-width: min(11em, 42vw);
+  width: max-content;
+  padding: 6px 10px;
+  background: var(--st-ov-bg);
+  border: 1px solid var(--st-ov-gold-soft);
+  border-left: 2px solid var(--st-ov-gold);
+  box-shadow: var(--st-ov-shadow);
   pointer-events: none;
 }
 .stage .stage-lantern-tag-name {
-  writing-mode: vertical-rl;
-  font-family: var(--st-song);
+  writing-mode: horizontal-tb;
+  font-family: var(--st-hei);
   font-weight: 600;
-  font-size: 12px;
-  letter-spacing: 0.24em;
-  color: var(--st-moon);
+  font-size: 13px;
+  line-height: 1.4;
+  letter-spacing: 0.02em;
+  text-align: left;
+  overflow-wrap: anywhere;
+  color: var(--st-ov-fg);
 }
-/* 建院年份：10px 等宽小字，在题签下端 */
+/* 建院年份：10px 等宽小字，在题签第二行 */
 .stage .stage-lantern-tag-year {
   font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
   font-size: 10px;
   letter-spacing: 0.06em;
-  color: var(--st-gold2);
+  color: var(--st-ov-gold);
 }
 </style>

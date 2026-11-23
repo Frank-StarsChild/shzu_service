@@ -16,6 +16,18 @@
   --st-paper: var(--stage-doc-paper);/* 宣纸：公文卡与用户问话（日夜同色，卡上墨字不变） */
   --st-paper-ink: var(--stage-doc-ink);
   --st-glass: var(--stage-glass);    /* 面板底色 */
+  /* 地图覆盖件的专用固定色（本次「可读性」整理）：
+     画布永远是夜景，而 --st-moon 等令牌在日间会变成墨色——
+     直接压在画布上的题签、序号、悬停签、状态字与普通按钮改用这一组，
+     不再随页面主题变。深墨蓝底 + 月白字，对比度 ≥ 4.5:1。 */
+  --st-ov-bg: rgba(12, 20, 32, 0.97);
+  --st-ov-bg-strong: #0c1420;
+  --st-ov-fg: #e8edf3;
+  --st-ov-fg2: #b9c3d2;
+  --st-ov-gold: #e8c98a;
+  --st-ov-gold-soft: rgba(232, 201, 138, 0.55);
+  --st-ov-gold-faint: rgba(232, 201, 138, 0.24);
+  --st-ov-shadow: 0 6px 18px rgba(0, 0, 0, 0.55);
   /* 院徽的鎏金（ALIVE 3.1）：全站唯一金属渐变，只许用在院徽的鎏金样子上 */
   --st-gilt: linear-gradient(135deg, #f7e6bd 0%, #e8c98a 38%, #b48a52 62%, #f0d6a0 100%);
 
@@ -94,27 +106,24 @@
   transition: opacity 300ms;
 }
 
-/* ---- 署名（页面最底一行）：日间悬在夜景画布上，加纸色衬底保证可读 ---- */
+/* ---- 署名（页面最底一行）：悬在夜景画布上，用覆盖件固定色保证日夜都可读 ---- */
 .stage .stage-caption {
   position: fixed;
   left: 0;
   right: 0;
   bottom: 6px;
+  width: fit-content;
+  max-width: min(92vw, 1080px);
+  margin: 0 auto;
+  padding: 3px 12px;
+  background: var(--st-ov-bg);
+  border: 1px solid var(--st-ov-gold-faint);
   text-align: center;
   z-index: 4;
-  color: var(--st-moon3);
+  color: var(--st-ov-fg2);
   font-size: 10.5px;
   letter-spacing: 0.05em;
   pointer-events: none;
-}
-html[data-theme="light"] .stage .stage-caption {
-  background: var(--stage-chrome-bg);
-  border: 1px solid var(--stage-chrome-border);
-  padding: 3px 12px;
-  max-width: min(92vw, 1080px);
-  margin: 0 auto;
-  display: block;
-  width: fit-content;
 }
 
 /* ---- W4：回答面板与用户问话（4.2）；W11：clamp 宽度 + 纵向 flex（长问题换行，
@@ -207,7 +216,7 @@ html[data-theme="light"] .stage .stage-caption {
 .stage .stage-panel-meta {
   font-size: 10.5px;
   letter-spacing: 0.08em;
-  color: var(--st-moon3);
+  color: var(--st-moon2);
   white-space: nowrap;
 }
 .stage .stage-panel-scroll {
@@ -304,7 +313,7 @@ html[data-theme="light"] .stage .stage-caption {
 .stage .stage-panel-note {
   font-size: 10.5px;
   letter-spacing: 0.04em;
-  color: var(--st-moon3);
+  color: var(--st-moon2);
 }
 .stage .stage-panel-links {
   display: flex;
@@ -318,12 +327,12 @@ html[data-theme="light"] .stage .stage-caption {
   font-family: var(--st-hei);
   font-size: 11px;
   letter-spacing: 0.08em;
-  color: var(--st-gold2);
+  color: var(--st-gold);
   text-decoration: underline;
   text-underline-offset: 3px;
   cursor: pointer;
 }
-.stage .stage-link:hover { color: var(--st-gold); }
+.stage .stage-link:hover { color: var(--st-moon); }
 
 /* ---- W4：公文卡（5.6）：宣纸底、顶边 3px 红色双线（红头）、宋体标题、右侧已审定章 ---- */
 .stage .stage-docs {
@@ -442,8 +451,8 @@ html[data-theme="light"] .stage .stage-caption {
 .stage .stage-place-zone {
   margin: 0 0 0 19px;
   font-size: 11.5px;
-  letter-spacing: 0.18em;
-  color: var(--st-moon3);
+  letter-spacing: 0.14em;
+  color: var(--st-moon2);
 }
 .stage .stage-other-pack {
   margin: 0 0 12px;

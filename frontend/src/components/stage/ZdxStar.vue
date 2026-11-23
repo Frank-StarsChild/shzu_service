@@ -40,6 +40,10 @@ const reducedMotion =
 /** 只在 3D 就绪后显示（静态模式没有星，W7 验证第 6 条） */
 const showStar = computed(() => ctx?.sceneStatus.value === "ready");
 
+/** 校区/回答态：题签、灯牌与面板密集，星光退到它们下面并减弱光晕，
+ *  收起装饰性的「智多星」三字（提问状态由星点与 thinking 动画保留） */
+const dim = computed(() => store.mode !== "home");
+
 const stateEl = ref<HTMLElement | null>(null);
 const state = ref<"idle" | "thinking" | "flying">("idle");
 
@@ -175,6 +179,7 @@ onBeforeUnmount(() => {
     class="stage-star"
     data-testid="stage-star"
     :data-state="state"
+    :data-dim="dim ? 'true' : 'false'"
     aria-hidden="true"
   >
     <span class="stage-star-name">智多星</span>
@@ -182,12 +187,13 @@ onBeforeUnmount(() => {
 </template>
 
 <style scoped>
-/* 层级：场景标签层（3），低于面板（W7 常见错误 2）。核心 10×10 白点 + 三层光晕（卡原文）。 */
+/* 层级：处于场景标签层（3）与面板（4）之下（dim 后 2），不遮题签与面板字。
+   核心 10×10 白点 + 三层光晕（卡原文）。 */
 .stage .stage-star {
   position: fixed;
   top: 0;
   left: 0;
-  z-index: 3;
+  z-index: 2;
   width: 10px;
   height: 10px;
   margin: -5px 0 0 -5px;
@@ -231,6 +237,37 @@ onBeforeUnmount(() => {
 .stage .stage-star[data-state="thinking"] {
   animation: stage-star-think 1.2s ease-in-out infinite;
 }
+/* 校区/回答态：光晕减弱、星芒变淡，装饰性三字收起（不让光晕压住题签与面板字） */
+.stage .stage-star[data-dim="true"] {
+  box-shadow:
+    0 0 0 1.5px rgba(255, 255, 255, 0.25),
+    0 0 10px 3px rgba(190, 220, 255, 0.4),
+    0 0 26px 8px rgba(120, 170, 255, 0.16);
+}
+.stage .stage-star[data-dim="true"]::before,
+.stage .stage-star[data-dim="true"]::after {
+  opacity: 0.45;
+}
+.stage .stage-star[data-dim="true"] .stage-star-name {
+  display: none;
+}
+.stage .stage-star[data-dim="true"][data-state="thinking"] {
+  animation: stage-star-think-dim 1.2s ease-in-out infinite;
+}
+@keyframes stage-star-think-dim {
+  0%, 100% {
+    box-shadow:
+      0 0 0 1.5px rgba(255, 255, 255, 0.25),
+      0 0 10px 3px rgba(190, 220, 255, 0.4),
+      0 0 26px 8px rgba(120, 170, 255, 0.16);
+  }
+  50% {
+    box-shadow:
+      0 0 0 1.5px rgba(255, 255, 255, 0.35),
+      0 0 16px 5px rgba(190, 220, 255, 0.5),
+      0 0 40px 12px rgba(120, 170, 255, 0.22);
+  }
+}
 @keyframes stage-star-think {
   0%, 100% {
     box-shadow:
@@ -247,7 +284,8 @@ onBeforeUnmount(() => {
 }
 /* 减少动态：不闪（W7 第 6 条） */
 @media (prefers-reduced-motion: reduce) {
-  .stage .stage-star[data-state="thinking"] {
+  .stage .stage-star[data-state="thinking"],
+  .stage .stage-star[data-dim="true"][data-state="thinking"] {
     animation: none;
   }
 }

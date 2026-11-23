@@ -113,9 +113,10 @@ function onClick(id: string) {
   align-items: center;
   gap: 7px;
   padding: 13px 0 9px;
-  background: var(--st-glass);
-  border: 1px solid var(--st-gold3);
-  border-top: 2px solid var(--st-gold);
+  background: var(--st-ov-bg);
+  border: 1px solid var(--st-ov-gold-faint);
+  border-top: 2px solid var(--st-ov-gold);
+  box-shadow: var(--st-ov-shadow);
   cursor: pointer;
 }
 .stage .stage-rail-item:focus-visible {
@@ -136,13 +137,13 @@ function onClick(id: string) {
   font-weight: 600;
   font-size: 15px;
   letter-spacing: 0.3em;
-  color: var(--st-moon);
+  color: var(--st-ov-fg);
 }
 .stage .stage-rail-sub {
   font-family: var(--st-hei);
   font-size: 9.5px;
   letter-spacing: 0.16em;
-  color: var(--st-gold2);
+  color: var(--st-ov-gold);
 }
 /* 「近看」小题签：选中项右侧，竖排、金边金字（第 4.2 节） */
 .stage .stage-rail-enter {
@@ -151,8 +152,9 @@ function onClick(id: string) {
   top: 50%;
   transform: translateY(-50%);
   padding: 12px 0 8px;
-  background: var(--st-glass);
-  border: 1px solid var(--st-gold2);
+  background: var(--st-ov-bg);
+  border: 1px solid var(--st-ov-gold-soft);
+  box-shadow: var(--st-ov-shadow);
   cursor: pointer;
 }
 .stage .stage-rail-enter:focus-visible {
@@ -165,6 +167,6 @@ function onClick(id: string) {
   font-weight: 600;
   font-size: 13px;
   letter-spacing: 0.28em;
-  color: var(--st-gold);
+  color: var(--st-ov-gold);
 }
 </style>

@@ -138,29 +138,29 @@ onMounted(() => {
   margin: 0;
 }
 .stage .stage-tool {
-  background: none;
-  border: 1px solid var(--st-gold3);
-  color: var(--st-moon2);
+  background: var(--st-ov-bg);
+  border: 1px solid var(--st-ov-gold-soft);
+  color: var(--st-ov-fg);
   font-family: var(--st-hei);
-  font-size: 12px;
-  letter-spacing: 0.2em;
-  padding: 4px 12px;
+  font-size: 12.5px;
+  letter-spacing: 0.12em;
+  padding: 5px 12px;
   text-decoration: none;
   cursor: pointer;
   min-height: 0;
   min-width: 0;
-  box-shadow: none;
+  box-shadow: var(--st-ov-shadow);
   transform: none;
 }
 .stage .stage-tool:hover {
-  border-color: var(--st-gold2);
-  color: var(--st-moon);
-  background: none;
-  box-shadow: none;
+  border-color: var(--st-ov-gold);
+  color: #fff;
+  background: var(--st-ov-bg-strong);
+  box-shadow: var(--st-ov-shadow);
   transform: none;
 }
 .stage .stage-tool:focus-visible {
-  outline: 1px solid var(--st-gold2);
+  outline: 2px solid var(--st-ov-gold);
   outline-offset: 2px;
 }
 .stage .stage-status {
@@ -168,14 +168,18 @@ onMounted(() => {
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 11px;
-  letter-spacing: 0.14em;
-  color: var(--st-gold);
+  align-self: center;
+  padding: 5px 10px;
+  background: var(--st-ov-bg);
+  border: 1px solid var(--st-ov-gold-faint);
+  font-size: 11.5px;
+  letter-spacing: 0.1em;
+  color: var(--st-ov-fg2);
 }
 .stage .stage-status-dot {
   width: 7px;
   height: 7px;
-  background: var(--st-gold);
+  background: var(--st-ov-gold);
   transform: rotate(45deg);
   flex: none;
 }
@@ -186,13 +190,13 @@ onMounted(() => {
   font-family: var(--st-hei);
   font-size: 11px;
   letter-spacing: 0.14em;
-  color: var(--st-moon3);
+  color: var(--st-ov-fg2);
   text-decoration: underline;
   text-underline-offset: 3px;
   cursor: pointer;
 }
 .stage .stage-cancel:hover {
-  color: var(--st-moon2);
+  color: var(--st-ov-fg);
 }
 .stage .stage-examples {
   display: flex;
@@ -202,18 +206,24 @@ onMounted(() => {
   margin: 0;
 }
 .stage .stage-example {
-  background: none;
-  border: 1px solid var(--st-gold3);
-  color: var(--st-moon2);
+  background: var(--st-ov-bg);
+  border: 1px solid var(--st-ov-gold-soft);
+  color: var(--st-ov-fg);
   font-family: var(--st-hei);
-  font-size: 12px;
-  letter-spacing: 0.08em;
-  padding: 5px 12px;
+  font-size: 12.5px;
+  letter-spacing: 0.04em;
+  padding: 6px 12px;
+  box-shadow: var(--st-ov-shadow);
   cursor: pointer;
 }
 .stage .stage-example:hover {
-  border-color: var(--st-gold2);
-  color: var(--st-moon);
+  border-color: var(--st-ov-gold);
+  color: #fff;
+  background: var(--st-ov-bg-strong);
+}
+.stage .stage-example:focus-visible {
+  outline: 2px solid var(--st-ov-gold);
+  outline-offset: 2px;
 }
 .stage .stage-input-row {
   display: flex;
@@ -236,7 +246,7 @@ onMounted(() => {
   padding: 13px 16px;
 }
 .stage .stage-input::placeholder {
-  color: var(--st-moon3);
+  color: var(--st-moon2);
 }
 .stage .stage-ask {
   width: 64px;

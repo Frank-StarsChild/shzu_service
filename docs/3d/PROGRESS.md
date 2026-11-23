@@ -1106,3 +1106,33 @@ stage 8/8 及全部既有回归）。视觉自查 W2-shell.png：印章顶栏、
 - 全量 verify：vue-tsc/构建/红线/单测 169/e2e 206 全绿。
 
 > AI生成
+
+
+## UI 整理 第 1 步 — 2026-11-23
+
+> 用户任务：「把校园沙盘上的字和控件整理清楚」（docs/沙盘标签可读性与避让实施提示词.txt），分三步实施。
+
+- 根因：`--st-moon/-2/-3` 引自 theme.css 的 `--text*`，日间变墨色；而题签、序号、灯牌悬停签、
+  状态字直接压在恒为夜景的画布上 → 日间不可读。灯牌悬停签还是「深底 + 墨字」。
+- `stage.css` 新增地图覆盖件专用固定色组（写在 `.stage` 内）：`--st-ov-bg`（rgba(12,20,32,.97)，
+  即 #0C1420）、`--st-ov-bg-strong`、`--st-ov-fg`(#E8EDF3)、`--st-ov-fg2`(#B9C3D2)、
+  `--st-ov-gold`(#E8C98A) 及 soft/faint、`--st-ov-shadow`；题签、序号、序号旁学院名、
+  状态条、观景/重置/普通版、示例问题、读数、比例尺、署名、左侧校区栏统一改用这组。
+- 序号旁学院名与灯牌悬停签补自身底板（`.stage-mark-label` padding 3×8、`width:max-content`）。
+- 灯牌悬停签改横排：黑体 13px/600、行高 1.4、内边距 6×10、`max-width:min(11em,42vw)`；
+  全名仍由按钮 `aria-label` 与右侧面板提供，年份只在有 `year` 时显示。
+- 面板（theme.css）：`--stage-glass` 日间 .92→.97、夜间 .78→.92，星光不再透字；
+  输入条 `--stage-dock-1/2` 提到 .97–.99。右侧学院行改两行网格（序号一列，学院全名黑体
+  15px/1.4 可换行，楼名 11.5px 次一级），选中/悬停用朱砂或金细线；小字统一 `--st-moon2`
+  （对比度 3.87→7.45）。
+- 星光（ZdxStar）：z-index 3→2（在题签 3、面板 4 之下）；campus/answer 态加 `data-dim`，
+  光晕减弱、星芒半透明、收起装饰性「智多星」三字，保留星点与 thinking 动画。
+- 验收（临时 Playwright 脚本，未入库）：北区日/夜逐元素算前景/背景对比度，覆盖件 ≥9.75、
+  面板 ≥7.45（原 `.stage-college-no` 3.76→用 `--gold-text` 后达标）；悬停信息学院题签
+  writing-mode 横排、宽 119>高 18、13px/600；星 z=2、名字 display:none、面板底 0.97。
+  截图 `docs/3d/shots/T1-bq-light.png`、`T1-bq-dark.png`、`T1-bq-hover.png`。
+- 回归：`npm run build`、`check:bundle`、`test:unit` 169 全过；e2e stage-lanterns /
+  stage-colleges / stage-framing / stage-shell / theme 共 39 条全过。
+- 下一步：第 2 步「标签分级 + 统一避让」（另起改动，不在本次提交）。
+
+> AI生成

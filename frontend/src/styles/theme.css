@@ -77,13 +77,13 @@
 
   /* ---------- 舞台（3D 首页）界面令牌：场景始终是夜景，界面随主题换色 ---------- */
   --stage-bg: #f6f3ea;                 /* 场景画布外的兜底底色（海报/画布铺满时不可见） */
-  --stage-glass: rgba(251, 249, 242, 0.92);   /* 面板底（日间纸面板） */
+  --stage-glass: rgba(251, 249, 242, 0.97);   /* 面板底（日间纸面板；够实，不让画布星光透字） */
   --stage-doc-paper: #efe8d8;          /* 公文卡宣纸（日夜同色：卡上的墨字不变） */
   --stage-doc-ink: #1b1a17;
   --stage-mask: linear-gradient(90deg, rgba(246, 243, 234, 0.92) 0%, rgba(246, 243, 234, 0.6) 26%, rgba(246, 243, 234, 0) 52%);
   --stage-topbar-from: rgba(246, 243, 234, 0.9);
-  --stage-dock-1: rgba(251, 249, 242, 0.94);
-  --stage-dock-2: rgba(246, 243, 234, 0.98);
+  --stage-dock-1: rgba(253, 251, 244, 0.98);
+  --stage-dock-2: rgba(246, 243, 234, 0.99);
   --stage-hair: rgba(27, 26, 23, 0.16);        /* 面板内发丝线 */
   --stage-sb-thumb: rgba(27, 26, 23, 0.25);    /* 滚动条 */
   --stage-sb-track: rgba(251, 249, 242, 0.4);
@@ -150,13 +150,13 @@
     radial-gradient(120% 90% at 50% 0%, rgba(232, 201, 138, 0.05), rgba(12, 20, 32, 0) 65%);
 
   --stage-bg: #05080d;
-  --stage-glass: rgba(7, 10, 15, 0.78);
+  --stage-glass: rgba(7, 10, 15, 0.92);
   --stage-doc-paper: #efe8d8;
   --stage-doc-ink: #1b1a17;
   --stage-mask: linear-gradient(90deg, rgba(5, 8, 13, 0.9) 0%, rgba(5, 8, 13, 0.62) 26%, rgba(5, 8, 13, 0) 52%);
   --stage-topbar-from: rgba(5, 8, 13, 0.85);
-  --stage-dock-1: rgba(10, 14, 20, 0.92);
-  --stage-dock-2: rgba(7, 10, 15, 0.97);
+  --stage-dock-1: rgba(10, 14, 20, 0.97);
+  --stage-dock-2: rgba(7, 10, 15, 0.98);
   --stage-hair: rgba(232, 237, 243, 0.1);
   --stage-sb-thumb: rgba(232, 237, 243, 0.22);
   --stage-sb-track: rgba(7, 10, 15, 0.4);

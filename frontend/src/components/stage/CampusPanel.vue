@@ -174,6 +174,7 @@ function askSample(q: string) {
               :key="row.buildingId"
               type="button"
               class="stage-college"
+              :class="{ 'is-active': store.place?.buildingId === row.buildingId }"
               :data-testid="`stage-college-${row.index}`"
               @click="pickCollege(row)"
             >
@@ -267,45 +268,76 @@ function askSample(q: string) {
   flex-direction: column;
   gap: 6px;
 }
+/* 学院行：序号一列、学院全名与楼名两行（黑体 15px / 1.4，全名换行不挤压）；
+   选中/聚焦行用朱砂左侧细线强调，不只靠颜色 */
 .stage .stage-college {
-  display: flex;
-  align-items: baseline;
-  gap: 10px;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  column-gap: 10px;
+  row-gap: 3px;
+  align-items: start;
   width: 100%;
   text-align: left;
   background: none;
   border: none;
   border-bottom: 1px solid var(--st-gold3);
-  padding: 9px 2px 8px;
+  border-left: 2px solid transparent;
+  padding: 9px 2px 8px 6px;
   cursor: pointer;
+}
+.stage .stage-college:hover {
+  border-left-color: var(--st-gold2);
+}
+.stage .stage-college.is-active {
+  border-left-color: var(--st-red);
+  background: var(--st-gold3);
+}
+.stage .stage-college:focus-visible {
+  outline: 1px solid var(--st-red);
+  outline-offset: -1px;
 }
 .stage .stage-college:hover .stage-college-name {
   color: var(--st-moon);
 }
 .stage .stage-college-no {
+  grid-column: 1;
+  grid-row: 1 / span 2;
+  padding-top: 1px;
   font-family: var(--st-song);
   font-weight: 700;
   font-size: 13px;
-  color: var(--st-gold);
-  flex: none;
+  line-height: 1.4;
+  color: var(--gold-text);
+}
+.stage .stage-college.is-active .stage-college-no {
+  color: var(--st-red);
 }
 .stage .stage-college-name {
-  font-family: var(--st-song);
+  grid-column: 2;
+  grid-row: 1;
+  font-family: var(--st-hei);
   font-size: 15px;
-  letter-spacing: 0.06em;
-  color: var(--st-moon2);
+  font-weight: 500;
+  line-height: 1.4;
+  letter-spacing: 0;
+  overflow-wrap: anywhere;
+  color: var(--st-moon);
 }
 .stage .stage-college-unconf {
   font-size: 11px;
-  color: var(--st-moon3);
+  letter-spacing: 0.02em;
+  color: var(--st-moon2);
 }
 .stage .stage-college-bld {
-  margin-left: auto;
+  grid-column: 2;
+  grid-row: 2;
+  margin-left: 0;
   font-family: var(--st-hei);
-  font-size: 11px;
-  letter-spacing: 0.1em;
-  color: var(--st-moon3);
-  flex: none;
+  font-size: 11.5px;
+  line-height: 1.45;
+  letter-spacing: 0.04em;
+  overflow-wrap: anywhere;
+  color: var(--st-moon2);
 }
 .stage .stage-svc {
   padding: 10px 0 12px;

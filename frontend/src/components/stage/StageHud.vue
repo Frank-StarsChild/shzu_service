@@ -140,17 +140,20 @@ const scaleLabel = computed(() => meta.value?.look.hud.scaleLabel ?? "");
   display: flex;
   align-items: center;
   gap: 8px;
+  padding: 6px 10px;
+  background: var(--st-ov-bg);
+  border: 1px solid var(--st-ov-gold-faint);
 }
 .stage-scale-line {
   display: block;
   height: 1px;
-  background: var(--st-moon2);
+  background: var(--st-ov-fg2);
 }
 .stage-scale-text {
   font-family: var(--st-song);
   font-size: 12px;
-  letter-spacing: 0.3em;
-  color: var(--st-moon2);
+  letter-spacing: 0.2em;
+  color: var(--st-ov-fg);
 }
 .stage-read {
   position: absolute;
@@ -160,32 +163,24 @@ const scaleLabel = computed(() => meta.value?.look.hud.scaleLabel ?? "");
   display: flex;
   flex-direction: column;
   gap: 3px;
-}
-/* 日间：读数/比例尺悬在（恒为夜景的）画布上，给纸色衬底保证可读；
-   夜间保持原样（月白文字直落在墨色画布上） */
-html[data-theme="light"] .stage-read,
-html[data-theme="light"] .stage-scale {
-  background: var(--stage-chrome-bg);
-  border: 1px solid var(--stage-chrome-border);
   padding: 8px 12px;
-}
-html[data-theme="light"] .stage-scale {
-  padding: 6px 10px;
+  background: var(--st-ov-bg);
+  border: 1px solid var(--st-ov-gold-faint);
 }
 .stage-read-title {
   font-family: var(--st-song);
   font-weight: 600;
   font-size: 13px;
   letter-spacing: 0.2em;
-  color: var(--st-moon);
+  color: var(--st-ov-fg);
 }
 .stage-read-line {
   font-size: 11.5px;
-  letter-spacing: 0.2em;
-  color: var(--st-moon3);
+  letter-spacing: 0.12em;
+  color: var(--st-ov-fg2);
 }
 .stage-read-line .num {
   font-family: var(--mono, monospace);
-  color: var(--st-moon2);
+  color: var(--st-ov-fg);
 }
 </style>

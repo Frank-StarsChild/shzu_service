@@ -255,10 +255,11 @@ onBeforeUnmount(() => {
   flex-direction: column;
   align-items: center;
   gap: 6px;
-  padding: 10px 0 0;
-  background: var(--st-glass);
-  border: 1px solid var(--st-gold3);
-  border-top: 2px solid var(--st-gold);
+  padding: 10px 7px 0;
+  background: var(--st-ov-bg);
+  border: 1px solid var(--st-ov-gold-faint);
+  border-top: 2px solid var(--st-ov-gold);
+  box-shadow: var(--st-ov-shadow);
   cursor: pointer;
   pointer-events: auto;
 }
@@ -276,13 +277,13 @@ onBeforeUnmount(() => {
   font-weight: 600;
   font-size: 17px;
   letter-spacing: 0.32em;
-  color: var(--st-moon);
+  color: var(--st-ov-fg);
 }
 .stage .stage-sign-line {
   display: block;
   width: 1px;
   height: 40px;
-  background: linear-gradient(to bottom, var(--st-gold2), rgba(232, 201, 138, 0));
+  background: linear-gradient(to bottom, var(--st-ov-gold), rgba(232, 201, 138, 0));
 }
 /* W5：楼的题签线长 60px（校区 40px） */
 .stage .stage-sign.is-building .stage-sign-line {
@@ -292,7 +293,7 @@ onBeforeUnmount(() => {
 .stage .stage-sign.is-landmark {
   cursor: pointer;
   pointer-events: auto;
-  padding: 8px 0 0;
+  padding: 8px 7px 0;
   border-top-width: 1px;
 }
 .stage .stage-sign.is-landmark .stage-sign-label {
@@ -302,21 +303,22 @@ onBeforeUnmount(() => {
 .stage .stage-sign.is-landmark .stage-sign-line {
   height: 26px;
 }
-/* W9：学院序号标记——20×20 小方块，近黑底、月白 1px 边、宋体 700 11px；右边学院名 */
+/* W9：学院序号标记——20×20 小方块，固定深墨蓝底、月白字；右边学院名落同款底板 */
 .stage .stage-mark {
   position: fixed;
   transform: translate(-50%, -50%);
-  width: 20px;
-  height: 20px;
+  width: 22px;
+  height: 22px;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(5, 8, 13, 0.92);
-  border: 1px solid var(--st-moon2);
+  background: var(--st-ov-bg);
+  border: 1px solid var(--st-ov-fg2);
   font-family: var(--st-song);
   font-weight: 700;
   font-size: 11px;
-  color: var(--st-moon);
+  line-height: 1;
+  color: var(--st-ov-fg);
   cursor: pointer;
   pointer-events: auto;
   z-index: 1;
@@ -327,15 +329,23 @@ onBeforeUnmount(() => {
 }
 .stage .stage-mark-label {
   position: absolute;
-  left: 26px;
+  left: 27px;
   top: 50%;
   transform: translateY(-50%);
-  white-space: nowrap;
-  font-family: var(--st-song);
-  font-weight: 600;
-  font-size: 12px;
-  letter-spacing: 0.14em;
-  color: var(--st-moon2);
+  max-width: 11em;
+  width: max-content;
+  padding: 3px 8px;
+  white-space: normal;
+  background: var(--st-ov-bg);
+  border: 1px solid var(--st-ov-gold-faint);
+  border-left: 1.5px solid var(--st-ov-gold-soft);
+  font-family: var(--st-hei);
+  font-weight: 500;
+  font-size: 12.5px;
+  line-height: 1.4;
+  letter-spacing: 0.02em;
+  text-align: left;
+  color: var(--st-ov-fg2);
   pointer-events: none;
 }
 </style>
