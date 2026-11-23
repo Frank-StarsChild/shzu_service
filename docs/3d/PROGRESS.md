@@ -1249,3 +1249,18 @@ stage 8/8 及全部既有回归）。视觉自查 W2-shell.png：印章顶栏、
 - 会收起 / 不出现的情况：`dialOpen` 期间左下角罗盘隐藏；观景（tour）中罗盘钮不可用；院徽未载入时罗盘钮 `disabled`；减少动态下无展开/收起动画；点遮罩只有点在盘面与子元素之外才收起。
 
 > AI生成
+
+## A9 盖章、弧线飞行、开场点灯、空闲转动 — 2026-11-23
+
+四件事各提交一次（`3d(A9-1)`…`3d(A9-4)`），验证在新建的 `tests/e2e/stage-impact.spec.ts`（5 条）。
+
+- **盖章**（`3d(A9-1)`）：`.stage-doc-stamp` 180ms 从 `scale(1.8) rotate(-4deg)`、透明到 `scale(1) rotate(-12deg)`、0.86（`cubic-bezier(.3,1.3,.5,1)`、`fill: both`），卡片同时 `translateY(0→1px→0)`；第 i 张延迟 `260 + 120i` ms（`--stamp-delay` 内联变量）。`docsKey` 带 `request_id`，新一轮回答重建公文卡区，动画重播。减少动态：`animation: none`，章直接终态。
+- **弧线飞行**（`3d(A9-2)`）：`updateMove` 在 `d > 200` 时给相机 Y 加 `sin(πe) × d × 0.12`（目标点仍线性）；缓动本来就是卡片要求的三次方 in-out，未改。`hookInfo` 加 `cameraPosition`；`debugGoTo` 增加可选的 `durationMs`（仅测试放慢采样）。
+- **开场点灯**（`3d(A9-3)`）：`store.lightSeq` + `startLights()`；`StageCanvas` 在开场播完时点一次（`lightsPlayed` 守住），`intro=0` 不点，网址带 `light=1` 时每次就绪后 300ms 点（测试用），减少动态不点。`CollegeLanterns` / `SceneSigns` 按「锚点到沙盘原点水平距离」排序，第 i 个 `60i` ms，240ms 从 `scale(.6)` 透明到原样；两处动画写在各自 scoped 样式里，`prefers-reduced-motion` 关闭。
+- **空闲转动**（`3d(A9-4)`）：`StageView` 挂在 `window` 上监听 pointerdown/pointermove/wheel/keydown/touchstart；`home`、无待答、罗盘未展开、N 秒（默认 30，`idle=<秒>`）无输入 → `setTour(true, 1)` 并记 `idleTour`；任何输入 → `setTour(false)` 回首页机位并重新计时。`scene.setTour(on, degPerSec?)`、`store.setTour(on, degPerSec?)` 加可选速度；`.stage.is-tour:not(.is-idle-tour)` 才淡出界面，空闲观景不显示「退出观景」；减少动态不做。
+- **测试环境的两个坑**（已在 spec 注释里写明）：① 无头软渲染一帧要 800ms 以上，900ms 的飞行采不到中间帧，且页面空闲时 Chromium 停发帧会把 CSS 动画的文档时间线冻住——盖章与点灯改用 Web Animations 定点（`pause()` + `currentTime`）读计算样式；弧线用 `debugGoTo(..., { durationMs: 8000 })` 放慢后按「调用后 3.2–4.8 秒」的采样窗口断言。② 现有停靠点从 home 出发时终点 Y 比 home 低 500–900，`0.12d` 的拱起会被线性下降吃掉（字面「比两端 Y 都大 0.08d」在真实点位上不成立），改用「飞行中段高于两端直线中点 0.08d」验证同一意图。
+- 反向验证：把弧线的 `0.12` 改 `0` → 第 2 条按预期红（中段采样 1156.6 < 1293.3），改回后绿。
+- 全量：单测 196 / 196（17 文件）、build ✓、check:bundle ✓（49 个测试文件无 skip/only/fixme）；e2e `stage-impact` 5 条 ✓；回归 orbit 8 + framing 7 + shell 9 + avoid 6 + theme 6、place 12 + near 8 + star 7 + dial 9、ask 11 + trace 4 + colleges 9 + lanterns 7 + campus 12 + emblems 5、stage-entry / intro / static / stage / header / hud 45 条、camera / gate / baseline / interact / night / rise / scene / fx / flow-guide 64 条，全过。`stage-lanterns` 第 3 条在整批里偶发一次 3.52px（容差 3px，重跑通过），属软渲染投影抖动，未改断言。
+- 截图 `docs/3d/shots/A9-stamp.png`（章盖好后的回答面板）。
+
+> AI生成
