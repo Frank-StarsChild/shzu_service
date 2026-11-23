@@ -1,24 +1,29 @@
 <script setup lang="ts">
-// STAGE W3：悬在校区上方的题签。位置每帧由 project(zone.label) 重算（STAGE 常见错误 7）：
-// 题签底端中点在标记点上方 40px，中间一根 1px 线落到标记点。
-// 只在 3D 就绪后显示；首页状态下落在题字矩形（左上 640×470）里的不显示，免得压字。
-import { computed, inject, onBeforeUnmount, onMounted, ref, type Ref } from "vue";
+// STAGE W3 + 本次「标签分级」：悬在校区/地标/楼上方的题签。
+// 位置每帧由 project() 重算，交给共用布局板统一避让（src/stage/labels.ts）：
+//  - 全校首页：只留校区竖签；题字露出时真实题字区域留空（hero 也作为遮挡矩形）
+//  - 校区概览：只留当前校区竖签（学院标记在 CollegeLanterns）
+//  - 校区沙盘首页：地标题签（固定锚点，不被挤走）
+//  - 回答定位：楼的题签唯一一块，朱砂边；被面板挤到时先用横排短签，再收起
+// 题签的锚点（线底端）不动；需要错开时从文字框边缘画一根短引线回锚点。
+import { computed, inject, onBeforeUnmount, onMounted, type Ref } from "vue";
 import type { StageCtx } from "@/stage/types";
 import type { ZoneInfo } from "@/campus3d/meta";
 import { useStageStore } from "@/stores/stage";
-import { cnNumber } from "@/stage/hud";
+import { LABEL_BOARD_KEY } from "@/stage/labelBoard";
+import { shiftOf, type LabelSpec } from "@/stage/labels";
 import { STAR_TRAIL_KEY, type StarTrailState } from "@/components/stage/ZdxStar.vue";
+
 const ctx = inject<StageCtx>("stageCtx");
 const store = useStageStore();
 const meta = computed(() => ctx?.meta.value ?? null);
+const board = inject(LABEL_BOARD_KEY, null);
 
 // W7：智多星的拖尾（ZdxStar 写 StarTrailState，这里只负责画）
 const starTrail = inject<Ref<StarTrailState | null> | null>(STAR_TRAIL_KEY, null);
 
 const HERO_RECT = { w: 640, h: 470 };
-
-type Pos = { x: number; y: number; visible: boolean };
-const positions = ref<Record<string, Pos>>({});
+const VIS_MARGIN = 40;
 
 /** home + 默认包：全部「校区」题签；campus：只留选中的那块；
  *  home + 非默认包：校区题签全收，换成地标小题签（W3 第 6 条）；answer：全收（W5 换成楼的题签） */
@@ -32,8 +37,7 @@ const zones = computed<ZoneInfo[]>(() => {
   return kinded;
 });
 
-/** W3：校区沙盘的首页——给元数据 hotspots 里的每一块地标小题签
- *  （文字 board、标记点 anchor；这张卡里不响应点击） */
+/** W3：校区沙盘的首页——给元数据 hotspots 里的每一块地标小题签 */
 const landmarks = computed(() => {
   if (store.mode !== "home" || store.packId === store.default) return [];
   return meta.value?.hotspots ?? [];
@@ -57,90 +61,174 @@ const buildingSign = computed(() => {
   };
 });
 
-/** W9：campus 态给这个片区每个学院的第一栋楼画序号标记（同楼两院只画第一个） */
-type CollegeMark = { index: number; buildingId: string; name: string; anchor: [number, number, number] };
-const collegeMarks = computed<CollegeMark[]>(() => {
-  const m = meta.value;
-  const zid = store.zoneId;
-  if (store.mode !== "campus" || !m?.colleges || !zid) return [];
-  const seen = new Set<string>();
-  const marks: CollegeMark[] = [];
-  for (const c of m.colleges) {
-    if (c.zone !== zid) continue;
-    const bid = c.buildingIds[0];
-    if (!bid || seen.has(bid)) continue;
-    const b = m.buildings[bid];
-    if (!b?.anchor) continue;
-    seen.add(bid);
-    marks.push({
-      index: marks.length + 1,
-      buildingId: bid,
-      name: c.name.replace(/（[^）]*）/g, "").replace(/\([^)]*\)/g, "").trim(),
-      anchor: b.anchor,
-    });
-  }
-  return marks;
-});
-
 const showLayer = computed(() => ctx?.sceneStatus.value === "ready");
+const layouts = computed(() => board?.layouts.value ?? {});
 
-function updatePositions() {
-  const handle = ctx?.getHandle() ?? null;
-  if (!handle) return;
-  const next: Record<string, Pos> = {};
+/** 竖排题签的尺寸估算（只算文字框，不含引线；引线绝对定位在框下） */
+function signSize(name: string, _line: number, small = false) {
+  const chars = Math.max(1, name.length);
+  if (small) return { w: 34, h: 12 + chars * 17 + 3 };
+  return { w: 40, h: 13 + chars * 26 };
+}
+
+/** 楼的短签：横排，最多 12 字（超出由右侧面板给全名） */
+function shortSign(name: string) {
+  const text = name.length > 12 ? `${name.slice(0, 11)}…` : name;
+  return { text, w: Math.min(260, 26 + text.length * 13.5), h: 32 };
+}
+
+function projected(p: { x: number; y: number; visible: boolean }): boolean {
+  return (
+    p.visible
+    && p.x >= -VIS_MARGIN && p.x <= window.innerWidth + VIS_MARGIN
+    && p.y >= -VIS_MARGIN && p.y <= window.innerHeight + VIS_MARGIN
+  );
+}
+
+function inHero(p: { x: number; y: number }): boolean {
+  return store.mode === "home"
+    && p.x >= 0 && p.x <= HERO_RECT.w && p.y >= 0 && p.y <= HERO_RECT.h;
+}
+
+function buildSpecs(): LabelSpec[] {
+  const handle = ctx?.getHandle();
+  if (!handle) return [];
+  const list: LabelSpec[] = [];
+
   for (const z of zones.value) {
     if (!z.label) continue;
-    next[z.id] = handle.project(z.label);
+    const p = handle.project(z.label);
+    const s = signSize(z.name, 40);
+    list.push({
+      id: `zone-${z.id}`,
+      priority: store.mode === "campus" ? 80 : 70,
+      ax: p.x,
+      ay: p.y,
+      w: s.w,
+      h: s.h,
+      gap: 40,
+      compactW: s.w,
+      compactH: s.h,
+      compactGap: 40,
+      visible: projected(p) && !inHero(p),
+      movable: true,
+      axis: "y",
+    });
   }
-  // W3：地标小题签（key 用 landmark-<no>）
+
   for (const h of landmarks.value) {
-    next[`landmark-${h.no}`] = handle.project(h.anchor);
+    if (!h.anchor) continue;
+    const p = handle.project(h.anchor);
+    const s = signSize(h.board, 26, true);
+    list.push({
+      id: `landmark-${h.no}`,
+      priority: 90,
+      ax: p.x,
+      ay: p.y,
+      w: s.w,
+      h: s.h,
+      gap: 26,
+      compactW: s.w,
+      compactH: s.h,
+      compactGap: 26,
+      visible: projected(p) && !inHero(p),
+      movable: true,
+      axis: "y",
+    });
   }
+
   if (buildingSign.value) {
-    next[buildingSign.value.id] = handle.project(buildingSign.value.anchor);
+    const b = buildingSign.value;
+    const p = handle.project(b.anchor);
+    const s = signSize(b.name, 60);
+    const c = shortSign(b.name);
+    list.push({
+      id: `building-${b.id}`,
+      priority: 100,
+      ax: p.x,
+      ay: p.y,
+      w: s.w,
+      h: s.h,
+      gap: 60,
+      compactW: c.w,
+      compactH: c.h,
+      compactGap: 20,
+      visible: projected(p) && !inHero(p),
+      movable: true,
+      axis: "xy",
+    });
   }
-  // W9：学院序号标记（key 用 mark-<序号>，同楼去重后的那批楼）
-  for (const m of collegeMarks.value) {
-    next[`mark-${m.index}`] = handle.project(m.anchor);
-  }
-  positions.value = next;
+
+  return list;
 }
 
-function landmarkStyle(no: string): Record<string, string> {
-  const p = positions.value[`landmark-${no}`];
-  if (!p || !p.visible) return { display: "none" };
-  if (store.mode === "home" && p.x >= 0 && p.x <= HERO_RECT.w && p.y >= 0 && p.y <= HERO_RECT.h) {
-    return { display: "none" };
-  }
-  return { left: `${p.x}px`, top: `${p.y}px` };
+function updateFrame() {
+  board?.publish("signs", buildSpecs());
 }
 
-function markStyle(index: number): Record<string, string> {
-  const p = positions.value[`mark-${index}`];
-  if (!p || !p.visible) return { display: "none" };
-  return { left: `${p.x}px`, top: `${p.y}px` };
+function layoutOf(id: string) {
+  return layouts.value[id];
 }
 
-function styleOf(id: string): Record<string, string> {
-  const p = positions.value[id];
-  if (!p || !p.visible) return { display: "none" };
-  if (store.mode === "home" && p.x >= 0 && p.x <= HERO_RECT.w && p.y >= 0 && p.y <= HERO_RECT.h) {
-    return { display: "none" };
-  }
-  return { left: `${p.x}px`, top: `${p.y}px` };
+function hidden(id: string): boolean {
+  return !layoutOf(id) || layoutOf(id)!.form === "hidden";
+}
+
+function isCompact(id: string): boolean {
+  return layoutOf(id)?.form === "compact";
+}
+
+function signStyle(id: string): Record<string, string> {
+  const L = layoutOf(id);
+  if (!L || L.form === "hidden") return { display: "none" };
+  if (L.form === "compact") return { display: "none" };
+  const d = shiftOf(L);
+  return {
+    left: `${L.ax + d.dx}px`,
+    top: `${L.ay - L.gap - d.dy}px`,
+  };
+}
+
+/** 紧凑形态（只有楼的题签用）：锚点正上方 20px 的横排短签 */
+function compactStyle(id: string): Record<string, string> {
+  const L = layoutOf(id);
+  if (!L || L.form !== "compact") return { display: "none" };
+  const d = shiftOf(L);
+  return {
+    left: `${L.ax + d.dx}px`,
+    top: `${L.ay - L.gap - d.dy}px`,
+  };
+}
+
+function lineHeight(id: string): string {
+  const L = layoutOf(id);
+  if (!L) return "0px";
+  const d = shiftOf(L);
+  return `${L.gap + d.dy}px`;
+}
+
+/** 只有横向错开才需要斜引线（纯向上挪时仍是竖直引线，锚点不变） */
+function shifted(id: string): boolean {
+  const L = layoutOf(id);
+  return !!L && L.form !== "hidden" && Math.abs(shiftOf(L).dx) > 0.5;
+}
+
+/** 错开后从文字框底边画一根 1px 短引线回锚点（角度按屏幕坐标） */
+function leaderStyle(id: string): Record<string, string> {
+  const L = layoutOf(id);
+  if (!L || L.form === "hidden") return { display: "none" };
+  const d = shiftOf(L);
+  const dy = L.gap + d.dy;
+  const len = Math.hypot(d.dx, dy);
+  const deg = (Math.atan2(dy, -d.dx) * 180) / Math.PI;
+  return { width: `${len}px`, transform: `rotate(${deg}deg)` };
 }
 
 function onClick(id: string) {
   void store.pickCampus(id);
 }
 
-/** W9：点序号标记等于点学院列表那一行 */
-function onMarkClick(row: { buildingId: string }) {
-  store.board = null;
-  void store.showBuilding(row.buildingId);
-}
-
-/** W9：点地标题签 → 飞到它的楼（先清板，板块面板让位给楼的题签面板形态） */
+/** W9：点地标题签 → 飞到它的楼 */
 function onLandmarkClick(buildingId: string) {
   store.board = null;
   void store.showBuilding(buildingId);
@@ -149,8 +237,8 @@ function onLandmarkClick(buildingId: string) {
 let offFrame: (() => void) | null = null;
 
 onMounted(() => {
-  offFrame = ctx?.registerFrame(updatePositions) ?? null;
-  updatePositions();
+  offFrame = ctx?.registerFrame(updateFrame) ?? null;
+  updateFrame();
 });
 
 onBeforeUnmount(() => {
@@ -183,11 +271,18 @@ onBeforeUnmount(() => {
       class="stage-sign"
       :class="{ 'is-selected': store.mode === 'campus' }"
       :data-testid="`stage-sign-${z.id}`"
-      :style="styleOf(z.id)"
+      :aria-hidden="hidden(`zone-${z.id}`) ? 'true' : undefined"
+      :tabindex="hidden(`zone-${z.id}`) ? -1 : undefined"
+      :style="signStyle(`zone-${z.id}`)"
       @click="onClick(z.id)"
     >
       <span class="stage-sign-label">{{ z.name }}</span>
-      <span class="stage-sign-line"></span>
+      <span
+        v-if="!shifted(`zone-${z.id}`)"
+        class="stage-sign-line"
+        :style="{ height: lineHeight(`zone-${z.id}`) }"
+      ></span>
+      <span v-else class="stage-sign-leader" :style="leaderStyle(`zone-${z.id}`)"></span>
     </button>
     <!-- W3 画、W9 改可点：校区沙盘首页的地标小题签——点了飞到它的楼 -->
     <button
@@ -196,40 +291,46 @@ onBeforeUnmount(() => {
       type="button"
       class="stage-sign is-landmark"
       :data-testid="`stage-landmark-${h.no}`"
-      :style="landmarkStyle(h.no)"
+      :aria-hidden="hidden(`landmark-${h.no}`) ? 'true' : undefined"
+      :tabindex="hidden(`landmark-${h.no}`) ? -1 : undefined"
+      :style="signStyle(`landmark-${h.no}`)"
       @click="onLandmarkClick(h.buildingId)"
     >
       <span class="stage-sign-label">{{ h.board }}</span>
-      <span class="stage-sign-line"></span>
+      <span
+        v-if="!shifted(`landmark-${h.no}`)"
+        class="stage-sign-line"
+        :style="{ height: lineHeight(`landmark-${h.no}`) }"
+      ></span>
+      <span v-else class="stage-sign-leader" :style="leaderStyle(`landmark-${h.no}`)"></span>
     </button>
-    <button
-      v-for="m in collegeMarks"
-      :key="m.buildingId"
-      type="button"
-      class="stage-mark"
-      :data-testid="`stage-mark-${m.index}`"
-      :style="markStyle(m.index)"
-      @click="onMarkClick(m)"
-    >
-      <span class="stage-mark-label">{{ m.name }}</span>
-      {{ cnNumber(m.index) }}
-    </button>
+    <!-- 回答定位：唯一一块楼题签（朱砂边）；挤不下时缩成横排短签 -->
     <button
       v-if="buildingSign"
       type="button"
       class="stage-sign is-selected is-building"
+      :class="{ 'is-compact': isCompact(`building-${buildingSign.id}`) }"
       :data-testid="`stage-sign-${buildingSign.id}`"
-      :style="styleOf(buildingSign.id)"
+      :aria-hidden="hidden(`building-${buildingSign.id}`) ? 'true' : undefined"
+      :tabindex="hidden(`building-${buildingSign.id}`) ? -1 : undefined"
+      :style="isCompact(`building-${buildingSign.id}`)
+        ? compactStyle(`building-${buildingSign.id}`)
+        : signStyle(`building-${buildingSign.id}`)"
     >
       <span class="stage-sign-label">{{ buildingSign.name }}</span>
-      <span class="stage-sign-line"></span>
+      <span
+        v-if="!shifted(`building-${buildingSign.id}`)"
+        class="stage-sign-line"
+        :style="{ height: lineHeight(`building-${buildingSign.id}`) }"
+      ></span>
+      <span v-else class="stage-sign-leader" :style="leaderStyle(`building-${buildingSign.id}`)"></span>
     </button>
   </div>
 </template>
 
 <style scoped>
 /* 场景标签层（4.1 层 3）：占满视口、本身不接收鼠标；题签可以点。
-   题签底端中点落在锚点（translate(-50%,-100%)），线占底部 40px。 */
+   题签底端中点落在锚点（translate(-50%,-100%)）；线/引线从底边伸出。 */
 .stage .stage-signs {
   position: fixed;
   inset: 0;
@@ -264,7 +365,7 @@ onBeforeUnmount(() => {
   pointer-events: auto;
 }
 .stage .stage-sign:focus-visible {
-  outline: 1px solid var(--st-gold2);
+  outline: 2px solid var(--st-ov-gold);
   outline-offset: 2px;
 }
 .stage .stage-sign.is-selected {
@@ -280,16 +381,27 @@ onBeforeUnmount(() => {
   color: var(--st-ov-fg);
 }
 .stage .stage-sign-line {
-  display: block;
+  position: absolute;
+  left: 50%;
+  top: 100%;
   width: 1px;
-  height: 40px;
   background: linear-gradient(to bottom, var(--st-ov-gold), rgba(232, 201, 138, 0));
+  pointer-events: none;
 }
-/* W5：楼的题签线长 60px（校区 40px） */
-.stage .stage-sign.is-building .stage-sign-line {
-  height: 60px;
+/* 错开后的短引线：从底边中点回锚点（角度由布局结果算） */
+.stage .stage-sign-leader {
+  position: absolute;
+  left: 50%;
+  bottom: 0;
+  height: 1px;
+  transform-origin: 0 50%;
+  background: linear-gradient(to right, var(--st-ov-gold), rgba(232, 201, 138, 0.15));
+  pointer-events: none;
 }
-/* W3 画、W9 可点：地标小题签——线 26px、字小一号；点击飞到它的楼 */
+.stage .stage-sign.is-selected .stage-sign-leader {
+  background: linear-gradient(to right, var(--st-red), rgba(214, 59, 44, 0.2));
+}
+/* W3 画、W9 可点：地标小题签——线 26px、字小一号 */
 .stage .stage-sign.is-landmark {
   cursor: pointer;
   pointer-events: auto;
@@ -300,52 +412,22 @@ onBeforeUnmount(() => {
   font-size: 13px;
   letter-spacing: 0.24em;
 }
-.stage .stage-sign.is-landmark .stage-sign-line {
-  height: 26px;
+/* 楼题签挤不下时的横排短签（朱砂边、20px 短引线） */
+.stage .stage-sign.is-compact {
+  flex-direction: row;
+  gap: 0;
+  padding: 6px 10px;
 }
-/* W9：学院序号标记——20×20 小方块，固定深墨蓝底、月白字；右边学院名落同款底板 */
-.stage .stage-mark {
-  position: fixed;
-  transform: translate(-50%, -50%);
-  width: 22px;
-  height: 22px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: var(--st-ov-bg);
-  border: 1px solid var(--st-ov-fg2);
-  font-family: var(--st-song);
-  font-weight: 700;
-  font-size: 11px;
-  line-height: 1;
-  color: var(--st-ov-fg);
-  cursor: pointer;
-  pointer-events: auto;
-  z-index: 1;
-}
-.stage .stage-mark:focus-visible {
-  outline: 1px solid var(--st-gold2);
-  outline-offset: 2px;
-}
-.stage .stage-mark-label {
-  position: absolute;
-  left: 27px;
-  top: 50%;
-  transform: translateY(-50%);
-  max-width: 11em;
-  width: max-content;
-  padding: 3px 8px;
-  white-space: normal;
-  background: var(--st-ov-bg);
-  border: 1px solid var(--st-ov-gold-faint);
-  border-left: 1.5px solid var(--st-ov-gold-soft);
+.stage .stage-sign.is-compact .stage-sign-label {
+  writing-mode: horizontal-tb;
   font-family: var(--st-hei);
-  font-weight: 500;
-  font-size: 12.5px;
-  line-height: 1.4;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.35;
   letter-spacing: 0.02em;
-  text-align: left;
-  color: var(--st-ov-fg2);
-  pointer-events: none;
+  white-space: nowrap;
 }
-</style>
+.stage .stage-sign.is-compact .stage-sign-line {
+  width: 1px;
+  background: var(--st-red);
+}</style>

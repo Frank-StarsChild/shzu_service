@@ -10,6 +10,7 @@ import CampusRail from "@/components/stage/CampusRail.vue";
 import SceneSigns from "@/components/stage/SceneSigns.vue";
 import CollegeLanterns from "@/components/stage/CollegeLanterns.vue";
 import ZdxStar from "@/components/stage/ZdxStar.vue";
+import StageLabelDriver from "@/components/stage/StageLabelDriver.vue";
 import AskDock from "@/components/stage/AskDock.vue";
 import AnswerPanel from "@/components/stage/AnswerPanel.vue";
 import CampusPanel from "@/components/stage/CampusPanel.vue";
@@ -19,6 +20,7 @@ import { useChatStore } from "@/stores/chat";
 import { loadPlaces, type Places } from "@/stage/packs";
 import { resolvePlace, EMPTY_PLACES } from "@/stage/places";
 import { loadEmblems } from "@/stage/emblems";
+import { createLabelBoard, LABEL_BOARD_KEY } from "@/stage/labelBoard";
 import EmblemMark from "@/components/stage/EmblemMark.vue";
 import "@/styles/stage.css";
 import { provide, ref } from "vue";
@@ -28,6 +30,10 @@ const chat = useChatStore();
 
 // W7：星星拖尾的共享容器（ZdxStar 写、SceneSigns 画）
 provide(STAR_TRAIL_KEY, ref<StarTrailState | null>(null));
+
+// 本次「标签分级」：两块标签共用一份避让布局（SceneSigns/CollegeLanterns 发布候选，
+// StageLabelDriver 每帧算一次）
+provide(LABEL_BOARD_KEY, createLabelBoard());
 
 const heroVisible = computed(() => store.mode === "home" && !answerPanelOpen.value);
 const heroStyle = computed(() => ({
@@ -155,6 +161,7 @@ onBeforeUnmount(() => {
     <CampusRail />
     <SceneSigns />
     <CollegeLanterns />
+    <StageLabelDriver />
     <ZdxStar />
 
     <StageTop />

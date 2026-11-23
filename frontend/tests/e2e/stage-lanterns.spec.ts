@@ -92,7 +92,7 @@ test("2 全校沙盘选中中区：灯牌数等于按 JSON 算出的中区学院
   expect(visible).toBe(expected.length);
 });
 
-test("3 进入中区沙盘：每个灯牌底端中心对准它那栋楼的 anchor（±3px）；截图 A2-zq", async ({ page }) => {
+test("3 进入中区沙盘：灯牌底端对准它那栋楼的 anchor（±3px）；被挤开的用水平引线补回锚点", async ({ page }) => {
   await page.goto("/stage?3d=1&intro=0");
   await waitReady(page);
   await page.click('[data-testid="stage-rail-ZQ"]');
@@ -103,6 +103,12 @@ test("3 进入中区沙盘：每个灯牌底端中心对准它那栋楼的 ancho
   await page.waitForTimeout(300);
   const expected = expectedLanterns(zqMetaRaw);
   expect(expected.length).toBeGreaterThan(0);
+  const debug = await page.evaluate(() => ({
+    labels: window.__campus3d?.labels as { shifted?: string[] } | undefined,
+    layouts: window.__campus3d?.labelLayouts as
+      | Record<string, { form: string; x: number; w: number; ax: number }>
+      | undefined,
+  }));
   for (const l of expected) {
     const lantern = page.locator(`[data-testid="stage-lantern-${l.no}"]`);
     await expect(lantern).toBeVisible();
@@ -112,8 +118,25 @@ test("3 进入中区沙盘：每个灯牌底端中心对准它那栋楼的 ancho
     expect(p, `no.${l.no} 的 anchor 投影`).toBeTruthy();
     const cx = box.x + box.width / 2;
     const bottom = box.y + box.height;
-    expect(Math.abs(cx - (p!.x + l.offset)), `no.${l.no} 横向`).toBeLessThanOrEqual(3);
+    // 纵向任何时候都对准锚点（错开只做水平位移）
     expect(Math.abs(bottom - p!.y), `no.${l.no} 纵向`).toBeLessThanOrEqual(3);
+    const L = debug.layouts?.[`lantern-${l.no}`];
+    const shifted = debug.labels?.shifted?.includes(`lantern-${l.no}`) === true;
+    if (!shifted) {
+      // 原行为：默认位就在楼顶正上方
+      expect(Math.abs(cx - (p!.x + l.offset)), `no.${l.no} 横向`).toBeLessThanOrEqual(3);
+    } else {
+      // 新避让态：灯牌让开，但引线末端仍在真实锚点上
+      expect(L, `no.${l.no} 应有布局结果`).toBeTruthy();
+      expect(Math.abs(L!.ax - (p!.x + l.offset)), `no.${l.no} 布局锚点`).toBeLessThanOrEqual(3);
+      expect(Math.abs(cx - (L!.x + L!.w / 2)), `no.${l.no} 灯牌中心`).toBeLessThanOrEqual(2);
+      const dx = Math.abs(L!.x + L!.w / 2 - L!.ax);
+      expect(dx, `no.${l.no} 应真的错开`).toBeGreaterThan(3);
+      const lw = await lantern
+        .locator(".stage-lantern-leader")
+        .evaluate((el) => Number.parseFloat(getComputedStyle(el).width));
+      expect(Math.abs(lw - dx), `no.${l.no} 水平引线长度`).toBeLessThanOrEqual(2);
+    }
   }
   mkdirSync("../docs/3d/shots", { recursive: true });
   await page.screenshot({ path: "../docs/3d/shots/A2-zq.png" });

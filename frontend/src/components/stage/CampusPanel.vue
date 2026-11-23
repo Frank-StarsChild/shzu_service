@@ -10,15 +10,11 @@ import { computed, onMounted, ref, watch } from "vue";
 import { useStageStore } from "@/stores/stage";
 import { useChatStore } from "@/stores/chat";
 import { cnNumber } from "@/stage/hud";
+import { collegeEntries, type CollegeEntry } from "@/stage/collegeIndex";
 import { api, type ServiceEntry } from "@/api/client";
 
 const store = useStageStore();
 const chat = useChatStore();
-
-/** 去掉括号里的内容（学院名与校区/楼名共用同一条规则） */
-function stripParens(s: string): string {
-  return s.replace(/（[^）]*）/g, "").replace(/\([^)]*\)/g, "").trim();
-}
 
 // ---- 两种形态是否显示 ----
 const isCampusForm = computed(() => store.mode === "campus");
@@ -31,37 +27,12 @@ const campusBuildings = computed(
   () => store.campuses.find((c) => c.id === store.zoneId)?.buildings ?? 0
 );
 
-type CollegeRow = {
-  index: number;
-  name: string;
-  fullName: string;
-  buildingId: string;
-  buildingName: string;
-  confirmed: boolean;
-};
+type CollegeRow = CollegeEntry;
 
-/** 学院列表（zone 过滤；同楼两院只留先出现的——卡第 4 条） */
+/** 学院列表：与地图标记、灯牌角标同一份数据（collegeIndex，zone 过滤 + 同楼归一行） */
 const collegeRows = computed<CollegeRow[]>(() => {
-  const m = store.mode === "campus" ? store.meta : null;
-  const zid = store.zoneId;
-  if (!m?.colleges || !zid) return [];
-  const seen = new Set<string>();
-  const rows: CollegeRow[] = [];
-  for (const c of m.colleges) {
-    if (c.zone !== zid) continue;
-    const bid = c.buildingIds[0];
-    if (!bid || seen.has(bid)) continue;
-    seen.add(bid);
-    rows.push({
-      index: rows.length + 1,
-      name: stripParens(c.name),
-      fullName: c.name,
-      buildingId: bid,
-      buildingName: m.buildings[bid]?.name ?? bid,
-      confirmed: c.confirmed === true,
-    });
-  }
-  return rows;
+  if (store.mode !== "campus") return [];
+  return collegeEntries(store.meta, store.emblems, store.zoneId);
 });
 
 // ---- 五个板块：只在选中片区是 places.boards 里那些楼所在的片区时显示 ----
