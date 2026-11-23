@@ -133,6 +133,9 @@ async function initScene() {
     sceneHandle = handle;
     applyFraming(); // W11：创建后立刻按当前面板状态应用构图偏移
     handle.onFrame(() => {
+      // 停靠点写回 store（比例尺/罗盘等界面读响应式状态，而不是窗口上的调试钩子）
+      const stop = (window as unknown as { __campus3d?: { stop?: string } }).__campus3d?.stop;
+      if (typeof stop === "string") store.setSceneStop(stop);
       for (const cb of frameListeners) cb();
     });
     if (introDecision.play && !introFinishedEarly) {
@@ -422,7 +425,7 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div class="stage" data-testid="stage" :class="{ 'is-tour': store.mode === 'tour' }" :style="frameStyle">
+  <div class="stage" data-testid="stage" :data-mode="store.mode" :class="{ 'is-tour': store.mode === 'tour' }" :style="frameStyle">
     <img ref="posterEl" data-testid="stage-poster" class="stage-poster"
          :src="posterSrc" alt="石河子大学校园沙盘（示意）" />
     <canvas v-if="canvasMounted" ref="canvasRef" data-testid="stage-canvas"

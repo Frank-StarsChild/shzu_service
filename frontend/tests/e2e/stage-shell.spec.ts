@@ -88,17 +88,28 @@ test("4 debugGoTo('bq') 后方位角变化，罗盘跟着变", async ({ page }) 
   expect(angDiff(az, rot)).toBeLessThanOrEqual(1);
 });
 
-test("5 比例尺：含标签文字；横线宽度 20–400px", async ({ page }) => {
+test("5 比例尺：按校准换算选整米单位；横线像素与标注一致（20–400px）", async ({ page }) => {
   await page.goto("/stage?3d=1&intro=0");
   await waitReady(page);
   await page.waitForTimeout(300);
-  await expect(page.locator('[data-testid="stage-scale"]')).toContainText(
-    metaRaw.look.hud.scaleLabel
-  );
+  // 不再固定显示 meta 里的 scaleLabel：按当前停靠点投影长度换算，取能放进左栏的常用单位
+  const text = await page.locator('[data-testid="stage-scale"] .stage-scale-text').innerText();
+  const unit = Number(text.replace(/\s*米$/, ""));
+  expect([500, 200, 100, 50, 20, 10], `比例尺文字「${text}」`).toContain(unit);
+
+  const pair = metaRaw.look.hud.scale100.home as [number[], number[]];
+  const meters = metaRaw.look.hud.scaleMeters as number;
+  const proj = await page.evaluate(([a, b]) => ({
+    a: window.__campus3d.projectPoint(a),
+    b: window.__campus3d.projectPoint(b),
+  }), pair);
+  const pxPerMeter = Math.abs(proj.b.x - proj.a.x) / meters;
   const w = await page.locator('[data-testid="stage-scale"] .stage-scale-line').evaluate(
     (el) => getComputedStyle(el).width
   );
   const px = Number.parseFloat(w);
+  // 显示的距离与真实像素长度必须成同一比例（不许剪短却还标原距离）
+  expect(Math.abs(px - unit * pxPerMeter), `线宽 ${px.toFixed(1)} / ${unit} 米`).toBeLessThanOrEqual(2);
   expect(px).toBeGreaterThan(20);
   expect(px).toBeLessThan(400);
 });

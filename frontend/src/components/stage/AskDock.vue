@@ -59,39 +59,42 @@ onMounted(() => {
 
 <template>
   <div class="stage-dock" data-testid="stage-dock">
-    <!-- 沙盘控制区：观景 / 重置视角 / 普通版（随问话栏在观景模式下一起淡出） -->
-    <div class="stage-tools">
-      <button
-        v-if="canTour"
-        type="button"
-        class="stage-tool"
-        data-testid="stage-tool-tour"
-        @click="stageStore.setTour(true)"
-      >观景</button>
-      <button
-        v-if="canReset"
-        type="button"
-        class="stage-tool"
-        data-testid="stage-tool-reset"
-        @click="stageStore.requestResetView()"
-      >重置视角</button>
-      <router-link
-        class="stage-tool"
-        data-testid="stage-tool-classic"
-        to="/classic"
-        @click="preferClassic"
-      >普通版</router-link>
+    <!-- 状态与沙盘控制（观景/重置视角/普通版）收在同一张窄底板上：一行内左状态、右按钮，
+         窄屏或短窗口自动换行 -->
+    <div class="stage-meta-plate">
+      <p class="stage-status" data-testid="stage-status">
+        <span class="stage-status-dot" aria-hidden="true"></span>{{ statusText }}
+        <button
+          v-if="store.busy"
+          type="button"
+          class="stage-cancel"
+          data-testid="stage-cancel"
+          @click="store.cancel()"
+        >不等了</button>
+      </p>
+      <div class="stage-tools">
+        <button
+          v-if="canTour"
+          type="button"
+          class="stage-tool"
+          data-testid="stage-tool-tour"
+          @click="stageStore.setTour(true)"
+        >观景</button>
+        <button
+          v-if="canReset"
+          type="button"
+          class="stage-tool"
+          data-testid="stage-tool-reset"
+          @click="stageStore.requestResetView()"
+        >重置视角</button>
+        <router-link
+          class="stage-tool"
+          data-testid="stage-tool-classic"
+          to="/classic"
+          @click="preferClassic"
+        >普通版</router-link>
+      </div>
     </div>
-    <p class="stage-status" data-testid="stage-status">
-      <span class="stage-status-dot" aria-hidden="true"></span>{{ statusText }}
-      <button
-        v-if="store.busy"
-        type="button"
-        class="stage-cancel"
-        data-testid="stage-cancel"
-        @click="store.cancel()"
-      >不等了</button>
-    </p>
     <div v-if="store.turns.length === 0" class="stage-examples">
       <button
         v-for="q in EXAMPLES"
@@ -116,26 +119,36 @@ onMounted(() => {
 </template>
 
 <style scoped>
-/* 问话栏（4.2）：底部居中、距底 30px、宽 min(800px, 100vw − 640px)。
-   底色从上到下略微变暗是 4.5 节允许的渐变之一；上下两道压边、问字钮按下下沉 1px。 */
+/* 问话栏（4.2）：底部居中；宽度按左右两栏（罗盘/比例尺、读数）留出空位，
+   三区共用 --st-bot-* 边距，互不重叠。 */
 .stage .stage-dock {
   position: fixed;
   left: 50%;
   transform: translateX(-50%);
-  bottom: 30px;
-  width: min(800px, calc(100vw - 640px));
+  bottom: var(--st-dock-bottom, 30px);
+  width: min(800px, calc(100vw - 2 * (var(--st-bot-side, 260px) + var(--st-bot-edge, 24px))));
   z-index: 4;
   display: flex;
   flex-direction: column;
   gap: 8px;
   align-items: stretch;
 }
-/* 沙盘控制区（顶栏统一后自顶栏迁来）：右对齐的小题签式按钮，随问话栏淡出 */
+/* 状态 + 沙盘控制：同一张窄底板；窄屏换行 */
+.stage .stage-meta-plate {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 6px 10px;
+}
+/* 沙盘控制区：小題签式按钮，随问话栏淡出 */
 .stage .stage-tools {
   display: flex;
+  flex-wrap: wrap;
   justify-content: flex-end;
   gap: 8px;
   margin: 0;
+  margin-left: auto;
 }
 .stage .stage-tool {
   background: var(--st-ov-bg);
@@ -164,11 +177,10 @@ onMounted(() => {
   outline-offset: 2px;
 }
 .stage .stage-status {
-  margin: 0 0 -1px;
+  margin: 0;
   display: flex;
   align-items: center;
   gap: 8px;
-  align-self: center;
   padding: 5px 10px;
   background: var(--st-ov-bg);
   border: 1px solid var(--st-ov-gold-faint);
@@ -263,5 +275,32 @@ onMounted(() => {
 .stage .stage-ask:hover { color: var(--on-vermilion); }
 .stage .stage-ask:active {
   transform: translateY(1px);
+}
+/* 手机/窄视口：读数与比例尺先收起，问话占满可用宽度 */
+@media (max-width: 900px) {
+  .stage .stage-dock {
+    width: min(800px, calc(100vw - 28px));
+  }
+}
+/* 短窗口：状态与工具仍是一张底板，示例可换行，间距收紧 */
+@media (max-height: 760px) {
+  .stage .stage-dock {
+    gap: 6px;
+  }
+  .stage .stage-meta-plate {
+    gap: 4px 8px;
+  }
+  .stage .stage-status {
+    font-size: 11px;
+    padding: 4px 8px;
+  }
+  .stage .stage-example {
+    font-size: 12px;
+    padding: 4px 9px;
+  }
+  .stage .stage-tool {
+    font-size: 12px;
+    padding: 4px 9px;
+  }
 }
 </style>

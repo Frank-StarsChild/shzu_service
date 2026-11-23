@@ -5,35 +5,65 @@ import { computed, inject, onBeforeUnmount, onMounted, ref } from "vue";
 import { azimuthDeg, coordText, shichen } from "@/stage/hud";
 import type { StageCtx } from "@/stage/types";
 import type { CampusMeta } from "@/campus3d/meta";
+import { useStageStore } from "@/stores/stage";
 
 const ctx = inject<StageCtx>("stageCtx");
+const store = useStageStore();
 const meta = computed(() => ctx?.meta.value ?? null);
 
 const azimuth = ref(0);
 const scalePx = ref<number | null>(null);
+/** 当前比例尺的整米数（500/200/100/50/20/10） */
+const scaleUnit = ref<number | null>(null);
 const now = ref(new Date());
+
+/** 比例尺可用的长度范围（CSS 左栏留给它的空位；再长就换更小的单位） */
+const SCALE_MIN_PX = 24;
+const SCALE_MAX_PX = 150;
+const SCALE_UNITS = [500, 200, 100, 50, 20, 10];
 
 let offFrame: (() => void) | null = null;
 let clockTimer: number | null = null;
 
-const stopName = computed(() => {
-  const hook = (window as unknown as { __campus3d?: Record<string, unknown> }).__campus3d;
-  return String(hook?.stop ?? "home");
-});
-
+/**
+ * 比例尺：用当前停靠点那对校准点（相距 look.hud.scaleMeters 米）的投影长度，
+ * 换算每米屏幕像素，再取一个能放进左栏的常用单位（500/200/100/50/20/10 米）。
+ * 拿不到校准、投影不可见或太小/太长时直接隐藏——不做 max-width 剪短却仍标原距离。
+ */
 function updateScale(handle: ReturnType<NonNullable<StageCtx["getHandle"]>> | null, m: CampusMeta) {
-  const pair = m.look.hud.scale100[stopName.value];
-  if (!pair) {
+  const hud = m.look.hud;
+  const stop = store.sceneStop;
+  const pair = hud.scale100[stop] ?? hud.scale100.home ?? hud.scale100.overview;
+  const meters = hud.scaleMeters;
+  if (!pair || !meters || !handle) {
     scalePx.value = null;
-    return;
-  }
-  if (!handle) {
-    scalePx.value = null;
+    scaleUnit.value = null;
     return;
   }
   const p0 = handle.project(pair[0]);
   const p1 = handle.project(pair[1]);
-  scalePx.value = Math.abs(p1.x - p0.x);
+  const len = Math.abs(p1.x - p0.x);
+  if (!p0.visible || !p1.visible || !(len > 1)) {
+    scalePx.value = null;
+    scaleUnit.value = null;
+    return;
+  }
+  const pxPerMeter = len / meters;
+  let unit = 0;
+  for (const u of SCALE_UNITS) {
+    if (u * pxPerMeter <= SCALE_MAX_PX) {
+      unit = u;
+      break;
+    }
+  }
+  const px = unit * pxPerMeter;
+  if (!unit || px < SCALE_MIN_PX) {
+    scalePx.value = null;
+    scaleUnit.value = null;
+    return;
+  }
+  scaleUnit.value = unit;
+  scalePx.value = px;
 }
 
 function onFrame() {
@@ -49,6 +79,7 @@ onMounted(() => {
     const home = meta.value.stops.home ?? meta.value.stops.overview;
     azimuth.value = azimuthDeg(home.position, home.target);
     scalePx.value = null;
+    scaleUnit.value = null;
   }
   offFrame = ctx?.registerFrame(onFrame) ?? null;
   // 3D 就绪后也用静态兜底值直到第一帧
@@ -88,7 +119,7 @@ const clockText = computed(() => {
   const mm = String(d.getMinutes()).padStart(2, "0");
   return { shichen: shichen(d.getHours()), time: `${hh}:${mm}` };
 });
-const scaleLabel = computed(() => meta.value?.look.hud.scaleLabel ?? "");
+const scaleText = computed(() => (scaleUnit.value ? `${scaleUnit.value} 米` : ""));
 </script>
 
 <template>
@@ -99,7 +130,7 @@ const scaleLabel = computed(() => meta.value?.look.hud.scaleLabel ?? "");
     </div>
     <div v-if="scalePx !== null && scalePx > 0" class="stage-scale" data-testid="stage-scale">
       <span class="stage-scale-line" :style="{ width: `${scalePx}px` }"></span>
-      <span class="stage-scale-text">{{ scaleLabel }}</span>
+      <span class="stage-scale-text">{{ scaleText }}</span>
     </div>
     <div class="stage-read" data-testid="stage-hud">
       <div class="stage-read-title">{{ title }}</div>
@@ -123,8 +154,8 @@ const scaleLabel = computed(() => meta.value?.look.hud.scaleLabel ?? "");
 }
 .stage-compass-box {
   position: absolute;
-  left: 92px;
-  bottom: 34px;
+  left: var(--st-bot-edge, 24px);
+  bottom: calc(var(--st-dock-bottom, 30px) + 4px);
   width: 76px;
   height: 76px;
 }
@@ -135,14 +166,21 @@ const scaleLabel = computed(() => meta.value?.look.hud.scaleLabel ?? "");
 }
 .stage-scale {
   position: absolute;
-  left: 184px;
-  bottom: 40px;
+  left: calc(var(--st-bot-edge, 24px) + 92px);
+  bottom: calc(var(--st-dock-bottom, 30px) + 8px);
   display: flex;
   align-items: center;
   gap: 8px;
   padding: 6px 10px;
   background: var(--st-ov-bg);
   border: 1px solid var(--st-ov-gold-faint);
+}
+/* 左栏放不下或窄视口：比例尺与罗盘让位给问话（次要信息按降级方式收起） */
+@media (max-width: 900px) {
+  .stage .stage-scale,
+  .stage .stage-compass-box {
+    display: none;
+  }
 }
 .stage-scale-line {
   display: block;
@@ -157,8 +195,8 @@ const scaleLabel = computed(() => meta.value?.look.hud.scaleLabel ?? "");
 }
 .stage-read {
   position: absolute;
-  right: 30px;
-  bottom: 30px;
+  right: var(--st-bot-edge, 24px);
+  bottom: var(--st-dock-bottom, 30px);
   text-align: right;
   display: flex;
   flex-direction: column;
@@ -166,6 +204,12 @@ const scaleLabel = computed(() => meta.value?.look.hud.scaleLabel ?? "");
   padding: 8px 12px;
   background: var(--st-ov-bg);
   border: 1px solid var(--st-ov-gold-faint);
+}
+/* 手机/窄视口：右栏读数先收起（提问、校区、定位入口保留） */
+@media (max-width: 900px) {
+  .stage .stage-read {
+    display: none;
+  }
 }
 .stage-read-title {
   font-family: var(--st-song);

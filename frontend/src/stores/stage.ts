@@ -55,6 +55,8 @@ export const useStageStore = defineStore("stage", {
     /** 场景是否就绪（StageCanvas 同步进来；换包/加载中/出错为 false）。
      *  W10 的 enterPlace 与 W5 的 otherPack 钮等它变 true 再落楼。 */
     sceneReady: false,
+    /** 当前镜头停靠点（scene 每帧写入；比例尺取校准线的键，必须走响应式路径） */
+    sceneStop: "home",
     /** 每次 applyPlace（showAnswer/showBuilding）加一；换包后等待落楼时用它判断「作废」 */
     placeSeq: 0,
   }),
@@ -110,6 +112,10 @@ export const useStageStore = defineStore("stage", {
     /** StageCanvas 同步场景就绪状态（ready 为 true；换包/加载中/出错为 false） */
     setSceneReady(on: boolean) {
       this.sceneReady = on;
+    },
+    /** 镜头停靠点变化（只在真正变化时写，避免每帧触发响应式更新） */
+    setSceneStop(stop: string) {
+      if (stop && stop !== this.sceneStop) this.sceneStop = stop;
     },
     /** W11：收起/展开右侧回答面板（不动校区、定位、对话与生成状态） */
     setAnswerOpen(open: boolean) {

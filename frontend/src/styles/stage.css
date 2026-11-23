@@ -28,6 +28,11 @@
   --st-ov-gold-soft: rgba(232, 201, 138, 0.55);
   --st-ov-gold-faint: rgba(232, 201, 138, 0.24);
   --st-ov-shadow: 0 6px 18px rgba(0, 0, 0, 0.55);
+
+  /* 底部三区（第三步）：左罗盘+短比例尺、中状态与问话、右读数共用这组边距 */
+  --st-bot-edge: 24px;
+  --st-bot-side: 260px;
+  --st-dock-bottom: 36px;
   /* 院徽的鎏金（ALIVE 3.1）：全站唯一金属渐变，只许用在院徽的鎏金样子上 */
   --st-gilt: linear-gradient(135deg, #f7e6bd 0%, #e8c98a 38%, #b48a52 62%, #f0d6a0 100%);
 
@@ -124,6 +129,17 @@
   font-size: 10.5px;
   letter-spacing: 0.05em;
   pointer-events: none;
+}
+
+/* 手机/窄视口：字幕会折成两三行，问话栏整体抬高，不压住字幕与输入 */
+@media (max-width: 900px) {
+  .stage {
+    --st-dock-bottom: 76px;
+  }
+  .stage .stage-caption {
+    font-size: 9.5px;
+    line-height: 1.35;
+  }
 }
 
 /* ---- W4：回答面板与用户问话（4.2）；W11：clamp 宽度 + 纵向 flex（长问题换行，
