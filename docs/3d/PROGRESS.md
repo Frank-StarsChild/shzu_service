@@ -1081,3 +1081,28 @@ stage 8/8 及全部既有回归）。视觉自查 W2-shell.png：印章顶栏、
 需要前缀，且成本为零）。
 
 > AI生成
+
+## A2 学院灯牌 — 2026-11-23（feat/campus-alive）
+
+按 `cards/A2.md` 完成：校区沙盘首页每个学院的主楼上方悬 40px 鎏金院徽（深色底、
+细金边圆 + 1px 金线落到楼顶 anchor）；同楼多学院横向错开 48px；悬停放大 50 并发光、
+右侧出竖排题签（学院简称 + 建院年份）；点击飞到该楼、院徽还原本色。
+
+- 新建 `CollegeLanterns.vue`：按「当前沙盘 meta.colleges → emblems 同 no → buildingIds
+  第一个在 meta.buildings 的楼」取灯牌楼；home（非默认包）/campus（同 zone）画，
+  answer/tour/全校首页/emblems 或 meta 为 null/静态模式不画；位置只在 onFrame 里算
+  （anchor 与 anchor+sign.lift 两点投影，线长 = 两者屏幕 y 差、最短 12px；视口外 40px
+  隐藏）；`window.__campus3d.lanterns` 写每帧可见数。
+- `StageCanvas`：钩子初始化加 `lanterns: 0`、`college: null`，mode/zoneId/collegeNo
+  watch 里同步 `college`（ALIVE 8.4 的调试字段，e2e 第 6 条依赖）。
+- `StageView`：挂载 `<CollegeLanterns />`（与 W3 题签同层 z-index 3）。
+- 单测追加 2 条：bq 沙盘 `showCollege(5)` → collegeNo=5、place=BQ-B013、goHome 清空；
+  emblems 为 null 时只记 collegeNo 不落楼。
+- e2e `stage-lanterns.spec.ts` 7 条全过：全校首页 0 枚；选中中区灯牌数 = 按 JSON 算的
+  学院数；zq 首页每个灯牌底端中心对 anchor ±3px；北苑工科楼 2/3 并排（纵差 ≤1、横差
+  48±2）；悬停法学院院徽 50px + 题签；点击落 ZQ-B018 / college=16 / 灯牌收起；七块沙盘
+  换一遍控制台零报错、校区首页灯牌都 > 0。截图 `docs/3d/shots/A2-zq.png`、`A2-by.png`。
+- 反向验证：注释掉「全校沙盘首页不画」→ 第 1 条按预期红（首页画出 19 枚）→ 恢复后绿。
+- 全量 verify：vue-tsc/构建/红线/单测 169/e2e 206 全绿。
+
+> AI生成

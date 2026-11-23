@@ -267,8 +267,8 @@ watch(() => store.packId, async (id, old) => {
 // ---- W3：mode / zoneId 变化 → 片区显隐与镜头（只在就绪后应用；加载期间点的等就绪补上）----
 // W8：进观景调 scene.setTour(true)；退出调 setTour(false)（镜头回到观景前的机位，
 // 不再另触 applyStageMode——恢复的模式当时就在那个机位上）。
-watch([() => store.mode, () => store.zoneId], ([m], [prevM]) => {
-  touchHook({ mode: store.mode });
+watch([() => store.mode, () => store.zoneId, () => store.collegeNo], ([m], [prevM]) => {
+  touchHook({ mode: store.mode, college: store.collegeNo });
   if (m === "tour") {
     if (sceneStatus.value === "ready" && gate.value.mode === "scene") {
       sceneHandle?.setTour(true);
@@ -368,6 +368,8 @@ onMounted(async () => {
     tour: false,
     stop: "home",
     moving: false,
+    lanterns: 0,
+    college: null,
     frames: 0,
     drawCalls: 0,
     triangles: 0,

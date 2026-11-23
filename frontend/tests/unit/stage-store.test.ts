@@ -9,6 +9,12 @@ import { parseMeta } from "@/campus3d/meta";
 
 const packsJson = readFileSync(resolve(__dirname, "../../public/campus3d/packs.json"), "utf-8");
 const placesJson = readFileSync(resolve(__dirname, "../../public/campus3d/places.json"), "utf-8");
+const emblemsRaw = JSON.parse(
+  readFileSync(resolve(__dirname, "../../public/campus3d/emblems/emblems.json"), "utf-8")
+);
+const bqMetaRaw = JSON.parse(
+  readFileSync(resolve(__dirname, "../../public/campus3d/bq/campus.meta.json"), "utf-8")
+);
 const allMetaRaw = JSON.parse(
   readFileSync(resolve(__dirname, "../../public/campus3d/all/campus.meta.json"), "utf-8")
 );
@@ -139,6 +145,37 @@ describe("stores/stage（W3 pickCampus / enterCampus / switchPack，真实 packs
       expect(pack, `${c.id} 的包 ${c.pack} 存在`).toBeTruthy();
       expect(pack!.zones, `${c.id} 在包 ${c.pack} 的 zones 里`).toContain(c.id);
     }
+  });
+});
+
+describe("stores/stage.showCollege（A2：选中学院，落到它在当前沙盘的第一栋楼）", () => {
+  beforeEach(() => {
+    setActivePinia(createPinia());
+  });
+
+  it("bq 沙盘上 showCollege(5)：collegeNo=5、place 落到 BQ-B013；goHome() 清空", async () => {
+    const s = useStageStore();
+    await s.loadCampuses();
+    s.emblems = emblemsRaw;
+    s.packId = "bq";
+    s.setMeta(parseMeta(bqMetaRaw));
+    await s.showCollege(5);
+    expect(s.collegeNo).toBe(5);
+    expect(s.mode).toBe("answer");
+    expect(s.place?.buildingId).toBe("BQ-B013");
+    s.goHome();
+    expect(s.collegeNo).toBeNull();
+  });
+
+  it("emblems 为 null 时 showCollege(5)：只记 collegeNo，不落楼", async () => {
+    const s = useStageStore();
+    await s.loadCampuses();
+    s.packId = "bq";
+    s.setMeta(parseMeta(bqMetaRaw));
+    await s.showCollege(5);
+    expect(s.collegeNo).toBe(5);
+    expect(s.place).toBeNull();
+    expect(s.mode).toBe("home");
   });
 });
 

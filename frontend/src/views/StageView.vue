@@ -8,6 +8,7 @@ import StageTop from "@/components/stage/StageTop.vue";
 import StageHud from "@/components/stage/StageHud.vue";
 import CampusRail from "@/components/stage/CampusRail.vue";
 import SceneSigns from "@/components/stage/SceneSigns.vue";
+import CollegeLanterns from "@/components/stage/CollegeLanterns.vue";
 import ZdxStar from "@/components/stage/ZdxStar.vue";
 import AskDock from "@/components/stage/AskDock.vue";
 import AnswerPanel from "@/components/stage/AnswerPanel.vue";
@@ -150,9 +151,10 @@ onBeforeUnmount(() => {
       </template>
     </section>
 
-    <!-- 校区列表（左）与场景题签（悬在校区上方），智多星（W7） -->
+    <!-- 校区列表（左）与场景题签（悬在校区上方），学院灯牌（A2），智多星（W7） -->
     <CampusRail />
     <SceneSigns />
+    <CollegeLanterns />
     <ZdxStar />
 
     <StageTop />
