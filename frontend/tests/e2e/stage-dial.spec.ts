@@ -113,7 +113,7 @@ test("4 指信息学院：本色院徽、红线落到 BQ-B013、小牌写学院�
   expect(Math.hypot(end!.x - target!.x, end!.y - target!.y)).toBeLessThanOrEqual(3);
 
   await expect(page.locator('[data-testid="stage-dial-plate"]')).toContainText("信息科学与技术学院");
-  await page.screenshot({ path: "docs/3d/shots/A4-dial.png" });
+  await page.screenshot({ path: "../docs/3d/shots/A4-dial.png" });
 });
 
 test("5 点信息学院：收起、落到 BQ-B013、college=5", async ({ page }) => {
