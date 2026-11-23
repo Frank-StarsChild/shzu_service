@@ -124,10 +124,18 @@ const scaleText = computed(() => (scaleUnit.value ? `${scaleUnit.value} 米` : "
 
 <template>
   <div class="stage-hud-widget">
-    <div class="stage-compass-box" data-testid="stage-compass">
+    <button
+      v-if="!store.dialOpen"
+      type="button"
+      class="stage-compass-box"
+      data-testid="stage-compass"
+      aria-label="二十四院罗盘"
+      :disabled="!store.emblems || store.mode === 'tour'"
+      @click="store.openDial()"
+    >
       <img src="/campus3d/ui/compass.svg" alt="罗盘" class="stage-compass"
             :style="{ transform: `rotate(${-azimuth}deg)` }" width="76" height="76" />
-    </div>
+    </button>
     <div v-if="scalePx !== null && scalePx > 0" class="stage-scale" data-testid="stage-scale">
       <span class="stage-scale-line" :style="{ width: `${scalePx}px` }"></span>
       <span class="stage-scale-text">{{ scaleText }}</span>
@@ -158,7 +166,17 @@ const scaleText = computed(() => (scaleUnit.value ? `${scaleUnit.value} 米` : "
   bottom: calc(var(--st-dock-bottom, 30px) + 4px);
   width: 76px;
   height: 76px;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  pointer-events: auto;
 }
+.stage-compass-box:focus-visible {
+  outline: 2px solid var(--st-gold);
+  outline-offset: 4px;
+}
+.stage-compass-box:disabled { cursor: default; }
 .stage-compass {
   width: 76px;
   height: 76px;

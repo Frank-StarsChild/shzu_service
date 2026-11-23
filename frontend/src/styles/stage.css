@@ -758,3 +758,237 @@
     stroke-dashoffset: 0;
   }
 }
+
+/* ===== ALIVE A4：二十四院罗盘 ===== */
+/* 遮罩在回答面板（z 4）之上、顶栏之下（把舞台顶栏抬到 6） */
+.stage .app-header--stage { z-index: 6; }
+.stage .stage-dial-mask {
+  position: fixed;
+  inset: 0;
+  z-index: 5;
+  background: rgba(5, 8, 13, 0.62);
+  animation: stage-dial-mask-in 420ms ease-out both;
+}
+.stage .stage-dial-mask.is-closing {
+  animation: stage-dial-mask-out 260ms ease-in both;
+  pointer-events: none;
+}
+@keyframes stage-dial-mask-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes stage-dial-mask-out {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
+/* 盘：从罗盘位置由 0.1 倍放大到 1 倍 */
+.stage .stage-dial {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  animation: stage-dial-in 420ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  will-change: transform;
+}
+.stage .stage-dial-mask.is-closing .stage-dial {
+  animation: stage-dial-out 260ms cubic-bezier(0.4, 0, 1, 1) both;
+}
+@keyframes stage-dial-in {
+  from { transform: translate(-50%, -50%) scale(0.1); opacity: 0; }
+  to { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+}
+@keyframes stage-dial-out {
+  from { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+  to { transform: translate(-50%, -50%) scale(0.1); opacity: 0; }
+}
+/* 盘面只转自己，院徽不转 */
+.stage .stage-dial-face {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  pointer-events: none;
+  user-select: none;
+}
+
+/* 院徽按钮：中心定位、圆形、不旋转 */
+.stage .stage-dial-slot {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(7, 10, 15, 0.9);
+  box-shadow: 0 0 0 1px var(--st-gold3);
+  cursor: pointer;
+  animation: stage-dial-slot-in 260ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+.stage .stage-dial-mask.is-closing .stage-dial-slot { animation: none; }
+@keyframes stage-dial-slot-in {
+  from { transform: translate(-50%, -50%) scale(0.6); opacity: 0; }
+  to { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+}
+.stage .stage-dial-slot:focus-visible {
+  outline: 2px solid var(--st-gold);
+  outline-offset: 3px;
+}
+/* 不在当前沙盘上：一圈金色虚线 */
+.stage .stage-dial-slot.is-off {
+  outline: 1px dashed var(--st-gold2);
+  outline-offset: 3px;
+}
+/* 指着：本色院徽 + 红圈 */
+.stage .stage-dial-slot.is-hover {
+  box-shadow: 0 0 0 2px var(--st-red), 0 0 26px rgba(226, 0, 26, 0.6);
+  outline-color: transparent;
+}
+.stage .stage-dial-pending {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 3px 8px;
+  white-space: nowrap;
+  background: var(--st-ov-bg);
+  border: 1px solid var(--st-ov-gold-faint);
+  font-family: var(--st-hei);
+  font-size: 11px;
+  color: var(--st-ov-fg);
+}
+
+/* 简称：正立，半径 262（盘面单位） */
+.stage .stage-dial-name {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  white-space: nowrap;
+  font-family: var(--st-song);
+  font-weight: 600;
+  font-size: 13px;
+  color: rgba(232, 237, 243, 0.66);
+  pointer-events: none;
+}
+.stage .stage-dial-name.is-hover { color: #fff; }
+.stage .stage-dial-name.is-off { color: rgba(232, 237, 243, 0.4); }
+.stage .stage-dial-name em {
+  font-style: normal;
+  font-family: var(--st-hei);
+  font-weight: 400;
+  font-size: 10px;
+  color: rgba(232, 237, 243, 0.38);
+}
+
+/* 盘心 */
+.stage .stage-dial-core {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  pointer-events: none;
+}
+.stage .stage-dial-core-title {
+  font-family: var(--st-song);
+  font-weight: 900;
+  font-size: 40px;
+  line-height: 1.1;
+  letter-spacing: 0.32em;
+  padding-left: 0.32em; /* 抵消末字后的字距，保持视觉居中 */
+  color: var(--st-gold);
+}
+.stage .stage-dial-core-sub {
+  font-family: var(--st-hei);
+  font-size: 12px;
+  letter-spacing: 0.18em;
+  color: rgba(232, 237, 243, 0.66);
+}
+.stage .stage-dial-core-hint {
+  font-style: normal;
+  font-family: var(--st-hei);
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  color: rgba(232, 237, 243, 0.38);
+}
+.stage .stage-dial-close {
+  pointer-events: auto;
+  margin-top: 6px;
+  padding: 4px 12px;
+  background: none;
+  border: 1px solid var(--st-gold3);
+  font-family: var(--st-song);
+  font-size: 12px;
+  letter-spacing: 0.3em;
+  color: var(--st-gold);
+  cursor: pointer;
+}
+.stage .stage-dial-close:hover { border-color: var(--st-gold); }
+.stage .stage-dial-close:focus-visible {
+  outline: 2px solid var(--st-gold);
+  outline-offset: 2px;
+}
+
+/* 到楼的红线（画在遮罩之上） */
+.stage .stage-dial-thread-svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 3;
+  pointer-events: none;
+}
+.stage .stage-dial-thread {
+  fill: none;
+  stroke: var(--st-red);
+  stroke-width: 1.8;
+  stroke-linecap: round;
+}
+.stage .stage-dial-thread-ring {
+  fill: none;
+  stroke: var(--st-red);
+  stroke-width: 1.8;
+}
+.stage .stage-dial-thread-dot { fill: var(--st-red); }
+
+/* 终点旁的小牌：左 3px 朱红边、近黑底 */
+.stage .stage-dial-plate {
+  position: fixed;
+  z-index: 4;
+  transform: translateY(-50%);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 6px 10px 6px 9px;
+  border-left: 3px solid var(--st-red);
+  background: rgba(7, 10, 15, 0.94);
+  pointer-events: none;
+}
+.stage .stage-dial-plate strong {
+  font-family: var(--st-song);
+  font-weight: 700;
+  font-size: 15px;
+  color: var(--st-ov-fg);
+}
+.stage .stage-dial-plate span {
+  font-family: var(--st-hei);
+  font-size: 11.5px;
+  color: var(--st-ov-fg2);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .stage .stage-dial-mask,
+  .stage .stage-dial,
+  .stage .stage-dial-slot,
+  .stage .stage-dial-mask.is-closing .stage-dial {
+    animation: none;
+  }
+}

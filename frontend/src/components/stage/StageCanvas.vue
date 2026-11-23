@@ -291,6 +291,9 @@ watch(meta, (m) => store.setMeta(m), { immediate: true });
 // ALIVE A5：回放阶段进调试钩子（e2e 与自查读它）
 watch(() => store.trace.phase, (p) => touchHook({ phase: p }), { immediate: true });
 
+// ALIVE A4：罗盘开合进调试钩子
+watch(() => store.dialOpen, (on) => touchHook({ dial: on }), { immediate: true });
+
 // W10：把场景就绪状态同步给 store（enterPlace / otherPack 的等待逻辑用）
 watch(sceneStatus, (s) => store.setSceneReady(s === "ready"), { immediate: true });
 
@@ -378,6 +381,7 @@ onMounted(async () => {
     college: null,
     phase: "idle",
     threads: 0,
+    dial: false,
     frames: 0,
     drawCalls: 0,
     triangles: 0,

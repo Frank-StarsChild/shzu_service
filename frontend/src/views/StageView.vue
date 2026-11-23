@@ -15,6 +15,7 @@ import AskDock from "@/components/stage/AskDock.vue";
 import AnswerPanel from "@/components/stage/AnswerPanel.vue";
 import CampusPanel from "@/components/stage/CampusPanel.vue";
 import AgentTrace from "@/components/stage/AgentTrace.vue";
+import CollegeDial from "@/components/stage/CollegeDial.vue";
 import { STAR_TRAIL_KEY, type StarTrailState } from "@/components/stage/ZdxStar.vue";
 import { useStageStore } from "@/stores/stage";
 import { useChatStore } from "@/stores/chat";
@@ -252,6 +253,7 @@ onBeforeUnmount(() => {
     <AskDock />
     <AnswerPanel v-if="!boardPanelActive" />
     <CampusPanel />
+    <CollegeDial />
 
     <!-- W8：观景时的退出钮（界面其余零件都淡去，只剩它） -->
     <button

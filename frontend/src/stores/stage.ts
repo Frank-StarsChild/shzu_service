@@ -73,6 +73,9 @@ export const useStageStore = defineStore("stage", {
     sceneStop: "home",
     /** ALIVE A5：智多星在想的回放状态（读题/翻查/核证/作答） */
     trace: { ...IDLE_TRACE } as Trace,
+    /** ALIVE A4：二十四院罗盘是否展开、指着哪个学院 */
+    dialOpen: false,
+    dialHover: null as number | null,
     /** 每次 applyPlace（showAnswer/showBuilding）加一；换包后等待落楼时用它判断「作废」 */
     placeSeq: 0,
   }),
@@ -137,6 +140,20 @@ export const useStageStore = defineStore("stage", {
     setTrace(patch: Partial<Trace>) {
       this.trace = { ...this.trace, ...patch };
     },
+    /** ALIVE A4：打开罗盘（观景中与院徽未载入时不响应） */
+    openDial() {
+      if (this.mode === "tour" || !this.emblems) return;
+      this.dialOpen = true;
+    },
+    /** ALIVE A4：收起罗盘，同时清掉指着的院徽 */
+    closeDial() {
+      this.dialOpen = false;
+      this.dialHover = null;
+    },
+    /** ALIVE A4：指着一个院徽（no 为 null 时清掉） */
+    hoverDial(no: number | null) {
+      this.dialHover = no;
+    },
     /** W11：收起/展开右侧回答面板（不动校区、定位、对话与生成状态） */
     setAnswerOpen(open: boolean) {
       this.answerOpen = open;
@@ -146,6 +163,7 @@ export const useStageStore = defineStore("stage", {
       this.resetViewSeq += 1;
     },
     goHome() {
+      this.closeDial(); // ALIVE A4
       this.mode = "home";
       this.zoneId = null;
       this.place = null;
@@ -156,6 +174,7 @@ export const useStageStore = defineStore("stage", {
     /** 换沙盘：packId 改掉、meta 清 null，其余同 goHome()。
      *  传进来的就是当前 packId 时只做 goHome()。 */
     switchPack(packId: string) {
+      this.closeDial(); // ALIVE A4
       if (packId === this.packId) {
         this.goHome();
         return;
@@ -170,6 +189,7 @@ export const useStageStore = defineStore("stage", {
     setTour(on: boolean) {
       if (on) {
         if (this.mode === "tour") return;
+        this.closeDial(); // ALIVE A4
         this.tourPrev = this.mode;
         this.mode = "tour";
       } else {
@@ -191,6 +211,7 @@ export const useStageStore = defineStore("stage", {
         return;
       }
       if (this.campusOnPack(campusId)) {
+        this.closeDial(); // ALIVE A4
         this.mode = "campus";
         this.zoneId = campusId;
         this.place = null;

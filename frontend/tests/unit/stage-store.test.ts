@@ -425,3 +425,51 @@ describe("stores/stage.showAnswer · 学院判定（A3）", () => {
     expect(s.collegeNo).toBeNull();
   });
 });
+
+describe("stores/stage（ALIVE A4 罗盘开合）", () => {
+  beforeEach(() => {
+    setActivePinia(createPinia());
+  });
+
+  it("openDial() 后 dialOpen === true；hoverDial(5) 后 dialHover === 5", () => {
+    const s = useStageStore();
+    s.emblems = emblemsRaw;
+    s.openDial();
+    expect(s.dialOpen).toBe(true);
+    s.hoverDial(5);
+    expect(s.dialHover).toBe(5);
+  });
+
+  it("goHome() 后两个都复位", () => {
+    const s = useStageStore();
+    s.emblems = emblemsRaw;
+    s.openDial();
+    s.hoverDial(3);
+    s.goHome();
+    expect(s.dialOpen).toBe(false);
+    expect(s.dialHover).toBeNull();
+  });
+
+  it("观景中或院徽未载入时 openDial() 不响应", () => {
+    const s = useStageStore();
+    s.openDial();
+    expect(s.dialOpen).toBe(false); // emblems 为 null
+    s.emblems = emblemsRaw;
+    s.setTour(true);
+    s.openDial();
+    expect(s.dialOpen).toBe(false);
+    s.setTour(false);
+    s.openDial();
+    expect(s.dialOpen).toBe(true);
+  });
+
+  it("closeDial() 同时清掉 dialHover", () => {
+    const s = useStageStore();
+    s.emblems = emblemsRaw;
+    s.openDial();
+    s.hoverDial(9);
+    s.closeDial();
+    expect(s.dialOpen).toBe(false);
+    expect(s.dialHover).toBeNull();
+  });
+});

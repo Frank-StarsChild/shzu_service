@@ -1235,3 +1235,17 @@ stage 8/8 及全部既有回归）。视觉自查 W2-shell.png：印章顶栏、
 - 会收起 / 不出现的情况：`trace` 为 `idle` 时整层不渲染、问话栏上方回到 W4 的 `stage-status`；减少动态下不画圈字、无读题 400ms 与核证等待；`error` 1.5s 后自行复位；金线只画有楼的部门，无楼部门只出竖排题签。
 
 > AI生成
+
+## A4 二十四院罗盘 — 2026-11-23
+
+- `stores/stage.ts`：`dialOpen` / `dialHover`；`openDial()`（`mode === "tour"` 或 `emblems` 为 null 时不响应）、`closeDial()`（同时清 `dialHover`）、`hoverDial(no | null)`。`goHome()`、`pickCampus()`（进 campus 的那一支）、`switchPack()`、`setTour(true)` 都先 `closeDial()`。
+- `StageHud.vue`：罗盘外层改成 `button`（`aria-label="二十四院罗盘"`，`stage-compass` 保留），点了 `openDial()`；`dialOpen` 期间整个罗盘钮不渲染；观景中/院徽未载入时 `disabled`。
+- `CollegeDial.vue`（新）：遮罩 `rgba(5,8,13,.62)` 铺满视口，点遮罩自身 `closeDial()`；盘径 `D = min(.82 × 视口高, 840, .9 × 视口宽)`，盘心在视口中心，`k = D / viewBox`；盘面 `img` 只转自己（`rotate(−方位角)`，每帧从 `__campus3d.azimuth` 取）；24 个院徽是不转的按钮，`θ = dial.deg − 方位角`，半径 `emblemRadius × k`，直径 `emblemSize × k`；不在当前沙盘的加 1px 金色虚线（`is-off`），简称下方小字写那块沙盘名去「校区」或「待定」；盘心三行「二十四院 / 石河子大学 · 六个校区 / 点院徽，去它的楼」+「收起」；指着院徽（pointerenter/focus）时 `EmblemMark` 换本色、按钮换朱红双圈，红线终点是 `project(anchor)`（不是题签点），终点旁小牌写学院名 + 「片区 · 楼名」；点院徽：本沙盘直接 `showCollege(no)`，别的沙盘先 `switchPack` 再等 `sceneReady && meta.pack.id === 包` 后 `showCollege(no)`，没有楼的原地显示「位置待确认」1.5 秒；Esc 收起。展开 420ms 从罗盘位置放大（`transform-origin` 按 `--st-dock-bottom` 实测），院徽按 `dial.slot × 18ms` 错峰弹入；收起 260ms（期间 `pointer-events: none`）；减少动态全部立即完成。
+- `StageView.vue`：挂载 `CollegeDial`。`StageCanvas.vue`：钩子加 `dial`（watch `dialOpen`）。`stage.css`：A4 全部样式；舞台顶栏 `.stage .app-header--stage` 抬到 `z-index: 6`，使遮罩（5）在回答面板（4）之上、顶栏之下。
+- 单测 `stage-store.test.ts` 追加 4 条：openDial/hoverDial、goHome 复位、观景中与未载入院徽不响应、closeDial 清 hover。
+- e2e `stage-dial.spec.ts` 9 条全过：开合与 24 枚；四个院徽中心与「盘心 + R·(sin θ, −cos θ)」误差 ≤2px；`debugGoTo('nq')`（与 home 差 40°）后仍成立；指信息学院时本色院徽、红线终点与 `projectPoint(BQ-B013 anchor)` 差 ≤3px、小牌出现「信息科学与技术学院」；点它 → `dial=false / mode=answer / shell=BQ-B013 / college=5`；师范学院 is-off、写「将军山」，点后换到 `jjs` 并落 `JJ-B018`；Esc / 收起钮 / 点遮罩都收起；护理学院「位置待确认」且不收起；减少动态 50ms 内位置成立。截图 `docs/3d/shots/A4-dial.png`。
+- 反向验证：把按钮位置公式里的 `− 方位角` 去掉 → 第 3 条按预期红（院徽 1 偏差远超 2px），改回后绿。
+- 回归：单测 196 / 196（17 文件）、build ✓、check:bundle ✓（49 个测试文件无 skip/only/fixme）；e2e stage-shell / stage-avoid / stage-framing / theme 29 条、stage-place / stage-near / stage-star / stage-trace 31 条全过。
+- 会收起 / 不出现的情况：`dialOpen` 期间左下角罗盘隐藏；观景（tour）中罗盘钮不可用；院徽未载入时罗盘钮 `disabled`；减少动态下无展开/收起动画；点遮罩只有点在盘面与子元素之外才收起。
+
+> AI生成
