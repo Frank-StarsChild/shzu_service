@@ -2,7 +2,7 @@
 // STAGE W2/W3/W4：舞台页 = 整屏画布 + 界面骨架（顶栏、题字、罗盘、读数、暗角、署名）
 // + 校区题签（左侧列表 + 场景里悬着的）+ 问话栏与回答面板。
 // mode !== 'home' 时题字与遮罩 300ms 淡出。
-import { computed, onBeforeUnmount, onMounted, watch } from "vue";
+import { computed, nextTick, onBeforeUnmount, onMounted, provide, ref, watch } from "vue";
 import StageCanvas from "@/components/stage/StageCanvas.vue";
 import StageTop from "@/components/stage/StageTop.vue";
 import StageHud from "@/components/stage/StageHud.vue";
@@ -20,16 +20,51 @@ import { STAR_TRAIL_KEY, type StarTrailState } from "@/components/stage/ZdxStar.
 import { useStageStore } from "@/stores/stage";
 import { useChatStore } from "@/stores/chat";
 import { loadPlaces, type Places } from "@/stage/packs";
-import { resolvePlace, EMPTY_PLACES } from "@/stage/places";
+import { decidePlace, EMPTY_PLACES } from "@/stage/places";
 import { loadEmblems } from "@/stage/emblems";
 import { createLabelBoard, LABEL_BOARD_KEY } from "@/stage/labelBoard";
 import { IDLE_TRACE, queryOf, traceFromResponse } from "@/stage/trace";
 import EmblemMark from "@/components/stage/EmblemMark.vue";
 import "@/styles/stage.css";
-import { provide, ref } from "vue";
 
 const store = useStageStore();
 const chat = useChatStore();
+
+// 手动观景（用户点「观景」）与空闲自动转动共用 mode === 'tour'，用 idleTour 区分。
+// 手动观景时问话栏淡出并 inert，底部留一枚「问智多星」；点它退出观景并把焦点还给输入框。
+const manualTour = computed(() => store.mode === "tour" && !store.idleTour);
+const askDockRef = ref<InstanceType<typeof AskDock> | null>(null);
+const tourExitRef = ref<HTMLButtonElement | null>(null);
+const inputFocused = ref(false);
+
+async function exitTour(toAsk = false) {
+  store.setTour(false);
+  await nextTick();
+  if (toAsk) askDockRef.value?.focusInput();
+  else askDockRef.value?.focusTour();
+}
+
+function askFromTour() {
+  void exitTour(true);
+}
+
+function onInputFocus() {
+  inputFocused.value = true;
+  window.clearTimeout(idleTimer); // 光标在输入框里就暂停空闲计时
+  if (store.idleTour) exitIdleTour(); // 已经自动转起来：回到原输入状态
+}
+
+function onInputBlur() {
+  inputFocused.value = false;
+  armIdle();
+}
+
+// 进入手动观景后，焦点交给画面上可见的「退出观景」（随后 Tab 可到「问智多星」）
+watch(manualTour, async (on) => {
+  if (!on) return;
+  await nextTick();
+  tourExitRef.value?.focus({ preventScroll: true });
+});
 
 // W7：星星拖尾的共享容器（ZdxStar 写、SceneSigns 画）
 provide(STAR_TRAIL_KEY, ref<StarTrailState | null>(null));
@@ -60,8 +95,28 @@ const boardPanelActive = computed(() => store.mode === "answer" && store.board !
 
 // ---- W5：回答落到哪栋楼。只对本次页面打开之后新发出的请求触发；
 // restore() 恢复出的旧记录（进来时就是 done）不触发（卡常见错误第 5 条）。----
+// 按需定位：只有「明确问位置 + 唯一结构化目标 + 目标在当前场景」才自动飞；
+// 问候/条件/数量类一律不动镜头，其余给手动入口。
 let places: Places | null = null;
 let activeNewRequestId: string | null = null;
+/** 发起这一轮时的视角序号：等待期间用户选楼/换校区/重置过就放弃自动定位 */
+let viewMark = 0;
+
+/** 当前沙盘可落楼的集合；场景未就绪时为 null（→ 只给手动入口） */
+function sceneBuildings(): Set<string> | null {
+  if (!store.sceneReady || !store.meta) return null;
+  return new Set(Object.keys(store.meta.buildings));
+}
+
+function zoneNameOf(buildingId: string): string | null {
+  const zoneId = store.meta?.buildings[buildingId]?.zone;
+  if (!zoneId) return null;
+  return store.meta?.zones?.find((z) => z.id === zoneId)?.name ?? null;
+}
+
+function packNameOf(packId: string): string | null {
+  return store.packs.find((p) => p.id === packId)?.name ?? null;
+}
 
 // ---- ALIVE A5：在想的回放（读题 → 翻查 → 核证 → 作答）。
 // 所有等待按 requestId 作废；新的一问、换包、离开页面都清掉。 ----
@@ -118,11 +173,13 @@ watch(lastAssistantKey, () => {
   }
   if (!turn) return;
   if (turn.status === "pending") {
-    // 开始新的一问：复位（上一问的楼不能还红着）；面板重新展开以便看到进度
+    // 开始新的一问：重新展开面板并清掉本轮的旧关联；
+    // 不动 pack/mode/zone/已选楼/镜头（从楼栋视角发问不再先飞回全景）。
     clearTraceTimers();
     activeNewRequestId = turn.request_id;
+    viewMark = store.viewSeq;
     stageAutoOpen();
-    void store.showAnswer(null);
+    store.beginTurn(turn.request_id);
     const rid = turn.request_id;
     store.setTrace({ ...IDLE_TRACE, phase: "read", requestId: rid });
     if (reducedMotion) {
@@ -146,13 +203,48 @@ watch(lastAssistantKey, () => {
     traceLater(1500, () => {
       if (store.trace.requestId === rid) store.setTrace({ ...IDLE_TRACE });
     });
-    void store.showAnswer(null);
+    // 失败也不动镜头：保留用户正在看的校区与楼，只清本轮办理地点关联
+    store.setAnswerLink(rid, null);
+    store.setPlaceOffer(null);
     return;
   }
 
-  const target = resolvePlace(response, places ?? EMPTY_PLACES);
+  const decision = decidePlace({
+    question: questionOf(rid),
+    response,
+    places: places ?? EMPTY_PLACES,
+    inScene: sceneBuildings(),
+    contextOf: zoneNameOf,
+    packNameOf,
+  });
+  // 等待期间用户已经选楼/换校区/重置视角：不把人拉回来，转成手动入口
+  const action = decision.action === "auto" && viewMark !== store.viewSeq
+    ? "offer"
+    : decision.action;
+  const target = action === "auto" ? decision.candidates[0]?.buildingId ?? null : null;
+
+  if (action === "offer") {
+    store.setPlaceOffer({ requestId: rid, candidates: decision.candidates, text: decision.text });
+  } else {
+    store.setPlaceOffer(null);
+  }
+  store.setAnswerLink(rid, action === "auto" ? target : null);
+  console.log("[locate]", JSON.stringify({
+    reason: decision.reason, action, target, viewMark, viewSeq: store.viewSeq,
+    candidates: decision.candidates.map((c) => c.buildingId),
+  }));
+
   const { hits, evidence } = traceFromResponse(response, places ?? EMPTY_PLACES, store.meta);
   const withBuilding = hits.filter((h) => h.buildingId !== null).length;
+
+  const settle = async () => {
+    if (action === "auto" && target) {
+      // 镜头已经在这栋楼：只关联本轮答案，不重复飞
+      const already = store.mode === "answer" && store.place?.buildingId === target;
+      if (!already) await store.showAnswer(target);
+    }
+    idleAfterCamera(rid);
+  };
 
   if (withBuilding > 0 && !reducedMotion) {
     store.setTrace({ phase: "verify", hits, evidence });
@@ -160,15 +252,13 @@ watch(lastAssistantKey, () => {
     traceLater(wait, () => {
       if (store.trace.requestId !== rid || store.trace.phase !== "verify") return;
       store.setTrace({ phase: "answer" });
-      void store.showAnswer(target);
-      idleAfterCamera(rid);
+      void settle();
     });
   } else {
     store.setTrace({ phase: "answer", hits, evidence });
-    void store.showAnswer(target);
-    idleAfterCamera(rid);
+    void settle();
   }
-});
+}, { flush: "sync" });
 
 /** W11：用户主动发问（新问题/选追问项/重试）→ 重新展开回答面板；
  *  后台返回结果时不动它（用户已经收起的话保持收起） */
@@ -199,9 +289,15 @@ const emblemSheet = computed(
   () => new URLSearchParams(location.search).get("emblems") === "1" && !!store.emblems
 );
 
-/** W8：Esc 退出观景 */
+/** W8：Esc 退出观景；空闲自动转动也退回原界面 */
 function onKeyDown(e: KeyboardEvent) {
-  if (e.key === "Escape" && store.mode === "tour") store.setTour(false);
+  if (e.key !== "Escape" || store.mode !== "tour") return;
+  if (store.idleTour) {
+    store.idleTour = false;
+    store.setTour(false);
+    return;
+  }
+  void exitTour();
 }
 
 // ---- ALIVE A9：空闲转动。首页 N 秒（默认 30，网址 idle=<秒> 可调）没有任何输入 →
@@ -222,6 +318,7 @@ function canIdle(): boolean {
   return store.mode === "home"
     && !waitingAnswer()
     && !store.dialOpen
+    && !inputFocused.value
     && !reducedMotion
     && !store.idleTour;
 }
@@ -257,9 +354,9 @@ function onIdleInput() {
 
 const IDLE_EVENTS = ["pointerdown", "pointermove", "wheel", "keydown", "touchstart"] as const;
 
-// 状态变化（进出回答、开合罗盘、离开首页）时重新评估计时
+// 状态变化（进出回答、开合罗盘、离开首页、输入框聚焦）时重新评估计时
 watch(
-  () => [store.mode, store.dialOpen, waitingAnswer()],
+  () => [store.mode, store.dialOpen, waitingAnswer(), inputFocused.value],
   () => armIdle()
 );
 
@@ -314,19 +411,32 @@ onBeforeUnmount(() => {
     <StageHud />
 
     <!-- 问话栏、回答面板与校区/板块面板（W9） -->
-    <AskDock />
+    <AskDock
+      ref="askDockRef"
+      @input-focus="onInputFocus"
+      @input-blur="onInputBlur"
+    />
     <AnswerPanel v-if="!boardPanelActive" />
     <CampusPanel />
     <CollegeDial />
 
     <!-- W8：观景时的退出钮（界面其余零件都淡去，只剩它） -->
     <button
-      v-if="store.mode === 'tour' && !store.idleTour"
+      v-if="manualTour"
+      ref="tourExitRef"
       type="button"
       class="stage-tour-exit"
       data-testid="stage-tour-exit"
-      @click="store.setTour(false)"
+      @click="exitTour()"
     >退出观景</button>
+    <!-- 手动观景时底部留一枚入口（排在退出钮之后：Tab 从退出钮往后就是它） -->
+    <button
+      v-if="manualTour"
+      type="button"
+      class="stage-tour-ask"
+      data-testid="stage-tour-ask"
+      @click="askFromTour"
+    >问智多星</button>
 
     <p class="stage-caption tiny" data-testid="stage-caption">
       当前场景为夜景示意；校园示意模型，依据公开资料复原，非测绘成果；办事地点以学校官方通知为准。底图数据 © OpenStreetMap contributors

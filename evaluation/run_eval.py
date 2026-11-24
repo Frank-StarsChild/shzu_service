@@ -13,8 +13,8 @@ import urllib.request
 BASE = os.path.dirname(os.path.abspath(__file__))
 API = os.environ.get("SHZU_API", "http://127.0.0.1:8300")
 TODAY = os.environ.get("SHZU_TODAY", "2026-11-18")
-# 模型优先链路（每轮 1-3 次模型调用）：时延上限对齐单轮预算
-EVAL_TIMEOUT_MS = int(os.environ.get("SHZU_EVAL_TIMEOUT_MS", "30000"))
+# 验收按完整答复耗时判定；HTTP 读取时限仍允许收集较慢的实际结果。
+EVAL_TIMEOUT_MS = int(os.environ.get("SHZU_EVAL_TIMEOUT_MS", "5000"))
 
 # 旧题集口径 → v1 枚举
 STATUS_MAP = {"answered": "answer"}

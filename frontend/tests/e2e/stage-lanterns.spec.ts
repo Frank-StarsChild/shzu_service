@@ -6,8 +6,8 @@ import { mockApi } from "./fixtures/api";
 
 type Anchor = [number, number, number];
 type MetaLike = {
-  colleges: { no: number; zone: string; buildingIds: string[] }[];
-  buildings: Record<string, { anchor: Anchor } | undefined>;
+  colleges: { no: number; zone: string; buildingIds: string[]; confirmed?: boolean }[];
+  buildings: Record<string, { anchor: Anchor; zone?: string } | undefined>;
 };
 
 function readJson(path: string): unknown {
@@ -37,13 +37,14 @@ async function waitPack(page: Page, packId: string) {
   );
 }
 
-/** 照 A2 第 1 条的规则从 JSON 算：某个包里应画的灯牌与楼号（不含模式过滤） */
+/** 照新规则从 JSON 算：每所学院一枚灯牌（同楼不合并），未确认的行不画 */
 function expectedLanterns(meta: MetaLike): { no: number; buildingId: string; offset: number }[] {
   const picked: { no: number; buildingId: string }[] = [];
   for (const mc of meta.colleges) {
+    if (mc.confirmed === false) continue;
     const ec = emblemsRaw.colleges.find((c) => c.no === mc.no);
     if (!ec) continue;
-    const bid = ec.buildingIds.find((id) => meta.buildings[id]?.anchor);
+    const bid = (mc.buildingIds ?? []).find((id) => meta.buildings[id]?.anchor);
     if (!bid) continue;
     picked.push({ no: mc.no, buildingId: bid });
   }
@@ -73,15 +74,25 @@ test("1 全校沙盘首页：不画灯牌（lanterns=0，页面上没有灯牌�
   await expect(page.locator('[data-testid^="stage-lantern-"]')).toHaveCount(0);
 });
 
-test("2 全校沙盘选中中区：灯牌数等于按 JSON 算出的中区学院数", async ({ page }) => {
+test("2 全校沙盘选中中区：灯牌 7 枚（本区 6 + 跨区生科在 ZQ-B031）", async ({ page }) => {
   await page.goto("/stage?3d=1&intro=0");
   await waitReady(page);
   await page.click('[data-testid="stage-rail-ZQ"]');
   await waitNotMoving(page);
-  const expected = expectedLanterns(allMetaRaw).filter((l) => {
-    const mc = allMetaRaw.colleges.find((c) => c.no === l.no);
-    return mc?.zone === "ZQ";
-  });
+  // 按「选中 ZQ 时先筛片区再挑楼」的规则算：本区学院取 ZQ 的楼，跨区学院取它在 ZQ 的那栋
+  const expected = allMetaRaw.colleges
+    .filter((mc) => mc.confirmed !== false)
+    .filter((mc) => !!emblemsRaw.colleges.find((c) => c.no === mc.no))
+    .map((mc) => {
+      const bid = (mc.buildingIds ?? []).find((id) => {
+        const b = allMetaRaw.buildings[id];
+        return !!b && b.zone === "ZQ" && !!b.anchor;
+      });
+      return bid ? { no: mc.no, buildingId: bid } : null;
+    })
+    .filter((x): x is { no: number; buildingId: string } => !!x);
+  expect(expected.length, JSON.stringify(expected)).toBe(7);
+  expect(expected.find((l) => l.no === 10)?.buildingId).toBe("ZQ-B031");
   // 等每帧更新后的可见计数到位
   await page.waitForFunction(
     (n) => (window.__campus3d?.lanterns ?? -1) === n,
@@ -90,6 +101,7 @@ test("2 全校沙盘选中中区：灯牌数等于按 JSON 算出的中区学院
   );
   const visible = await page.locator('[data-testid^="stage-lantern-"]').count();
   expect(visible).toBe(expected.length);
+  await expect(page.locator('[data-testid="stage-lantern-10"]')).toBeVisible();
 });
 
 test("3 进入中区沙盘：灯牌底端对准它那栋楼的 anchor（±3px）；被挤开的用水平引线补回锚点", async ({ page }) => {

@@ -1,5 +1,11 @@
-// STAGE W5（第 5.5 节）：回答落到哪栋楼。不让大模型猜地点——回答文字里出现的楼名、
-// 出处的发布单位，查 places.json 这张表得到楼号；查不到就不动镜头。
+// STAGE W5 / 按需定位：回答要不要动镜头。
+// 旧规则曾把「正文里第一个楼名」「出处的发布单位」都当成办理地点，问候和借阅规则
+// 也会把人拽去图书馆。现在分三级：
+//   hold  —— 保持视角（问候、闲聊、政策条件、数量、时间、材料清单…）
+//   offer —— 给手动入口（多候选、歧义、跨校区、场景未就绪、只有点名楼栋或纯文字）
+//   auto  —— 自动飞（用户明确问位置 + 唯一结构化目标 + 目标就在当前场景里）
+// 只有结构化结果（place 卡的 matches / errand 卡的 place）能触发定位；
+// 正文楼名与引用发布单位只作为原文展示，不再指挥镜头。
 
 import type { ChatResponse } from "@/api/client";
 import type { Places } from "@/stage/packs";
@@ -12,50 +18,198 @@ export const EMPTY_PLACES: Places = {
   packOf: {},
 };
 
-/**
- * 纯函数，按定位证据强度从高到低：
- * 0. actions 里工具核算过的定位（place 卡 matches[0].building_id、errand 卡 place.building_id）
- *    ——后端已把办事窗口映射到沙盘楼栋，明确可靠，优先于文字猜测；
- * 1. 只处理 status === 'answer'，别的状态返回 null。
- * 2. 按顺序看 answer.blocks 每段 text：找出 names 中出现过的名字，取出现位置
- *    最靠前的；位置相同取更长的。选中的名字对到楼号就用它；对到 null（位置
- *    未确认）或该段没有名字：看下一段。
- * 3. 所有段落都没有楼名：按顺序看 citations，第一个 issuer 在 issuers 表里的用它。
- * 4. 还没有：null。
- */
-export function resolvePlace(response: ChatResponse, places: Places): string | null {
-  if (response.status !== "answer") return null;
+export type PlaceAction = "hold" | "offer" | "auto";
+
+export type PlaceCandidate = {
+  buildingId: string;
+  name: string;
+  /** 当前沙盘上的片区名，或目标所在沙盘名 */
+  context: string;
+  /** 该楼是否就在当前已加载的沙盘上 */
+  inScene: boolean;
+  /** 需要换到的沙盘（null = 当前沙盘） */
+  packId: string | null;
+};
+
+export type PlaceDecision = {
+  action: PlaceAction;
+  candidates: PlaceCandidate[];
+  /** 工具只给了文字地址（没有楼号）时，面板原样显示这段文字 */
+  text: string | null;
+  reason: string;
+};
+
+export type DecidePlaceInput = {
+  /** 本轮用户的原话 */
+  question: string;
+  response: ChatResponse | null;
+  places: Places;
+  /** 当前沙盘上可以落楼的楼号；null = 场景尚未就绪 */
+  inScene: Set<string> | null;
+  /** 楼号 → 所在片区名（可选，只用于候选显示） */
+  contextOf?: (buildingId: string) => string | null;
+  /** 沙盘 id → 沙盘名（可选，跨沙盘候选显示用） */
+  packNameOf?: (packId: string) => string | null;
+};
+
+const HOLD: PlaceDecision = { action: "hold", candidates: [], text: null, reason: "hold" };
+
+/** 用户是不是在问「位置 / 去哪办」——按整句判断，不只看某个词 */
+export function asksLocation(question: string): boolean {
+  const s = (question || "").trim();
+  if (!s) return false;
+  // 「在哪看 / 在哪查 / 在哪下载」问的是资料位置，不是楼栋
+  if (/在哪(?:里|儿)?(?:看|查|下载|申请|填写|打印|办理|找到|获取)/.test(s)) return false;
+  if (/在哪(?:里|儿)?(?:能|可以)(?:看|查|下载)/.test(s)) return false;
+  if (/在哪/.test(s)) return true;
+  if (/哪里(?:能|可以|有|买|借|还|办|补|打印)/.test(s)) return true;
+  if (/哪(?:一)?(?:栋|座)(?:楼)?/.test(s)) return true;
+  if (/去(?:哪|哪儿|哪里)(?:办|补|领|交|取|打|借|送|找|弄)/.test(s)) return true;
+  if (/去(?:哪|哪儿|哪里)[？?！!。]?$/.test(s)) return true;
+  if (/怎么(?:走|去|到)/.test(s)) return true;
+  if (/在沙盘(?:定位|看|找)/.test(s)) return true;
+  if (/(?:定位到|指给我看|帮我定位)/.test(s)) return true;
+  return false;
+}
+
+/** 纯问候/致谢/寒暄：即使误带地点也不动镜头 */
+export function isSmallTalk(question: string): boolean {
+  const s = (question || "").replace(/[\s，。！？、,.!?~～…]/g, "").toLowerCase();
+  if (!s) return true;
+  if (/^(你好|您好|hi|hello|嗨|哈喽|在吗|在么|早上好|中午好|下午好|晚上好)/.test(s)) {
+    // 「你好，图书馆在哪」仍算问位置（由 asksLocation 先行判断）
+    return !asksLocation(question);
+  }
+  if (/^(谢谢|谢谢你|多谢|感谢|好的|好|嗯|收到|明白了|知道了|ok|okay)/.test(s)) return true;
+  return false;
+}
+
+type Structured = {
+  targets: { id: string; label: string | null }[];
+  ambiguous: boolean;
+  text: string | null;
+};
+
+/** 只从动作卡取结构化楼号：place.matches、errand.place；同一楼号只算一个（保留第一个展示名） */
+function collectStructured(response: ChatResponse): Structured {
+  const map = new Map<string, string | null>();
+  let ambiguous = false;
+  let text: string | null = null;
+  const add = (id: string, label?: string | null) => {
+    if (!map.has(id)) map.set(id, label ?? null);
+  };
   for (const a of response.actions ?? []) {
     if (a.kind === "place") {
-      const bid = a.matches?.find((m) => m.building_id)?.building_id;
-      if (bid) return bid;
+      if (a.ambiguous) ambiguous = true;
+      let any = false;
+      for (const m of a.matches ?? []) {
+        if (!m.building_id) continue;
+        any = true;
+        add(m.building_id, m.label || null);
+      }
+      if (!any && a.fallback_text) text = a.fallback_text;
     }
     if (a.kind === "errand" && a.place?.building_id) {
-      return a.place.building_id;
+      add(a.place.building_id, a.place.building || null);
     }
   }
-  for (const block of response.answer?.blocks ?? []) {
-    const text = block.text ?? "";
-    let chosen: { name: string; id: string | null; pos: number } | null = null;
-    for (const [name, id] of places.names) {
-      const pos = text.indexOf(name);
-      if (pos < 0) continue;
-      if (
-        chosen === null
-        || pos < chosen.pos
-        || (pos === chosen.pos && name.length > chosen.name.length)
-      ) {
-        chosen = { name, id, pos };
+  return { targets: [...map].map(([id, label]) => ({ id, label })), ambiguous, text };
+}
+
+/**
+ * 用户原话里点名的登记楼栋。优先完整名称：「北区图书馆」先占住这段文字，
+ * 里面的「图书馆」不能再算第二个命中。
+ */
+export function matchNamedBuildings(question: string, places: Places): string[] {
+  const q = question || "";
+  const sorted = [...places.names].sort((a, b) => (b[0]?.length ?? 0) - (a[0]?.length ?? 0));
+  const hits: { id: string; start: number; end: number }[] = [];
+  for (const [name, id] of sorted) {
+    if (!name || !id) continue;
+    let from = 0;
+    while (from <= q.length) {
+      const pos = q.indexOf(name, from);
+      if (pos < 0) break;
+      const end = pos + name.length;
+      const overlaps = hits.some((h) => pos < h.end && end > h.start);
+      if (!overlaps) {
+        hits.push({ id, start: pos, end });
+        break;
       }
-    }
-    if (chosen) {
-      if (chosen.id) return chosen.id; // 用它，不再往下看
-      // 对到 null：这一段当作没有楼名，接着看下一段
+      from = pos + 1;
     }
   }
-  for (const c of response.citations ?? []) {
-    const id = places.issuers[c.issuer] ?? null;
-    if (id) return id;
+  return [...new Set(hits.map((h) => h.id))];
+}
+
+/** 楼号 → 登记名（places.names 是 [名, 楼号] 的别名表，取第一个） */
+export function registeredName(buildingId: string, places: Places): string {
+  return places.names.find(([, id]) => id === buildingId)?.[0] ?? buildingId;
+}
+
+/**
+ * 本轮要不要动镜头、给不给手动入口。纯函数：不改状态、不发请求。
+ */
+export function decidePlace(input: DecidePlaceInput): PlaceDecision {
+  const { question, response, places } = input;
+  if (!response) return HOLD;
+  if (response.status !== "answer" && response.status !== "insufficient") return HOLD;
+  const q = (question || "").trim();
+  if (!asksLocation(q)) return HOLD;
+  if (isSmallTalk(q)) return HOLD;
+
+  const { targets, ambiguous, text } = collectStructured(response);
+
+  const toCandidate = (bid: string, label: string | null): PlaceCandidate => {
+    const inScene = !!input.inScene?.has(bid);
+    const packId = inScene ? null : places.packOf[bid] ?? null;
+    const context = (inScene ? input.contextOf?.(bid) : null)
+      ?? (packId ? input.packNameOf?.(packId) : null)
+      ?? "";
+    return {
+      buildingId: bid,
+      name: label?.trim() || registeredName(bid, places),
+      context,
+      inScene,
+      packId,
+    };
+  };
+
+  if (targets.length > 1) {
+    return {
+      action: "offer",
+      candidates: targets.map((t) => toCandidate(t.id, t.label)),
+      text,
+      reason: "multiple",
+    };
   }
-  return null;
+  if (targets.length === 1) {
+    const only = targets[0];
+    if (ambiguous) {
+      return { action: "offer", candidates: [toCandidate(only.id, only.label)], text, reason: "ambiguous" };
+    }
+    if (input.inScene === null) {
+      return { action: "offer", candidates: [toCandidate(only.id, only.label)], text, reason: "scene-not-ready" };
+    }
+    if (!input.inScene.has(only.id)) {
+      return { action: "offer", candidates: [toCandidate(only.id, only.label)], text, reason: "other-pack" };
+    }
+    return { action: "auto", candidates: [toCandidate(only.id, only.label)], text, reason: "unique-in-scene" };
+  }
+
+  // 没有结构化结果：只认用户明确点名的登记楼栋，且只给手动入口
+  const named = matchNamedBuildings(q, places);
+  if (named.length) {
+    return {
+      action: "offer",
+      candidates: named.map((bid) => {
+        // 点名匹配用登记名展示（places.names 里能对上这一个楼号的名字）
+        return toCandidate(bid, places.names.find(([, id]) => id === bid)?.[0] ?? null);
+      }),
+      text,
+      reason: "named-only",
+    };
+  }
+  if (text) return { action: "offer", candidates: [], text, reason: "text-only" };
+  return HOLD;
 }

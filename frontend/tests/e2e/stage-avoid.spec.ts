@@ -89,9 +89,9 @@ test("2 同楼多学院（北苑新区）：2/3 仍并排；角标与右侧面�
   expect(Math.abs((b2.y + b2.height / 2) - (b3.y + b3.height / 2))).toBeLessThanOrEqual(1);
   expect(Math.abs(Math.abs((b2.x + b2.width / 2) - (b3.x + b3.width / 2)) - 48)).toBeLessThanOrEqual(2);
 
-  // 角标只在代表学院上：机械电气工程学院（第一行）
+  // 角标与面板行号同一份数据：机电一行、水建一行，各有自己的序号（一 / 二）
   await expect(page.locator('[data-testid="stage-lantern-2"] .stage-lantern-no')).toHaveText("一");
-  await expect(page.locator('[data-testid="stage-lantern-3"] .stage-lantern-no')).toHaveCount(0);
+  await expect(page.locator('[data-testid="stage-lantern-3"] .stage-lantern-no')).toHaveText("二");
 
   // 回到（全校）北苑新区首页：面板此时是回答面板，没有学院行；改成点左栏进 campus 再看行号
   await page.click('[data-testid="stage-rail-BY"]');

@@ -9,11 +9,51 @@
 """
 import re
 import time
+from concurrent.futures import ThreadPoolExecutor, wait
 from typing import Dict, Optional
+
+import httpx
 
 REGISTRY: Dict[str, dict] = {}
 _TTL_SECONDS = 6 * 3600
 _last_gc = 0.0
+WEB_LOOKUP_SECONDS = 1.5
+
+
+def fetch_pages(urls: list[str], config: Optional[dict], user_agent: str) -> dict:
+    """并行补查已登记的官网地址，在共享时限内保留已完成结果。"""
+    if not urls:
+        return {}
+    turn_deadline = ((config or {}).get("configurable") or {}).get("web_deadline")
+    now = time.monotonic()
+    deadline = min(now + WEB_LOOKUP_SECONDS, turn_deadline) if turn_deadline is not None else now + WEB_LOOKUP_SECONDS
+    if deadline <= now:
+        return dict.fromkeys(urls, TimeoutError())
+
+    def fetch(url):
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            raise TimeoutError()
+        with httpx.Client(timeout=remaining, follow_redirects=True,
+                          headers={"User-Agent": user_agent}) as client:
+            return client.get(url)
+
+    executor = ThreadPoolExecutor(max_workers=len(urls))
+    try:
+        requests = {url: executor.submit(fetch, url) for url in urls}
+        done, _ = wait(requests.values(), timeout=max(0, deadline - time.monotonic()))
+        responses = {}
+        for url, request in requests.items():
+            if request not in done:
+                responses[url] = TimeoutError()
+                continue
+            try:
+                responses[url] = request.result()
+            except Exception as exc:
+                responses[url] = exc
+        return responses
+    finally:
+        executor.shutdown(wait=False, cancel_futures=True)
 
 
 def register(title: str, issuer: str, url: str, excerpt: str,

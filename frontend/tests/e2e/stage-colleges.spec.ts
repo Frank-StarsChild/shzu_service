@@ -4,6 +4,7 @@ import { mockApi } from "./fixtures/api";
 
 // W9：学院和五个板块。全部 /stage?3d=1&intro=0。
 // 服务清单用本文件内的路由覆盖（后注册优先），不动 fixtures/api.ts。
+// 学院名单按「学院号」逐条断言（同楼两所学院各占一行），不用旧的按楼去重推算。
 
 const allMetaRaw = JSON.parse(
   readFileSync(new URL("../../public/campus3d/all/campus.meta.json", import.meta.url), "utf-8")
@@ -27,18 +28,59 @@ const zqMetaRaw = JSON.parse(
   buildings: Record<string, { name?: string }>;
 };
 
-/** 面板同款去重：zone 过滤后按第一栋楼去重（同楼只留先出现的） */
-function collegesOfZone(meta: typeof allMetaRaw, zone: string) {
-  const seen = new Set<string>();
-  const rows: { name: string; buildingId: string }[] = [];
-  for (const c of meta.colleges) {
-    if (c.zone !== zone) continue;
-    const bid = c.buildingIds[0];
-    if (!bid || seen.has(bid)) continue;
-    seen.add(bid);
-    rows.push({ name: c.name, buildingId: bid });
+/** 每个校区面板应当出现的真实名单（按学院号排序；空楼号 = 位置待确认） */
+const ROWS: Record<string, { name: string; buildingId: string }[]> = {
+  BQ: [
+    { name: "食品学院", buildingId: "BQ-B025" },
+    { name: "信息科学与技术学院", buildingId: "BQ-B013" },
+    { name: "生命科学学院", buildingId: "BQ-B110" },
+    { name: "继续教育学院", buildingId: "BQ-B032" },
+  ],
+  BY: [
+    { name: "机械电气工程学院", buildingId: "BY-B029" },
+    { name: "水利建筑工程学院", buildingId: "BY-B029" },
+    { name: "农学院", buildingId: "BY-B032" },
+    { name: "动物科技学院", buildingId: "BY-B027" },
+  ],
+  ZQ: [
+    { name: "化学化工学院", buildingId: "ZQ-B032" },
+    { name: "理学院", buildingId: "ZQ-B020" },
+    { name: "马克思主义学院", buildingId: "ZQ-B014" },
+    { name: "法学院", buildingId: "ZQ-B018" },
+    { name: "外国语学院", buildingId: "ZQ-B013" },
+    { name: "体育学院", buildingId: "ZQ-B039" },
+    // 跨区教学楼（学院归属北区）
+    { name: "生命科学学院", buildingId: "ZQ-B031" },
+  ],
+  NQ: [
+    { name: "医学院", buildingId: "NQ-B012" },
+    { name: "药学院", buildingId: "NQ-B016" },
+    { name: "公共卫生学院", buildingId: "" },
+    { name: "临床医学院", buildingId: "FY-B041" },
+    { name: "护理学院（筹）", buildingId: "" },
+  ],
+  DQ: [{ name: "经济与管理学院", buildingId: "DQ-B009" }],
+  JJ: [
+    { name: "师范学院", buildingId: "JJ-B018" },
+    { name: "文学艺术学院", buildingId: "JJ-B019" },
+    { name: "能源与材料学院", buildingId: "JJ-B006" },
+    { name: "城市与环境学院", buildingId: "JJ-B013" },
+  ],
+};
+
+/** 面板行数 + 每行的名字 + data-college-no 顺序 */
+async function expectRows(page: Page, zone: keyof typeof ROWS) {
+  const rows = ROWS[zone];
+  await expect(page.locator('[data-testid^="stage-college-"]')).toHaveCount(rows.length);
+  for (let i = 0; i < rows.length; i++) {
+    const row = page.locator(`[data-testid="stage-college-${i + 1}"]`);
+    await expect(row, `第 ${i + 1} 行`).toContainText(rows[i].name);
   }
-  return rows;
+  const nos = await page
+    .locator('[data-testid^="stage-college-"]')
+    .evaluateAll((els) => els.map((e) => e.getAttribute("data-college-no")));
+  expect(nos.length).toBe(rows.length);
+  expect(new Set(nos).size).toBe(rows.length);
 }
 
 /** 服务清单的本地假数据：只有图书馆板块有 2 条（别的板块空 → 板块区别的场景用不到） */
@@ -91,12 +133,25 @@ async function waitCamStill(page: Page, stopHint?: string, timeout = 30_000) {
   );
 }
 
+async function waitAnswer(page: Page) {
+  await page.waitForFunction(
+    () => window.__campus3d?.mode === "answer" && window.__campus3d?.moving === false,
+    undefined,
+    { timeout: 30_000, polling: 100 }
+  );
+}
+
+/** 这一栋楼是外壳还是图钉 */
+function shellOrPin(h: { shell: string | null; pin: string | null }, bid: string) {
+  return h.shell === bid || h.pin === bid;
+}
+
 test.beforeEach(async ({ page }) => {
   await mockApi(page);
   await mockBoardServices(page);
 });
 
-test("1 点北区：面板含「北区」「109」；学院行数对；没有板块钮", async ({ page }) => {
+test("1 点北区：面板含「北区」「109」；4 行学院；没有板块钮", async ({ page }) => {
   await page.goto("/stage?3d=1&intro=0");
   await waitReady(page);
   await page.click('[data-testid="stage-rail-BQ"]');
@@ -106,35 +161,24 @@ test("1 点北区：面板含「北区」「109」；学院行数对；没有板
   await expect(panel).toBeVisible();
   await expect(panel).toContainText("北区");
   await expect(panel).toContainText("109");
-  const rows = await page.locator('[data-testid^="stage-college-"]').count();
-  expect(rows).toBe(collegesOfZone(allMetaRaw, "BQ").length);
+  await expectRows(page, "BQ");
+  await expect(panel).toContainText("4 个学院");
   await expect(page.locator('[data-testid="stage-board-学工"]')).toHaveCount(0);
 });
 
-test("2 每个序号标记的中心与 projectPoint(楼的 anchor) 差 ≤3px", async ({ page }) => {
+test("2 北区四行的学院号与楼名逐条对得上（不靠旧去重推算）", async ({ page }) => {
   await page.goto("/stage?3d=1&intro=0");
   await waitReady(page);
   await page.click('[data-testid="stage-rail-BQ"]');
   await waitCamStill(page);
 
-  const list = collegesOfZone(allMetaRaw, "BQ");
-  for (let i = 1; i <= list.length; i++) {
-    const mark = page.locator(`[data-testid="stage-mark-${i}"]`);
-    const expectVisible = await mark.count();
-    if (expectVisible === 0) continue;
-    const box = (await mark.boundingBox())!;
-    const cx = box.x + box.width / 2;
-    const cy = box.y + box.height / 2;
-    const anchor = allMetaRaw.buildings[list[i - 1].buildingId].anchor!;
-    const p = await page.evaluate(
-      (pt) => {
-        const r = window.__campus3d.projectPoint(pt);
-        return { x: r.x, y: r.y, visible: r.visible };
-      },
-      anchor
-    );
-    expect(p.visible, `标记 ${i} 应在画面内`).toBe(true);
-    expect(Math.hypot(cx - p.x, cy - p.y), `标记 ${i} 与投影距离`).toBeLessThan(3);
+  const nos = await page
+    .locator('[data-testid^="stage-college-"]')
+    .evaluateAll((els) => els.map((e) => e.getAttribute("data-college-no")));
+  expect(nos).toEqual(["4", "5", "10", "19"]);
+  for (let i = 0; i < ROWS.BQ.length; i++) {
+    const b = allMetaRaw.buildings[ROWS.BQ[i].buildingId];
+    await expect(page.locator(`[data-testid="stage-college-${i + 1}"]`)).toContainText(b.name ?? "");
   }
 });
 
@@ -144,20 +188,18 @@ test("3 点第一行学院：answer 态、楼变红（外壳或图钉）、楼�
   await page.click('[data-testid="stage-rail-BQ"]');
   await waitCamStill(page);
 
-  const first = collegesOfZone(allMetaRaw, "BQ")[0];
+  const first = ROWS.BQ[0];
   await page.click('[data-testid="stage-college-1"]');
-  await waitCamStill(page);
+  await waitAnswer(page);
 
   expect(await page.evaluate(() => window.__campus3d.mode)).toBe("answer");
   const h = await page.evaluate(() => ({
     shell: window.__campus3d.shell,
     pin: window.__campus3d.pin,
+    college: window.__campus3d.college,
   }));
-  if (allMetaRaw.shells.includes(first.buildingId)) {
-    expect(h.shell).toBe(first.buildingId);
-  } else {
-    expect(h.pin).toBe(first.buildingId);
-  }
+  expect(shellOrPin(h, first.buildingId)).toBe(true);
+  expect(h.college).toBe(4);
   await expect(page.locator(`[data-testid="stage-sign-${first.buildingId}"]`)).toBeVisible();
 });
 
@@ -167,7 +209,7 @@ test("4 从 answer 点回北区：回 campus，外壳图钉都收，学院列表
   await page.click('[data-testid="stage-rail-BQ"]');
   await waitCamStill(page);
   await page.click('[data-testid="stage-college-1"]');
-  await waitCamStill(page);
+  await waitAnswer(page);
 
   await page.click('[data-testid="stage-rail-BQ"]');
   await waitCamStill(page);
@@ -175,8 +217,7 @@ test("4 从 answer 点回北区：回 campus，外壳图钉都收，学院列表
   expect(await page.evaluate(() => window.__campus3d.shell)).toBeNull();
   expect(await page.evaluate(() => window.__campus3d.pin)).toBeNull();
   await expect(page.locator('[data-testid="stage-campus-panel"]')).toBeVisible();
-  const rows = await page.locator('[data-testid^="stage-college-"]').count();
-  expect(rows).toBe(collegesOfZone(allMetaRaw, "BQ").length);
+  await expectRows(page, "BQ");
 });
 
 test("5 中区：五个板块页签；点图书馆：外壳 ZQ-B034、板块面板与服务清单；截图", async ({ page }) => {
@@ -234,15 +275,12 @@ test("7 东区：学院列表只有一行，含经济与管理学院", async ({ 
   await page.click('[data-testid="stage-rail-DQ"]');
   await waitCamStill(page);
 
-  const rows = await page.locator('[data-testid^="stage-college-"]').count();
-  expect(rows).toBe(1);
-  await expect(page.locator('[data-testid="stage-college-1"]')).toContainText("经济与管理学院");
+  await expectRows(page, "DQ");
 });
 
-test("8 将军山：再点一次进 campus；学院行数等于 jjs 元数据；没有板块钮", async ({ page }) => {
+test("8 将军山：再点一次进 campus；四所本区学院齐全；没有板块钮", async ({ page }) => {
   await page.goto("/stage?3d=1&intro=0");
   await waitReady(page);
-
   await page.click('[data-testid="stage-rail-JJ"]');
   await page.waitForFunction(
     () => window.__campus3d?.pack === "jjs" && window.__campus3d?.status === "ready",
@@ -254,13 +292,12 @@ test("8 将军山：再点一次进 campus；学院行数等于 jjs 元数据；
   await waitCamStill(page);
   expect(await page.evaluate(() => window.__campus3d.mode)).toBe("campus");
 
-  const rows = await page.locator('[data-testid^="stage-college-"]').count();
-  const jjsColleges = jjsMetaRaw.colleges.filter((c) => c.zone === "JJ");
-  expect(rows).toBe(jjsColleges.length);
+  await expectRows(page, "JJ");
+  expect(jjsMetaRaw.colleges.filter((c) => c.zone === "JJ").length).toBe(4);
   await expect(page.locator('[data-testid="stage-board-图书馆"]')).toHaveCount(0);
 });
 
-test("9 中区自己的沙盘：点地标题签落到热点楼；板块与学院在中区沙盘上同样成立", async ({ page }) => {
+test("9 中区自己的沙盘：点地标题签落到热点楼；本区 6 + 跨区 1 行", async ({ page }) => {
   test.setTimeout(180_000);
   await page.goto("/stage?3d=1&intro=0");
   await waitReady(page);
@@ -282,15 +319,155 @@ test("9 中区自己的沙盘：点地标题签落到热点楼；板块与学院
   expect(await page.evaluate(() => window.__campus3d.mode)).toBe("answer");
   expect(await page.evaluate(() => window.__campus3d.shell)).toBe(hotspot05.buildingId);
 
-  // 再点中区：回 campus，五个板块钮都在（板块楼就在这块沙盘的 ZQ 片区）
+  // 再点中区：回 campus，五个板块钮都在
   await page.click('[data-testid="stage-rail-ZQ"]');
   await waitCamStill(page);
   expect(await page.evaluate(() => window.__campus3d.mode)).toBe("campus");
   for (const b of ["学工", "教务", "后勤", "保卫", "图书馆"]) {
     await expect(page.locator(`[data-testid="stage-board-${b}"]`)).toBeVisible();
   }
-  // 学院行数等于 zq 元数据里 zone === 'ZQ' 的学院数（同楼去重后面板同款）
-  const rows = await page.locator('[data-testid^="stage-college-"]').count();
-  const zqColleges = collegesOfZone(zqMetaRaw as unknown as typeof allMetaRaw, "ZQ");
-  expect(rows).toBe(zqColleges.length);
+  await expectRows(page, "ZQ");
+  await expect(page.locator('[data-testid="stage-campus-panel"]')).toContainText("6 个学院");
+});
+
+test("10 北苑新区：4 行；02/03 各一行、都落 BY-B029；共用标注；两枚灯牌错开", async ({ page }) => {
+  await page.goto("/stage?3d=1&intro=0");
+  await waitReady(page);
+  await page.click('[data-testid="stage-rail-BY"]');
+  await waitCamStill(page);
+
+  await expectRows(page, "BY");
+  await expect(page.locator('[data-testid="stage-campus-panel"]')).toContainText("4 个学院");
+
+  const row2 = page.locator('[data-college-no="2"]');
+  const row3 = page.locator('[data-college-no="3"]');
+  await expect(row2).toContainText("机械电气工程学院");
+  await expect(row3).toContainText("水利建筑工程学院");
+  await expect(row2).toContainText("工科楼");
+  await expect(row3).toContainText("工科楼");
+  await expect(row2).toContainText("共用");
+  await expect(row3).toContainText("共用");
+
+  // 灯牌：两枚，同楼横向错开
+  const l2 = page.locator('[data-testid="stage-lantern-2"]');
+  const l3 = page.locator('[data-testid="stage-lantern-3"]');
+  await expect(l2).toBeVisible();
+  await expect(l3).toBeVisible();
+  const b2 = (await l2.boundingBox())!;
+  const b3 = (await l3.boundingBox())!;
+  expect(Math.abs(b2.x + b2.width / 2 - (b3.x + b3.width / 2))).toBeGreaterThan(24);
+  // 角标与面板行号一致：一 / 二
+  await expect(l2.locator(".stage-lantern-no")).toHaveText("一");
+  await expect(l3.locator(".stage-lantern-no")).toHaveText("二");
+
+  // 点 02：BY-B029、学院 2
+  await row2.click();
+  await waitAnswer(page);
+  let h = await page.evaluate(() => ({
+    shell: window.__campus3d.shell,
+    pin: window.__campus3d.pin,
+    college: window.__campus3d.college,
+    mode: window.__campus3d.mode,
+  }));
+  expect(shellOrPin(h, "BY-B029")).toBe(true);
+  expect(h.college).toBe(2);
+
+  // 回北苑新区点 03：还是 BY-B029，学院 3
+  await page.click('[data-testid="stage-rail-BY"]');
+  await waitCamStill(page);
+  await page.locator('[data-college-no="3"]').click();
+  await waitAnswer(page);
+  h = await page.evaluate(() => ({
+    shell: window.__campus3d.shell,
+    pin: window.__campus3d.pin,
+    college: window.__campus3d.college,
+    mode: window.__campus3d.mode,
+  }));
+  expect(shellOrPin(h, "BY-B029")).toBe(true);
+  expect(h.college).toBe(3);
+});
+
+test("11 中区「跨区教学楼」落 ZQ-B031；回北区同一所学院落 BQ-B110", async ({ page }) => {
+  await page.goto("/stage?3d=1&intro=0");
+  await waitReady(page);
+  await page.click('[data-testid="stage-rail-ZQ"]');
+  await waitCamStill(page);
+
+  const cross = page.locator('[data-college-no="10"]');
+  await expect(cross).toContainText("生命科学学院");
+  await expect(cross).toContainText("生命科学实验教学楼");
+  await expect(cross).toContainText("学院归属北区");
+
+  await cross.click();
+  await waitAnswer(page);
+  let h = await page.evaluate(() => ({
+    shell: window.__campus3d.shell,
+    pin: window.__campus3d.pin,
+    college: window.__campus3d.college,
+  }));
+  expect(shellOrPin(h, "ZQ-B031")).toBe(true);
+  expect(h.college).toBe(10);
+
+  await page.click('[data-testid="stage-rail-BQ"]');
+  await waitCamStill(page);
+  await page.locator('[data-college-no="10"]').click();
+  await waitAnswer(page);
+  h = await page.evaluate(() => ({
+    shell: window.__campus3d.shell,
+    pin: window.__campus3d.pin,
+    college: window.__campus3d.college,
+  }));
+  expect(shellOrPin(h, "BQ-B110")).toBe(true);
+  expect(h.college).toBe(10);
+});
+
+test("12 南区：本区 3 + 附属 2；临床落 FY-B041；护理/公卫不导航", async ({ page }) => {
+  await page.goto("/stage?3d=1&intro=0");
+  await waitReady(page);
+  await page.click('[data-testid="stage-rail-NQ"]');
+  await waitCamStill(page);
+
+  await expectRows(page, "NQ");
+  const panel = page.locator('[data-testid="stage-campus-panel"]');
+  await expect(panel).toContainText("3 个学院");
+  await expect(panel).toContainText("附属片区");
+  await expect(page.locator('[data-college-no="23"]')).toContainText("第一附属医院");
+  await expect(page.locator('[data-college-no="24"]')).toContainText("护理学院（筹）");
+  await expect(page.locator('[data-college-no="24"]')).toContainText("位置待确认");
+  await expect(page.locator('[data-college-no="22"]')).toContainText("位置待确认");
+
+  const before = await page.evaluate(() => window.__campus3d.stop);
+  // 护理学院（筹）：点击与 Enter 都不移动镜头（行是 aria-disabled，用 force 派发点击）
+  await page.locator('[data-college-no="24"]').click({ force: true });
+  await page.waitForTimeout(400);
+  let h = await page.evaluate(() => ({
+    mode: window.__campus3d.mode,
+    stop: window.__campus3d.stop,
+    moving: window.__campus3d.moving,
+  }));
+  expect(h.mode).toBe("campus");
+  expect(h.stop).toBe(before);
+  expect(h.moving).toBe(false);
+  await page.locator('[data-college-no="22"]').focus();
+  await page.keyboard.press("Enter");
+  await page.waitForTimeout(400);
+  h = await page.evaluate(() => ({
+    mode: window.__campus3d.mode,
+    stop: window.__campus3d.stop,
+    moving: window.__campus3d.moving,
+  }));
+  expect(h.mode).toBe("campus");
+  expect(h.stop).toBe(before);
+  expect(h.moving).toBe(false);
+
+  // 临床医学院：落到 FY-B041
+  await page.locator('[data-college-no="23"]').click();
+  await waitAnswer(page);
+  h = await page.evaluate(() => ({
+    shell: window.__campus3d.shell,
+    pin: window.__campus3d.pin,
+    college: window.__campus3d.college,
+  }));
+  expect(shellOrPin(h, "FY-B041")).toBe(true);
+  expect(h.college).toBe(23);
 });

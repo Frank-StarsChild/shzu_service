@@ -340,3 +340,25 @@ test("5 减少动态：章直接是最终样子；不做空闲转动", async ({ 
   await page.waitForTimeout(3000);
   expect(await page.evaluate(() => window.__campus3d?.tour)).toBe(false);
 });
+
+test("6 空闲：输入框聚焦时不转、失焦后转；转动中点输入框恢复输入", async ({ page }) => {
+  await page.goto("/stage?3d=1&intro=0&idle=2");
+  await waitReady(page);
+  await page.locator('[data-testid="stage-input"]').click();
+  await page.waitForTimeout(3200);
+  expect(await page.evaluate(() => window.__campus3d?.tour)).toBe(false);
+  expect(await page.evaluate(() => window.__campus3d?.mode)).toBe("home");
+
+  // 点到沙盘（失焦）→ 2 秒后自动转起来，问话栏仍可见可点
+  await page.mouse.click(700, 400);
+  await page.waitForFunction(() => window.__campus3d?.tour === true, undefined, { timeout: 10_000 });
+  await expect(page.locator('[data-testid="stage-dock"]')).toHaveCSS("opacity", "1");
+  await expect(page.locator('[data-testid="stage-dock"]')).not.toHaveAttribute("inert", "");
+
+  // 转动中点输入框：回到原输入状态，本次点击照常生效
+  await page.locator('[data-testid="stage-input"]').click();
+  await expect.poll(() => page.evaluate(() => window.__campus3d?.tour), { timeout: 5_000 }).toBe(false);
+  await expect(page.locator('[data-testid="stage-input"]')).toBeFocused();
+  await page.keyboard.type("借教室");
+  await expect(page.locator('[data-testid="stage-input"]')).toHaveValue("借教室");
+});

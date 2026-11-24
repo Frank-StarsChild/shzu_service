@@ -3,7 +3,7 @@
 // 与首页画框版的差异：fixed inset:0 占满视口、用 packs.json 的包、homeStop='home'、
 // 顶边 2px 朱红进度线、海报 400ms 淡出、宽高比超过 posterAspect 时宽度取高度×posterAspect。
 import { computed, nextTick, onBeforeUnmount, onMounted, provide, ref, watch } from "vue";
-import { parseMeta, type CampusMeta } from "@/campus3d/meta";
+import { parseMeta, type CampusMeta, type Hotspot } from "@/campus3d/meta";
 import {
   decideMode, decideIntro, readGateInput, readIntroQuery,
   type GateInput, type GateResult,
@@ -21,6 +21,7 @@ const chat = useChatStore();
 
 const meta = ref<CampusMeta | null>(null);
 const posterSrc = ref("");
+const posterMobileSrc = ref("");
 const packIndex = ref<PackIndex | null>(null);
 const INTRO_KEY = "shzu.campus3d.intro";
 
@@ -35,7 +36,7 @@ const canvasMounted = ref(false);
 const canvasRef = ref<HTMLCanvasElement | null>(null);
 let sceneHandle: CampusSceneHandle | null = null; // three 对象不进响应式
 let canvasEl: HTMLCanvasElement | null = null;
-let posterEl: HTMLImageElement | null = null;
+const posterEl = ref<HTMLImageElement | null>(null);
 
 // ---- W11：构图偏移。无回答或已收起 = 基线 48px；回答面板展开 = 再按面板宽度
 // 加 70–110px（面板宽度 clamp(320px, 28vw, 428px) 的 22%）。窗口变化时按实时
@@ -44,6 +45,7 @@ const FRAMING_BASE_PX = 48;
 const viewportW = ref(typeof window !== "undefined" ? window.innerWidth : 0);
 function onWindowResize() {
   viewportW.value = window.innerWidth;
+  void nextTick(refreshPosterLabels);
 }
 const panelW = computed(() =>
   Math.min(Math.max(320, Math.round(viewportW.value * 0.28)), 428)
@@ -97,7 +99,30 @@ provide<StageCtx>("stageCtx", {
     return () => frameListeners.delete(cb);
   },
   getHandle: () => sceneHandle,
+  projectPosterHotspot,
 });
+
+/** 海报使用居中裁切，归一化锚点按裁切前的实绘尺寸换算。 */
+function projectPosterHotspot(hotspot: Hotspot) {
+  const poster = posterEl.value;
+  if (!poster?.naturalWidth || !poster.naturalHeight) return null;
+  const r = poster.getBoundingClientRect();
+  const scale = Math.max(r.width / poster.naturalWidth, r.height / poster.naturalHeight);
+  const w = poster.naturalWidth * scale;
+  const h = poster.naturalHeight * scale;
+  const mobile = posterMobileSrc.value && poster.currentSrc.endsWith(posterMobileSrc.value);
+  const [u, v] = mobile ? hotspot.posterMobile : hotspot.posterDesktop;
+  const x = r.left + (r.width - w) / 2 + u * w;
+  const y = r.top + (r.height - h) / 2 + v * h;
+  return { x, y, visible: x >= r.left && x <= r.right && y >= r.top && y <= r.bottom };
+}
+
+function refreshPosterLabels() {
+  if (sceneStatus.value !== "static" && sceneStatus.value !== "error") return;
+  for (const cb of frameListeners) cb();
+}
+
+watch([meta, sceneStatus, () => store.mode], refreshPosterLabels, { flush: "post" });
 
 const wantScene = computed(
   () => gate.value.mode === "scene" && !!meta.value && !!packIndex.value
@@ -216,15 +241,17 @@ function fadeInCanvas() {
 }
 
 function fadeOutPoster() {
-  if (!posterEl) return;
-  posterEl.style.transition = "opacity 400ms";
-  posterEl.style.opacity = "0";
+  const poster = posterEl.value;
+  if (!poster) return;
+  poster.style.transition = "opacity 400ms";
+  poster.style.opacity = "0";
 }
 
 function showPoster() {
-  if (!posterEl) return;
-  posterEl.style.transition = "";
-  posterEl.style.opacity = "1";
+  const poster = posterEl.value;
+  if (!poster) return;
+  poster.style.transition = "";
+  poster.style.opacity = "1";
 }
 
 function removeCanvas() {
@@ -250,6 +277,7 @@ function onContextLost(e: Event) {
   removeCanvas();
   sceneStatus.value = "error";
   touchHook({ status: "error" });
+  showPoster();
 }
 
 function retryScene() {
@@ -277,6 +305,7 @@ watch(() => store.packId, async (id, old) => {
   if (sceneHandle || canvasMounted.value) teardownScene("static");
   meta.value = null; // 换包期间 wantScene 不成立，杜绝「旧 meta 配新 glb」的竞态
   posterSrc.value = packUrl(pack.posterDesktop);
+  posterMobileSrc.value = packUrl(pack.posterMobile);
   showPoster();
   try {
     meta.value = await loadPackMeta(idx, id);
@@ -292,20 +321,25 @@ watch(() => store.packId, async (id, old) => {
 // ---- W3：mode / zoneId 变化 → 片区显隐与镜头（只在就绪后应用；加载期间点的等就绪补上）----
 // W8：进观景调 scene.setTour(true)；退出调 setTour(false)（镜头回到观景前的机位，
 // 不再另触 applyStageMode——恢复的模式当时就在那个机位上）。
-watch([() => store.mode, () => store.zoneId, () => store.collegeNo], ([m], [prevM]) => {
-  touchHook({ mode: store.mode, college: store.collegeNo });
-  if (m === "tour") {
-    if (sceneStatus.value === "ready" && gate.value.mode === "scene") {
-      sceneHandle?.setTour(true, store.tourDegPerSec ?? undefined);
+// 按需定位：两次同属 answer 状态时（A 楼 → B 楼）mode/zoneId 都不变，
+// 必须把 place.buildingId 纳入监听，否则第二栋楼不会飞过去。
+watch(
+  [() => store.mode, () => store.zoneId, () => store.collegeNo, () => store.place?.buildingId],
+  ([m], [prevM]) => {
+    touchHook({ mode: store.mode, college: store.collegeNo });
+    if (m === "tour") {
+      if (sceneStatus.value === "ready" && gate.value.mode === "scene") {
+        sceneHandle?.setTour(true, store.tourDegPerSec ?? undefined);
+      }
+      return;
     }
-    return;
+    if (prevM === "tour") {
+      sceneHandle?.setTour(false);
+      return;
+    }
+    applyStageMode();
   }
-  if (prevM === "tour") {
-    sceneHandle?.setTour(false);
-    return;
-  }
-  applyStageMode();
-});
+);
 
 // W5：把当前包元数据同步给 store（showAnswer 取楼名用）
 watch(meta, (m) => store.setMeta(m), { immediate: true });
@@ -442,6 +476,7 @@ onMounted(async () => {
     const pack = idx.packs.find((p) => p.id === (store.packId || idx.default));
     if (pack) {
       posterSrc.value = packUrl(pack.posterDesktop);
+      posterMobileSrc.value = packUrl(pack.posterMobile);
       const resp = await fetch(packUrl(pack.meta));
       if (!resp.ok || !(resp.headers.get("content-type") || "").includes("json")) {
         throw new Error(`元数据加载失败：${packUrl(pack.meta)}`);
@@ -466,8 +501,11 @@ onBeforeUnmount(() => {
 
 <template>
   <div class="stage" data-testid="stage" :data-mode="store.mode" :class="{ 'is-tour': store.mode === 'tour', 'is-idle-tour': store.mode === 'tour' && store.idleTour }" :style="frameStyle">
-    <img ref="posterEl" data-testid="stage-poster" class="stage-poster"
-         :src="posterSrc" alt="石河子大学校园沙盘（示意）" />
+    <picture>
+      <source v-if="posterMobileSrc" media="(max-width: 900px) and (orientation: portrait)" :srcset="posterMobileSrc" />
+      <img ref="posterEl" data-testid="stage-poster" class="stage-poster"
+           :src="posterSrc" alt="石河子大学校园沙盘（示意）" @load="refreshPosterLabels" />
+    </picture>
     <canvas v-if="canvasMounted" ref="canvasRef" data-testid="stage-canvas"
             class="stage-canvas" :class="{ 'is-ready': sceneStatus === 'ready' }"></canvas>
     <div v-if="sceneStatus === 'loading'" class="stage-progress" data-testid="stage-progress"

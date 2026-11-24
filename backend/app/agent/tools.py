@@ -231,9 +231,7 @@ def find_service_workflow(
 
 # ---------- 官方网页补查（联网查证） ----------
 
-WEB_FETCH_TIMEOUT_S = 8.0      # 单页抓取超时
 WEB_MAX_FETCHES = 3            # 单次工具调用最多抓取页数
-WEB_TOTAL_BUDGET_S = 20.0      # 单次工具调用总时限
 WEB_UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) ShzuAgent/1.0 (+campus QA)"
 
 
@@ -349,12 +347,9 @@ def lookup_official_web(
     失败状态（登录/超时/无正文/未找到当年正式文件）。工具取到的证据带 web- 前缀 ID，
     可与其他证据一样在回复中引用。学号、电话、住址、成绩等个人信息不会被发送。
     """
-    import time as _time
     from ..knowledge import web_evidence
 
-    t0 = _time.perf_counter()
     safe_q = web_evidence.sanitize_query_for_web(query)
-    kb = get_kb()
     out: dict = {"query": safe_q, "evidence": [], "status": ""}
 
     # 1) 搜索服务（可选）：SHZU_WEB_SEARCH_API 配置时用外部搜索发现官方页面
@@ -372,47 +367,34 @@ def lookup_official_web(
         out["note"] = "工具没有成功取到正文时不要声称已查证。"
         return out
 
-    import httpx
-    fetched = 0
+    responses = web_evidence.fetch_pages([url for url, _ in candidates], config, WEB_UA)
     for url, doc in candidates:
-        if fetched >= WEB_MAX_FETCHES or _time.perf_counter() - t0 > WEB_TOTAL_BUDGET_S:
-            break
-        try:
-            with httpx.Client(timeout=WEB_FETCH_TIMEOUT_S, follow_redirects=True,
-                              headers={"User-Agent": WEB_UA}) as client:
-                resp = client.get(url)
-            if resp.status_code != 200:
-                continue
-            ctype = resp.headers.get("content-type", "")
-            if "text/html" not in ctype and "text/plain" not in ctype:
-                continue
-            html = resp.text
-            body = _strip_html(html)
-            if len(body.strip()) < 60:
-                continue  # 前端应用或正文为空：如实跳过
-            fetched += 1
-            title = _html_title(html) or (doc.get("title") or "官方页面")
-            excerpt = body[:600]
-            citation = web_evidence.register(
-                title=title,
-                issuer=(doc.get("issuer") or _issuer_of_host(url)),
-                url=str(resp.url),
-                excerpt=body[:600],
-                published_at=doc.get("published_at"),
-                locator="联网查证·官网原文",
-            )
-            out["evidence"].append({
-                "id": citation["id"], "topic": "联网查证",
-                "issuer": citation["issuer"], "locator": citation["locator"],
-                "text": excerpt[:320], "time_condition": None,
-                "url": citation["url"], "accessed_at": citation["accessed_at"],
-            })
-        except (httpx.TimeoutException, httpx.ConnectError) as e:
+        response = responses[url]
+        if isinstance(response, Exception):
             out.setdefault("failures", []).append(
-                {"url": url, "error": f"访问失败（{type(e).__name__}）"})
-        except Exception as e:  # noqa: BLE001
-            out.setdefault("failures", []).append(
-                {"url": url, "error": f"访问异常：{type(e).__name__}"})
+                {"url": url, "error": f"访问失败（{type(response).__name__}）"})
+            continue
+        content_type = response.headers.get("content-type", "")
+        if response.status_code != 200 or not ("text/html" in content_type or "text/plain" in content_type):
+            continue
+        html = response.text
+        body = _strip_html(html)
+        if len(body.strip()) < 60:
+            continue
+        citation = web_evidence.register(
+            title=_html_title(html) or doc.get("title") or "官方页面",
+            issuer=doc.get("issuer") or _issuer_of_host(url),
+            url=str(response.url),
+            excerpt=body[:600],
+            published_at=doc.get("published_at"),
+            locator="联网查证·官网原文",
+        )
+        out["evidence"].append({
+            "id": citation["id"], "topic": "联网查证",
+            "issuer": citation["issuer"], "locator": citation["locator"],
+            "text": body[:320], "time_condition": None,
+            "url": citation["url"], "accessed_at": citation["accessed_at"],
+        })
 
     if out["evidence"]:
         out["status"] = (f"已从官网取到 {len(out['evidence'])} 页正文（访问时间见 accessed_at）。"

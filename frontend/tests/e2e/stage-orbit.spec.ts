@@ -260,3 +260,44 @@ test("8 减少动态：控制区没有「观景」", async ({ page }) => {
   await waitReady(page);
   await expect(page.locator('[data-testid="stage-tool-tour"]')).toHaveCount(0);
 });
+
+test("9 手动观景：草稿留住、底部有「问智多星」、Tab 不进输入框、点它回输入框", async ({ page }) => {
+  let chatPosts = 0;
+  page.on("request", (r) => {
+    if (r.method() === "POST" && r.url().includes("/api/v1/chat")) chatPosts += 1;
+  });
+
+  await page.goto("/stage?3d=1&intro=0");
+  await waitReady(page);
+  const input = page.locator('[data-testid="stage-input"]');
+  await input.fill("学生证丢了去哪补办");
+
+  await page.click('[data-testid="stage-tool-tour"]');
+  await page.waitForFunction(() => window.__campus3d?.mode === "tour", undefined, { timeout: 5_000, polling: 100 });
+
+  await expect(page.locator('[data-testid="stage-tour-ask"]')).toBeVisible();
+  await expect(page.locator('[data-testid="stage-tour-exit"]')).toBeFocused();
+  await expect(page.locator('[data-testid="stage-dock"]')).toHaveAttribute("inert", "");
+
+  // 焦点顺序：退出观景 → 问智多星 → 不会掉进透明的输入框
+  await page.keyboard.press("Tab");
+  await expect(page.locator('[data-testid="stage-tour-ask"]')).toBeFocused();
+  await page.keyboard.press("Tab");
+  expect(await page.evaluate(() => document.activeElement?.getAttribute("data-testid"))).not.toBe("stage-input");
+
+  // 点「问智多星」：退出观景、光标回输入框、草稿还在、没有自动发送
+  await page.locator('[data-testid="stage-tour-ask"]').click();
+  await expect.poll(() => page.evaluate(() => window.__campus3d?.mode), { timeout: 8_000 }).toBe("home");
+  await expect(input).toBeFocused();
+  await expect(input).toHaveValue("学生证丢了去哪补办");
+  await expect(page.locator('[data-testid="stage-dock"]')).not.toHaveAttribute("inert", "");
+  expect(chatPosts).toBe(0);
+
+  // 再用 Esc 退出：焦点回「观景」按钮
+  await page.click('[data-testid="stage-tool-tour"]');
+  await page.waitForFunction(() => window.__campus3d?.mode === "tour", undefined, { timeout: 5_000, polling: 100 });
+  await page.keyboard.press("Escape");
+  await expect.poll(() => page.evaluate(() => window.__campus3d?.mode), { timeout: 8_000 }).toBe("home");
+  await expect(page.locator('[data-testid="stage-tool-tour"]')).toBeFocused();
+  await expect(page.locator('[data-testid="stage-tour-ask"]')).toHaveCount(0);
+});

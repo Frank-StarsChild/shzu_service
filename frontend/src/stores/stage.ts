@@ -15,6 +15,7 @@ import { loadPackIndex, loadPlaces, type CampusZoneRef, type Pack, type Places }
 import type { CampusMeta } from "@/campus3d/meta";
 import { collegeForPlace, type Emblems, type Mention } from "@/stage/emblems";
 import { IDLE_TRACE, type Trace } from "@/stage/trace";
+import type { PlaceCandidate } from "@/stage/places";
 import { useChatStore } from "@/stores/chat";
 
 /** 最后一条有正文的回答段落（A3：同一栋楼有多个学院时，按回答里的学院名判定） */
@@ -86,6 +87,14 @@ export const useStageStore = defineStore("stage", {
     mention: null as Mention | null,
     /** 每次 applyPlace（showAnswer/showBuilding）加一；换包后等待落楼时用它判断「作废」 */
     placeSeq: 0,
+    /** 本轮回答关联的目标楼（带 request_id）：右侧「办理地点」与红线只认它，
+     *  不直接看 place——那可能是用户早就在看的楼。 */
+    answerLink: null as { requestId: string; buildingId: string | null } | null,
+    /** 本轮的手动定位候选（offer）：右侧显示「在沙盘查看」，点击才动镜头 */
+    placeOffer: null as { requestId: string; candidates: PlaceCandidate[]; text: string | null } | null,
+    /** 用户主动改变视角的序号（选校区/换沙盘/选楼/重置视角/落楼）：
+     *  等待回答期间变过就放弃自动定位，改给手动入口 */
+    viewSeq: 0,
   }),
   getters: {
     /** 当前包（packs 表里 id === packId 的那项；未加载时为 null） */
@@ -176,12 +185,44 @@ export const useStageStore = defineStore("stage", {
     },
     /** W11：「重置视角」——只改镜头，不动校区选择、高亮与对话 */
     requestResetView() {
+      this.viewSeq += 1;
       this.resetViewSeq += 1;
+    },
+    /** 新一轮开始：清本轮的办理地点关联与候选，不动 pack/mode/zone/已选楼与镜头 */
+    beginTurn(requestId: string) {
+      this.answerLink = { requestId, buildingId: null };
+      this.placeOffer = null;
+      this.board = null; // W9：板块面板换回回答面板
+    },
+    /** auto 定位成功后记下「本轮答案对应哪栋楼」 */
+    setAnswerLink(requestId: string, buildingId: string | null) {
+      this.answerLink = requestId ? { requestId, buildingId } : null;
+    },
+    /** offer：本轮可以手动定位的候选（不自动动镜头） */
+    setPlaceOffer(offer: { requestId: string; candidates: PlaceCandidate[]; text: string | null } | null) {
+      this.placeOffer = offer;
+    },
+    /** 点候选才动镜头；静态舞台/未就绪时只保留文字，不进入等不到 3D 就绪的状态 */
+    async choosePlaceTarget(buildingId: string) {
+      if (!this.sceneReady || this.meta === null) return false;
+      if (this.answerLink) this.answerLink = { ...this.answerLink, buildingId };
+      if (this.meta.buildings[buildingId]) {
+        await this.showAnswer(buildingId);
+        return true;
+      }
+      await this.loadPlacesData();
+      const pack = this.places?.packOf[buildingId];
+      if (!pack) return false;
+      const seq = this.placeSeq;
+      this.switchPack(pack);
+      await this.waitPackThenShow(pack, buildingId, seq);
+      return true;
     },
     goHome() {
       this.closeDial(); // ALIVE A4
       this.idleTour = false;
       this.mention = null; // ALIVE A8
+      this.viewSeq += 1;
       this.mode = "home";
       this.zoneId = null;
       this.place = null;
@@ -201,6 +242,7 @@ export const useStageStore = defineStore("stage", {
       this.packId = packId;
       this.meta = null;
       this.trace = { ...IDLE_TRACE };
+      this.viewSeq += 1;
       this.goHome();
     },
     /** W8：观景。开：记下原来的 mode，置为 tour；关：恢复。
@@ -233,6 +275,7 @@ export const useStageStore = defineStore("stage", {
       }
       if (this.campusOnPack(campusId)) {
         this.closeDial(); // ALIVE A4
+        this.viewSeq += 1;
         this.mode = "campus";
         this.zoneId = campusId;
         this.place = null;
@@ -272,12 +315,29 @@ export const useStageStore = defineStore("stage", {
     async showBuilding(buildingId: string) {
       await this.applyPlace(buildingId);
     },
-    /** ALIVE A1：选中一个学院——设 collegeNo，并把镜头落到它的第一栋在当前沙盘上的楼。 */
-    async showCollege(no: number) {
+    /** ALIVE A1：选中一个学院——设 collegeNo，并把镜头落到它的第一栋在当前沙盘上的楼。
+     *  可选 buildingId：面板行已经选好楼时直接用它（同楼两所学院靠它区分）；
+     *  只认这所学院在当前沙盘上的候选楼，别的楼号会被忽略。 */
+    async showCollege(no: number, buildingId?: string) {
       this.collegeNo = no;
-      const college = this.emblems?.colleges.find((c) => c.no === no);
-      if (!college) return;
-      const bid = college.buildingIds.find((id) => !!this.meta?.buildings[id]);
+      const meta = this.meta;
+      const college = this.emblems?.colleges.find((c) => c.no === no) ?? null;
+      if (!college) {
+        // 院徽清单没加载出来时，面板行已经选好了楼：仍按行定位（只少了院徽）
+        if (buildingId && meta?.buildings[buildingId]) await this.showBuilding(buildingId);
+        return;
+      }
+      if (buildingId && meta?.buildings[buildingId]) {
+        const candidates = new Set<string>([
+          ...(college.buildingIds ?? []),
+          ...((meta.colleges ?? []).find((c) => c.no === no)?.buildingIds ?? []),
+        ]);
+        if (candidates.has(buildingId)) {
+          await this.showBuilding(buildingId);
+          return;
+        }
+      }
+      const bid = college.buildingIds.find((id) => !!meta?.buildings[id]);
       if (bid) await this.showBuilding(bid);
     },
     /** W10：在回答里「近看」——换成这栋楼所在校区自己的沙盘，等它准备好再落回这栋楼。
@@ -328,6 +388,7 @@ export const useStageStore = defineStore("stage", {
      *  在中区自己的沙盘里，中区的楼 packOf 写的是 all，但它就在眼前。 */
     async applyPlace(buildingId: string | null) {
       this.placeSeq += 1;
+      this.viewSeq += 1;
       // buildingId 为空；或 meta 为 null（正在换沙盘）：复位，answer 态则回 home
       if (buildingId === null || buildingId === "" || this.meta === null) {
         this.place = null;

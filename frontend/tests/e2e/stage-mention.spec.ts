@@ -141,3 +141,34 @@ test("11 选中北区：示例问题换成北区的学院问题", async ({ page 
   await expect(examples.filter({ hasText: "食品学院在哪栋楼？" })).toHaveCount(1);
   await expect(examples.filter({ hasText: "这个校区有哪些学院？" })).toHaveCount(1);
 });
+
+test("12 输入法选词时按 Enter 只上屏，再按一次才发问", async ({ page }) => {
+  let chatPosts = 0;
+  page.on("request", (r) => {
+    if (r.method() === "POST" && r.url().includes("/api/v1/chat")) chatPosts += 1;
+  });
+  await page.goto("/stage?3d=1&intro=0");
+  await waitReady(page);
+
+  // 选词中（compositionstart 之后）提交表单：不应发请求
+  await page.evaluate(() => {
+    const el = document.querySelector('[data-testid="stage-input"]') as HTMLInputElement;
+    el.focus();
+    el.dispatchEvent(new CompositionEvent("compositionstart", { bubbles: true }));
+    el.value = "学生证";
+    el.dispatchEvent(new Event("input", { bubbles: true }));
+    (el.closest("form") as HTMLFormElement).requestSubmit();
+  });
+  await page.waitForTimeout(300);
+  expect(chatPosts).toBe(0);
+
+  // 上屏后再提交：正常发问
+  await page.evaluate(() => {
+    const el = document.querySelector('[data-testid="stage-input"]') as HTMLInputElement;
+    el.dispatchEvent(new CompositionEvent("compositionend", { bubbles: true }));
+    el.value = "学生证丢了去哪补办";
+    el.dispatchEvent(new Event("input", { bubbles: true }));
+    (el.closest("form") as HTMLFormElement).requestSubmit();
+  });
+  await expect.poll(() => chatPosts, { timeout: 10_000 }).toBeGreaterThan(0);
+});

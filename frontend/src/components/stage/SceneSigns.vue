@@ -63,6 +63,10 @@ const buildingSign = computed(() => {
 });
 
 const showLayer = computed(() => ctx?.sceneStatus.value === "ready");
+const showPosterZones = computed(() =>
+  (ctx?.sceneStatus.value === "static" || ctx?.sceneStatus.value === "error")
+  && store.mode === "home" && store.packId === store.default
+);
 const layouts = computed(() => board?.layouts.value ?? {});
 
 /** ALIVE A3：楼题签顶上的本色院徽（collegeNo 由 store 按楼 + 回答文字定） */
@@ -99,29 +103,36 @@ function inHero(p: { x: number; y: number }): boolean {
 
 function buildSpecs(): LabelSpec[] {
   const handle = ctx?.getHandle();
-  if (!handle) return [];
+  if (!handle && !showPosterZones.value) return [];
   const list: LabelSpec[] = [];
 
   for (const z of zones.value) {
     if (!z.label) continue;
-    const p = handle.project(z.label);
+    const hotspot = showPosterZones.value
+      ? meta.value?.hotspots.find((h) => meta.value?.buildings[h.buildingId]?.zone === z.id)
+      : null;
+    const p = handle ? handle.project(z.label) : hotspot && ctx?.projectPosterHotspot(hotspot);
+    if (!p) continue;
     const s = signSize(z.name, 40);
+    const c = shortSign(z.name);
     list.push({
       id: `zone-${z.id}`,
-      priority: store.mode === "campus" ? 80 : 70,
+      priority: store.mode === "campus" ? 80 : 70 + z.name.length,
       ax: p.x,
       ay: p.y,
       w: s.w,
       h: s.h,
       gap: 40,
-      compactW: s.w,
-      compactH: s.h,
-      compactGap: 40,
-      visible: projected(p) && !inHero(p),
+      compactW: c.w,
+      compactH: c.h,
+      compactGap: 20,
+      compactBelow: true,
+      visible: projected(p),
       movable: true,
-      axis: "y",
+      axis: "xy",
     });
   }
+  if (!handle) return list;
 
   for (const h of landmarks.value) {
     if (!h.anchor) continue;
@@ -236,7 +247,7 @@ function signStyle(id: string): Record<string, string> {
   };
 }
 
-/** 紧凑形态（只有楼的题签用）：锚点正上方 20px 的横排短签 */
+/** 紧凑形态：横排短签，坐标由避让布局决定。 */
 function compactStyle(id: string): Record<string, string> {
   const L = layoutOf(id);
   if (!L || L.form !== "compact") return { display: "none" };
@@ -254,10 +265,10 @@ function lineHeight(id: string): string {
   return `${L.gap + d.dy}px`;
 }
 
-/** 只有横向错开才需要斜引线（纯向上挪时仍是竖直引线，锚点不变） */
+/** 横向错开或题签移到锚点下方时，改用短引线。 */
 function shifted(id: string): boolean {
   const L = layoutOf(id);
-  return !!L && L.form !== "hidden" && Math.abs(shiftOf(L).dx) > 0.5;
+  return !!L && L.form !== "hidden" && (L.gap < 0 || Math.abs(shiftOf(L).dx) > 0.5);
 }
 
 /** 错开后从文字框底边画一根 1px 短引线回锚点（角度按屏幕坐标） */
@@ -265,10 +276,15 @@ function leaderStyle(id: string): Record<string, string> {
   const L = layoutOf(id);
   if (!L || L.form === "hidden") return { display: "none" };
   const d = shiftOf(L);
-  const dy = L.gap + d.dy;
+  const below = L.gap < 0;
+  const dy = L.ay - (below ? L.y : L.y + L.h);
   const len = Math.hypot(d.dx, dy);
   const deg = (Math.atan2(dy, -d.dx) * 180) / Math.PI;
-  return { width: `${len}px`, transform: `rotate(${deg}deg)` };
+  return {
+    width: `${len}px`,
+    transform: `rotate(${deg}deg)`,
+    ...(below ? { top: "0", bottom: "auto" } : {}),
+  };
 }
 
 function onClick(id: string) {
@@ -320,7 +336,7 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div v-if="showLayer" class="stage-signs" aria-label="校区题签">
+  <div v-if="showLayer || showPosterZones" class="stage-signs" aria-label="校区题签">
     <!-- W7：智多星的飞行拖尾（连线层里的二次曲线，渐隐白线；注入的 ref 在模板自动解包） -->
     <svg
       v-if="starTrail"
@@ -353,12 +369,12 @@ onBeforeUnmount(() => {
       :key="z.id"
       type="button"
       class="stage-sign"
-      :class="{ 'is-selected': store.mode === 'campus', 'is-lighting': lighting }"
+      :class="{ 'is-selected': store.mode === 'campus', 'is-lighting': lighting, 'is-compact': isCompact(`zone-${z.id}`) }"
       :data-testid="`stage-sign-${z.id}`"
       :aria-hidden="hidden(`zone-${z.id}`) ? 'true' : undefined"
       :tabindex="hidden(`zone-${z.id}`) ? -1 : undefined"
       :style="{
-        ...signStyle(`zone-${z.id}`),
+        ...(isCompact(`zone-${z.id}`) ? compactStyle(`zone-${z.id}`) : signStyle(`zone-${z.id}`)),
         '--light-delay': `${zoneLightDelays.get(z.id) ?? 0}ms`,
       }"
       @click="onClick(z.id)"
@@ -537,12 +553,13 @@ onBeforeUnmount(() => {
   font-size: 13px;
   letter-spacing: 0.24em;
 }
-/* 楼题签挤不下时的横排短签（朱砂边、20px 短引线） */
+/* 校区或楼题签挤不下时的横排短签 */
 .stage .stage-sign.is-compact {
   flex-direction: row;
   gap: 0;
   padding: 6px 10px;
 }
+.stage .stage-sign.is-compact:not(.is-building) { min-height: 0; }
 .stage .stage-sign.is-compact .stage-sign-label {
   writing-mode: horizontal-tb;
   font-family: var(--st-hei);
@@ -552,7 +569,7 @@ onBeforeUnmount(() => {
   letter-spacing: 0.02em;
   white-space: nowrap;
 }
-.stage .stage-sign.is-compact .stage-sign-line {
+.stage .stage-sign.is-compact.is-building .stage-sign-line {
   width: 1px;
   background: var(--st-red);
 }</style>

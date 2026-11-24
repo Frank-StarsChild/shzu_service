@@ -17,6 +17,27 @@ const { ready } = useKbMeta();
 const text = ref("");
 const ctx = inject<StageCtx>("stageCtx");
 
+const emit = defineEmits<{
+  (e: "input-focus"): void;
+  (e: "input-blur"): void;
+}>();
+
+const inputEl = ref<HTMLInputElement | null>(null);
+const tourBtnEl = ref<HTMLButtonElement | null>(null);
+
+/** 手动观景时整条问话栏不可交互（opacity:0 只挡指针，拦不住 Tab） */
+const manualTour = computed(() => stageStore.mode === "tour" && !stageStore.idleTour);
+
+/** 给 StageView 用：把焦点还给输入框 / 观景按钮（不让页面滚动） */
+defineExpose({
+  focusInput() {
+    inputEl.value?.focus({ preventScroll: true });
+  },
+  focusTour() {
+    tourBtnEl.value?.focus({ preventScroll: true });
+  },
+});
+
 /** 观景入口只在 3D 可用且未开减少动态时显示（原顶栏行为不变） */
 const canTour = computed(
   () =>
@@ -125,11 +146,25 @@ const statusText = computed(() => {
 });
 
 function ask(msg?: string) {
+  // 输入法选词时按 Enter 只让候选上屏，不提交（再按一次才发问）
+  if (composing) return;
   const value = (msg ?? text.value).trim();
   if (!value || store.busy) return;
   stageStore.setMention(null); // ALIVE A8：发出提问就清掉预判
   void store.send(value);
   text.value = "";
+}
+
+function onInputKeydown(e: KeyboardEvent) {
+  if (e.key === "Enter" && (composing || e.isComposing)) e.preventDefault();
+}
+
+function onInputFocus() {
+  emit("input-focus");
+}
+
+function onInputBlur() {
+  emit("input-blur");
 }
 
 onMounted(() => {
@@ -142,7 +177,11 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div class="stage-dock" data-testid="stage-dock">
+  <div
+    class="stage-dock"
+    data-testid="stage-dock"
+    :inert="manualTour || undefined"
+  >
     <!-- 状态与沙盘控制（观景/重置视角/普通版）收在同一张窄底板上：一行内左状态、右按钮，
          窄屏或短窗口自动换行 -->
     <div class="stage-meta-plate">
@@ -160,6 +199,7 @@ onBeforeUnmount(() => {
       <div class="stage-tools">
         <button
           v-if="canTour"
+          ref="tourBtnEl"
           type="button"
           class="stage-tool"
           data-testid="stage-tool-tour"
@@ -203,13 +243,18 @@ onBeforeUnmount(() => {
     </div>
     <form class="stage-input-row" @submit.prevent="ask()">
       <input
+        ref="inputEl"
         v-model="text"
         class="stage-input"
         data-testid="stage-input"
         type="text"
         autocomplete="off"
+        aria-label="向智多星提问"
         placeholder="想办什么事？例如：学生证丢了去哪补办"
         @input="onInput"
+        @keydown="onInputKeydown"
+        @focus="onInputFocus"
+        @blur="onInputBlur"
         @compositionstart="onCompositionStart"
         @compositionend="onCompositionEnd"
       />
@@ -394,6 +439,18 @@ onBeforeUnmount(() => {
 }
 .stage .stage-input::placeholder {
   color: var(--st-moon2);
+}
+/* 焦点在整条表单时给外框一圈金线；焦点具体落在输入框还是「问」用内框区分 */
+.stage .stage-input-row:focus-within {
+  box-shadow: 0 0 0 2px var(--st-gold), 0 0 18px rgba(232, 201, 138, 0.35);
+}
+.stage .stage-input:focus-visible {
+  outline: 2px solid var(--st-ov-gold);
+  outline-offset: -6px;
+}
+.stage .stage-ask:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: -4px;
 }
 .stage .stage-ask {
   width: 64px;

@@ -103,7 +103,10 @@ test("7 奖学金：办事向导，进入向导去 /workflows/", async ({ page }
   await ask(page, "奖学金怎么申请");
   await expect(page.locator('[data-testid="stage-panel"]')).toContainText("办事向导");
   await expect(page.locator('[data-testid="stage-panel"]')).toContainText("国家励志奖学金");
-  await page.click('[data-testid="stage-workflow-enter"]');
+  // 办理路线带向导入口时只留流程里的一个按钮（不再重复原按钮）
+  await expect(page.locator('[data-testid="stage-workflow-enter"]')).toHaveCount(0);
+  await expect(page.locator('[data-testid="proc-enter-flow"]')).toBeVisible();
+  await page.click('[data-testid="proc-enter-flow"]');
   await expect(page).toHaveURL(/\/workflows\//);
 });
 

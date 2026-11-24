@@ -94,25 +94,37 @@ function onClick(id: string) {
 /* 只在 .stage 之下生效（STAGE 规则 5）；题签：顶边 2px 金线、其余 1px 淡金线、
    底色近黑；选中边线变朱红；不在当前包的校区用虚线边框。 */
 .stage .stage-rail {
+  --rail-bottom: calc(var(--st-dock-bottom) + var(--st-compass-size) + 12px);
   position: fixed;
-  left: 26px;
-  top: 50%;
-  transform: translateY(-50%);
+  left: var(--st-bot-edge);
+  top: var(--st-rail-top);
+  bottom: var(--rail-bottom);
+  width: 84px;
+  max-height: calc(100dvh - var(--st-rail-top) - var(--rail-bottom));
+  height: max-content;
+  margin-block: auto;
+  padding: 3px;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
+  align-items: flex-start;
+  overflow: auto;
+  scrollbar-width: none;
+  pointer-events: none;
   z-index: 4;
 }
 .stage .stage-rail-wrap {
   position: relative;
+  pointer-events: auto;
+  flex: none;
 }
 .stage .stage-rail-item {
   width: 40px;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 7px;
-  padding: 13px 0 9px;
+  gap: 4px;
+  padding: 6px 0;
   background: var(--st-ov-bg);
   border: 1px solid var(--st-ov-gold-faint);
   border-top: 2px solid var(--st-ov-gold);
@@ -136,12 +148,14 @@ function onClick(id: string) {
   font-family: var(--st-song);
   font-weight: 600;
   font-size: 15px;
-  letter-spacing: 0.3em;
+  line-height: 1.1;
+  letter-spacing: 0.16em;
   color: var(--st-ov-fg);
 }
 .stage .stage-rail-sub {
   font-family: var(--st-hei);
   font-size: 9.5px;
+  line-height: 1.2;
   letter-spacing: 0.16em;
   color: var(--st-ov-gold);
 }
@@ -168,5 +182,39 @@ function onClick(id: string) {
   font-size: 13px;
   letter-spacing: 0.28em;
   color: var(--st-ov-gold);
+}
+@media (max-height: 850px) {
+  .stage .stage-rail { gap: 4px; }
+  .stage .stage-rail-item { gap: 2px; padding-block: 4px; }
+  .stage .stage-rail-name { font-size: 13px; letter-spacing: 0.04em; }
+}
+@media (max-width: 900px) {
+  .stage .stage-rail {
+    left: 12px;
+    right: 12px;
+    bottom: auto;
+    width: auto;
+    height: var(--st-mobile-rail-height);
+    max-height: none;
+    margin: 0;
+    flex-direction: row;
+    pointer-events: auto;
+  }
+  .stage .stage-rail-wrap { display: flex; gap: 4px; }
+  .stage .stage-rail-item {
+    width: auto;
+    padding: 4px 6px;
+    justify-content: center;
+  }
+  .stage .stage-rail-name { writing-mode: horizontal-tb; font-size: 12px; letter-spacing: 0; }
+  .stage .stage-rail-sub { display: none; }
+  .stage .stage-rail-enter {
+    position: static;
+    transform: none;
+    padding: 4px 6px;
+    writing-mode: horizontal-tb;
+    font-size: 12px;
+    letter-spacing: 0;
+  }
 }
 </style>

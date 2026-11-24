@@ -155,6 +155,266 @@ export async function mockApi(page: Page): Promise<void> {
         body: JSON.stringify(payload),
       });
 
+    // 纯问候 / 致谢：故意塞进正文楼名、图书馆 issuer 和一张单目的地 place 卡，
+    // 验证「误带地点也保持视角」（按需定位的 hold）。
+    const bare = msg.trim();
+    if (bare === "你好" || bare === "您好" || bare === "谢谢" || bare === "谢谢你") {
+      await ok({
+        ...base,
+        status: "answer",
+        answer: {
+          blocks: [
+            {
+              kind: "note",
+              text: "你好！我是石大智多星，可以问校园办事、政策条件和办理地点。",
+              citation_ids: ["lib-hold"],
+            },
+          ],
+          unknown_fields: [],
+        },
+        citations: [
+          {
+            id: "lib-hold",
+            title: "图书馆服务说明（误带出处）",
+            issuer: "石河子大学图书馆",
+            url: "https://lib.shzu.edu.cn/about",
+            published_at: "2025-06-01",
+            locator: null,
+            excerpt: "图书馆为全校师生提供借阅与咨询服务。",
+            time_condition: null,
+          },
+        ],
+        actions: [
+          {
+            kind: "place",
+            title: "地点定位",
+            ambiguous: false,
+            matches: [{ building_id: "ZQ-B034", label: "图书馆", category: "文教", campus: "中区", note: "误带" }],
+            fallback_text: null,
+          },
+        ],
+        timing_ms: 600,
+      });
+      return;
+    }
+
+    // 图书馆几点关门：有时间没地点 → 保持视角
+    if (msg.includes("图书馆几点") || msg.includes("几点关门")) {
+      await ok({
+        ...base,
+        status: "answer",
+        answer: {
+          blocks: [
+            { kind: "fact", text: "图书馆周一至周日 8:00–22:30 开放，节假日以官网通知为准。", citation_ids: ["lib-time"] },
+          ],
+          unknown_fields: [],
+        },
+        citations: [
+          {
+            id: "lib-time",
+            title: "图书馆开放时间",
+            issuer: "石河子大学图书馆",
+            url: "https://lib.shzu.edu.cn/hours",
+            published_at: "2025-06-01",
+            locator: null,
+            excerpt: "每日 8:00–22:30 开放。",
+            time_condition: null,
+          },
+        ],
+        timing_ms: 700,
+      });
+      return;
+    }
+
+    // 慢回应（1.6 秒）：验证等待期间用户换校区/选楼后，旧回应不会把人拉回去
+    if (msg.includes("慢问")) {
+      await new Promise((r) => setTimeout(r, 1600));
+      await ok({
+        ...base,
+        status: "answer",
+        answer: {
+          blocks: [
+            { kind: "office", text: "图书馆在中区。", citation_ids: ["lib-slow"] },
+          ],
+          unknown_fields: [],
+        },
+        citations: [
+          {
+            id: "lib-slow",
+            title: "图书馆位置",
+            issuer: "石河子大学图书馆",
+            url: "https://lib.shzu.edu.cn/loc",
+            published_at: "2025-06-01",
+            locator: null,
+            excerpt: "图书馆位于中区。",
+            time_condition: null,
+          },
+        ],
+        actions: [
+          {
+            kind: "place",
+            title: "地点定位",
+            ambiguous: false,
+            matches: [{ building_id: "ZQ-B034", label: "图书馆", category: "文教", campus: "中区", note: "登记楼" }],
+            fallback_text: null,
+          },
+        ],
+        timing_ms: 1600,
+      });
+      return;
+    }
+
+    // 图书馆在哪：结构化唯一目标 → 自动定位
+    if (msg.includes("图书馆在哪")) {
+      await ok({
+        ...base,
+        status: "answer",
+        answer: {
+          blocks: [
+            { kind: "office", text: "图书馆在中区，从北门进校后沿主路向南约 300 米。", citation_ids: ["lib-loc"] },
+          ],
+          unknown_fields: [],
+        },
+        citations: [
+          {
+            id: "lib-loc",
+            title: "图书馆位置与开放说明",
+            issuer: "石河子大学图书馆",
+            url: "https://lib.shzu.edu.cn/loc",
+            published_at: "2025-06-01",
+            locator: null,
+            excerpt: "图书馆位于中区。",
+            time_condition: null,
+          },
+        ],
+        actions: [
+          {
+            kind: "place",
+            title: "地点定位",
+            ambiguous: false,
+            matches: [{ building_id: "ZQ-B034", label: "图书馆", category: "文教", campus: "中区", note: "登记楼" }],
+            fallback_text: null,
+          },
+        ],
+        timing_ms: 800,
+      });
+      return;
+    }
+
+    // 图书馆能借几本书：问数量 → 保持视角（即使带结构化地点）
+    if (msg.includes("借几本")) {
+      await ok({
+        ...base,
+        status: "answer",
+        answer: {
+          blocks: [
+            { kind: "fact", text: "本科生一次最多借 20 本，借期 30 天。", citation_ids: ["lib-loan-q"] },
+          ],
+          unknown_fields: [],
+        },
+        citations: [
+          {
+            id: "lib-loan-q",
+            title: "图书借阅规则",
+            issuer: "石河子大学图书馆",
+            url: "https://lib.shzu.edu.cn/loan",
+            published_at: "2025-06-01",
+            locator: null,
+            excerpt: "本科 20 册、30 天。",
+            time_condition: null,
+          },
+        ],
+        actions: [
+          {
+            kind: "place",
+            title: "地点定位",
+            ambiguous: false,
+            matches: [{ building_id: "ZQ-B034", label: "图书馆", category: "文教", campus: "中区", note: "误带" }],
+            fallback_text: null,
+          },
+        ],
+        timing_ms: 700,
+      });
+      return;
+    }
+
+    // 哪里能还书：两个不同楼号 → 手动候选，不默认第一条
+    if (msg.includes("哪里能还书")) {
+      await ok({
+        ...base,
+        status: "answer",
+        answer: {
+          blocks: [
+            { kind: "office", text: "北区图书馆与中区图书馆都可以还书。", citation_ids: ["lib-return"] },
+          ],
+          unknown_fields: [],
+        },
+        citations: [
+          {
+            id: "lib-return",
+            title: "图书归还地点",
+            issuer: "石河子大学图书馆",
+            url: "https://lib.shzu.edu.cn/return",
+            published_at: "2025-06-01",
+            locator: null,
+            excerpt: "两馆通还。",
+            time_condition: null,
+          },
+        ],
+        actions: [
+          {
+            kind: "place",
+            title: "地点定位",
+            ambiguous: true,
+            matches: [
+              { building_id: "BQ-B018", label: "北区图书馆", category: "文教", campus: "北区", note: "通还" },
+              { building_id: "ZQ-B034", label: "图书馆", category: "文教", campus: "中区", note: "通还" },
+            ],
+            fallback_text: null,
+          },
+        ],
+        timing_ms: 900,
+      });
+      return;
+    }
+
+    // 只有文字地址：不给楼号，保留原话
+    if (msg.includes("老行政楼")) {
+      await ok({
+        ...base,
+        status: "answer",
+        answer: {
+          blocks: [
+            { kind: "office", text: "到老行政楼后面的平房办理（未登记楼号）。", citation_ids: ["old-office"] },
+          ],
+          unknown_fields: [],
+        },
+        citations: [
+          {
+            id: "old-office",
+            title: "临时办公点说明",
+            issuer: "后勤管理处",
+            url: "https://www.shzu.edu.cn/hq/notice",
+            published_at: "2025-09-01",
+            locator: null,
+            excerpt: "老行政楼后面的平房。",
+            time_condition: null,
+          },
+        ],
+        actions: [
+          {
+            kind: "place",
+            title: "地点定位",
+            ambiguous: false,
+            matches: [],
+            fallback_text: "老行政楼后面的平房（未登记楼号，位置以现场指示为准）",
+          },
+        ],
+        timing_ms: 600,
+      });
+      return;
+    }
+
     // 学生证丢了 → 办事单场景（errand 卡 + 沙盘定位 action，照后端 student_card_reissue 的取值）
     if (msg.includes("学生证丢了")) {
       await ok({
@@ -289,6 +549,15 @@ export async function mockApi(page: Page): Promise<void> {
             time_condition: null,
           },
         ],
+        actions: [
+          {
+            kind: "place",
+            title: "地点定位",
+            ambiguous: false,
+            matches: [{ building_id: "ZQ-B034", label: "图书馆", category: "文教", campus: "中区", note: "借阅服务台" }],
+            fallback_text: null,
+          },
+        ],
         timing_ms: 900,
       });
       return;
@@ -320,6 +589,15 @@ export async function mockApi(page: Page): Promise<void> {
             time_condition: "工作日 16:00 前",
           },
         ],
+        actions: [
+          {
+            kind: "place",
+            title: "地点定位",
+            ambiguous: false,
+            matches: [{ building_id: "ZQ-B024", label: "行政楼", category: "办公", campus: "中区", note: "自助打印" }],
+            fallback_text: null,
+          },
+        ],
         timing_ms: 1200,
       });
       return;
@@ -349,6 +627,94 @@ export async function mockApi(page: Page): Promise<void> {
       return;
     }
 
+    // 转专业 + 国家励志奖学金 → 办理路线（checklist 卡 + 三节点，年度待补充）
+    if (msg.includes("转专业")) {
+      await ok({
+        ...base,
+        status: "answer",
+        answer: {
+          blocks: [
+            {
+              kind: "note",
+              text: "转专业不是国家励志奖学金的排除条件；但转专业后的排名口径需要向转入学院确认。",
+              citation_ids: ["xg-lz-c2"],
+            },
+          ],
+          unknown_fields: [],
+        },
+        citations: [
+          {
+            id: "xg-lz-c1",
+            title: "国家励志奖学金评审办法",
+            issuer: "石河子大学学生处",
+            url: "https://www.shzu.edu.cn/xg/lz",
+            published_at: "2025-09-01",
+            locator: "第二条",
+            excerpt: "国家励志奖学金每生每年 6000 元。",
+            time_condition: null,
+          },
+          {
+            id: "xg-lz-c2",
+            title: "国家励志奖学金资格条件",
+            issuer: "石河子大学学生处",
+            url: "https://www.shzu.edu.cn/xg/lz2",
+            published_at: "2025-09-01",
+            locator: "第三条",
+            excerpt: "二年级以上、家庭经济困难、双排名前 30%。",
+            time_condition: null,
+          },
+          {
+            id: "xg-lz-c6",
+            title: "国家励志奖学金办理与材料",
+            issuer: "石河子大学学生处",
+            url: "https://www.shzu.edu.cn/xg/lz6",
+            published_at: "2025-09-01",
+            locator: null,
+            excerpt: "申请表纸质版一式一份。",
+            time_condition: null,
+          },
+        ],
+        actions: [
+          {
+            kind: "checklist",
+            title: "国家励志奖学金申请核对",
+            award: "国家励志奖学金",
+            year: null,
+            year_note: "用户未说明申报年度；年度要求待确认。",
+            items: [
+              { label: "基本申请资格", state: "verified", detail: "二年级以上在籍在校生。", evidence_ids: ["xg-lz-c1"], key: "eligibility" },
+              { label: "学习成绩排名与综合测评排名（双排名要求）", state: "needs_user", detail: "两项均须位于前 30%。", evidence_ids: ["xg-lz-c2"], key: "rank" },
+              { label: "转专业后的学院归属与排名口径", state: "needs_college", detail: "需要向转入学院学生工作办公室确认。", evidence_ids: ["xg-lz-c2"], key: "transfer_major" },
+              { label: "申请材料", state: "needs_web", detail: "申报年度未确认，往年口径仅作参考。", evidence_ids: [], key: "materials" },
+            ],
+            checks: [],
+          },
+        ],
+        process: {
+          title: "国家励志奖学金申请核对",
+          nodes: [
+            { id: "year", title: "核实申报年度", detail: "请补充申报年度（例如 2025 年度）。", state: "needs_user", citation_ids: [] },
+            {
+              id: "eligibility",
+              title: "核对申请资格",
+              detail: "学习成绩排名与综合测评排名（待你补充）；转专业后的学院归属与排名口径（待学院确认）：需要向转入学院学生工作办公室确认",
+              state: "needs_user",
+              citation_ids: ["xg-lz-c2"],
+            },
+            { id: "materials", title: "查看材料", detail: "申报年度未确认：当年申请表版本与材料清单需以正式通知为准（往年口径，仅作参考）。", state: "needs_check", citation_ids: [] },
+          ],
+          edges: [
+            { from_id: "year", to_id: "eligibility", label: null },
+            { from_id: "eligibility", to_id: "materials", label: null },
+          ],
+          focus_id: "year",
+          workflow_entry: null,
+        },
+        timing_ms: 1200,
+      });
+      return;
+    }
+
     if (msg.includes("奖学金怎么申请")) {
       await ok({
         ...base,
@@ -364,6 +730,48 @@ export async function mockApi(page: Page): Promise<void> {
           preset_slots: { student_type: "本科", grade: "二年级" },
           preset_note: "你刚才提到自己是本科二年级学生",
         },
+        citations: [
+          {
+            id: "xg-lz-c1",
+            title: "国家励志奖学金评审办法",
+            issuer: "石河子大学学生处",
+            url: "https://www.shzu.edu.cn/xg/lz",
+            published_at: "2025-09-01",
+            locator: "第二条",
+            excerpt: "国家励志奖学金每生每年 6000 元。",
+            time_condition: null,
+          },
+          {
+            id: "xg-lz-c6",
+            title: "国家励志奖学金办理与材料",
+            issuer: "石河子大学学生处",
+            url: "https://www.shzu.edu.cn/xg/lz6",
+            published_at: "2025-09-01",
+            locator: null,
+            excerpt: "申请表纸质版一式一份。",
+            time_condition: null,
+          },
+        ],
+        // 向导状态同样带办理路线：入口挂在「文书生成」节点（不再另出按钮）
+        process: {
+          title: "国家励志奖学金申请（2025年度历史演示）",
+          nodes: [
+            { id: "policy", title: "事项与政策确认", detail: "确认申请国家励志奖学金、学生层次与申报年度（2025历史演示）。", state: "upcoming", citation_ids: ["xg-lz-c1"] },
+            { id: "conditions", title: "条件对照", detail: "按规则逐项核对年级、困难认定、双排名。", state: "upcoming", citation_ids: ["xg-lz-c1"] },
+            { id: "materials", title: "材料清单", detail: "生成已准备/待准备/需确认的材料清单。", state: "ready", citation_ids: ["xg-lz-c6"] },
+            { id: "document", title: "文书生成", detail: "按 2025 年学校申请表结构生成可编辑申请表，签名与审核栏留白。", state: "ready", citation_ids: ["xg-lz-c1"] },
+            { id: "export", title: "预览与导出", detail: "导出 Word/PDF，附填写依据与办理提示。", state: "upcoming", citation_ids: ["xg-lz-c6"] },
+          ],
+          edges: [
+            { from_id: "policy", to_id: "conditions", label: null },
+            { from_id: "conditions", to_id: "materials", label: null },
+            { from_id: "materials", to_id: "document", label: null },
+            { from_id: "document", to_id: "export", label: null },
+          ],
+          focus_id: "policy",
+          workflow_entry: { node_id: "document", flow_id: "national_inspirational_2025", historical: true },
+        },
+        timing_ms: 1500,
       });
       return;
     }
@@ -392,6 +800,15 @@ export async function mockApi(page: Page): Promise<void> {
             locator: null,
             excerpt: "音乐类活动公告由学院统一发布。",
             time_condition: null,
+          },
+        ],
+        actions: [
+          {
+            kind: "place",
+            title: "地点定位",
+            ambiguous: false,
+            matches: [{ building_id: "JJ-B019", label: "文学艺术学院", category: "学院", campus: "将军山", note: "学院驻地" }],
+            fallback_text: null,
           },
         ],
         timing_ms: 1000,

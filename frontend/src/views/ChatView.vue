@@ -3,10 +3,11 @@ import { ref, nextTick, onMounted, onBeforeUnmount, watch, computed } from "vue"
 import { useRoute, useRouter } from "vue-router";
 import { useChatStore, type ChatTurn } from "@/stores/chat";
 import { useKbMeta } from "@/composables";
-import type { CitationRef, ChatResponse } from "@/api/client";
+import type { CitationRef, ChatResponse, ActionFlowRef } from "@/api/client";
 import AnswerBlocks from "@/components/AnswerBlocks.vue";
 import EvidencePanel from "@/components/EvidencePanel.vue";
 import ActionCards from "@/components/ActionCards.vue";
+import ProcessPanel from "@/components/ProcessPanel.vue";
 import { setFlowPreset } from "@/stores/flowDraft";
 
 const route = useRoute();
@@ -38,6 +39,19 @@ function turnKey(t: ChatTurn): string {
 
 function citationById(resp: ChatResponse | null, id: string): CitationRef | undefined {
   return resp?.citations?.find((c) => c.id === id);
+}
+
+/** 办理路线里的向导入口：复用同一条回复上已有的向导引用预设 */
+function flowsOf(resp: ChatResponse): ActionFlowRef[] {
+  const list: ActionFlowRef[] = [];
+  if (resp.workflow) {
+    list.push({ flow_id: resp.workflow.flow_id, historical: resp.workflow.historical,
+                preset_slots: resp.workflow.preset_slots, preset_note: resp.workflow.preset_note });
+  }
+  for (const a of resp.actions ?? []) {
+    if (a.kind === "checklist" && a.flow) list.push(a.flow);
+  }
+  return list;
 }
 
 /** 点正文旁角标或清单项：桌面右侧面板与窄屏内联卡指向同一条出处 */
@@ -256,6 +270,9 @@ const SAMPLES_EMPTY = [
                 <template v-else-if="t.response.status === 'answer' && t.response.answer">
                   <AnswerBlocks :blocks="t.response.answer.blocks" :citations="t.response.citations"
                                 @cite="(id) => onCite(t, id)" />
+                  <ProcessPanel v-if="t.response.process" :process="t.response.process"
+                                :citations="t.response.citations" :flows="flowsOf(t.response)"
+                                @cite="(id) => onCite(t, id)" />
                   <div v-if="t.response.citations.length" class="cite-fold">
                     <button type="button" class="cite-fold-head" @click="toggleCiteFold(t)">
                       <span class="mono">出处 ({{ t.response.citations.length }})</span>
@@ -300,6 +317,9 @@ const SAMPLES_EMPTY = [
                   <p v-if="t.response.unknown_fields && t.response.unknown_fields.length" class="tiny muted" style="margin: 6px 0 0;">
                     待获取：{{ t.response.unknown_fields.join("；") }}
                   </p>
+                  <ProcessPanel v-if="t.response.process" :process="t.response.process"
+                                :citations="t.response.citations" :flows="flowsOf(t.response)"
+                                @cite="(id) => onCite(t, id)" />
                   <div v-if="t.response.citations && t.response.citations.length" class="cite-fold">
                     <button type="button" class="cite-fold-head" @click="toggleCiteFold(t)">
                       <span class="mono">参考出处 ({{ t.response.citations.length }})</span>
@@ -355,7 +375,11 @@ const SAMPLES_EMPTY = [
                   <div class="box-body">
                     <h3 class="h3">{{ t.response.workflow.name }}</h3>
                     <p class="muted small" style="margin: 0; white-space: pre-line;">{{ t.response.workflow.summary }}</p>
-                    <button type="button" class="btn-red btn-sm" style="align-self: flex-start;"
+                    <ProcessPanel v-if="t.response.process" :process="t.response.process"
+                                  :citations="t.response.citations" :flows="flowsOf(t.response)"
+                                  @cite="(id) => onCite(t, id)" />
+                    <!-- 同一向导只保留一个入口：流程里已有入口时不再重复原按钮 -->
+                    <button v-if="!t.response.process?.workflow_entry" type="button" class="btn-red btn-sm" style="align-self: flex-start;"
                             @click="enterWorkflow(t.response!.workflow!.flow_id, t.response!.workflow!.preset_slots, t.response!.workflow!.preset_note)">进入向导 →</button>
                   </div>
                 </div>

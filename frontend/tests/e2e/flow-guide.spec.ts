@@ -186,10 +186,11 @@ test("10 普通聊天：学生证丢了 → 办事单卡（地点房间大字、
   await expect(page.getByTestId("errand-sandbox")).toBeVisible();
 });
 
-test("11 沙盘：问学生证补办 → 面板出办事单并自动落楼（大学生活动中心）", async ({ page }) => {
+test("11 沙盘：问学生证补办去处 → 面板出办事单并自动落楼（大学生活动中心）", async ({ page }) => {
   await page.goto("/stage?3d=1&intro=0");
   await page.waitForFunction(() => window.__campus3d?.status === "ready", undefined, { timeout: 40_000 });
-  await page.fill('[data-testid="stage-input"]', "我的学生证丢了怎么办");
+  // 按需定位：只有明确问「去哪」才自动飞；只问「怎么办」时办事单照常、镜头不动
+  await page.fill('[data-testid="stage-input"]', "我的学生证丢了去哪补办");
   await page.press('[data-testid="stage-input"]', "Enter");
   await expect(page.getByTestId("stage-act-errand")).toBeVisible({ timeout: 10_000 });
   await expect(page.getByTestId("stage-errand-place")).toContainText("大学生活动中心（南楼）");

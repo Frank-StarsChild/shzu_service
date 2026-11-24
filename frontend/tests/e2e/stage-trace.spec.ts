@@ -95,7 +95,26 @@ async function mockTraceChat(page: Page, opts: MockOpts = {}) {
             time_condition: null,
           },
         ],
-        actions: [],
+        // 按需定位：自动落楼只看结构化地点；正文楼名与出处只用于展示与题签
+        actions: [
+          {
+            kind: "errand",
+            title: "学生证补办 · 办事单",
+            place: {
+              building: "大学生活动中心（南楼）",
+              room: "301–302室",
+              building_id: "ZQ-B023",
+              campus: "中区",
+              evidence_id: "c1",
+            },
+            dept: "学生事务管理办公室（学生处）",
+            service_scope: "学生证、乘车优惠卡办理",
+            phone: "0993-2058029",
+            hours: null,
+            materials_confirmed: false,
+            confirms: [],
+          },
+        ],
         unknown_fields: [],
         timing_ms: 1200,
       }),

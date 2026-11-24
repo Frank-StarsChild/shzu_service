@@ -4,8 +4,8 @@
 每轮执行顺序：
   prepare → model ⇄ tools → publish
 - prepare：查询规范化（别名归一/身份/学院/年份）与校验提示注入（年度覆盖、时间窗、歧义），
-  现有关键词/别名/日期规则仅用于规范化与校验，不再提前结束对话。
-- model：DeepSeek（LangChain ChatOpenAI）绑定三个工具；模型自行判断直接回答、追问或调用工具。
+  单一事项且范围明确时可先取齐证据；回复由模型撰写。
+- model：DeepSeek（LangChain ChatOpenAI）生成回复，或按需调用工具补充资料。
 - tools：LangGraph 执行 LangChain 工具调用，真实结果（ToolMessage）返回给模型继续组织回复。
 - publish：校验模型输出（reply 非空、证据 ID ⊆ 工具返回集合、flow_id ∈ 可用向导、choices 规范化），
   构造 ChatResponse；模型不可用/超时/输出无效 → status="error"（技术错误，前端展示失败+重试）。
@@ -27,6 +27,7 @@ from pydantic import BaseModel, Field, ValidationError
 
 from ..agent import deepseek_adapter
 from ..agent.tools import TOOLS, TOOL_LIST
+from ..agent.process import build_process
 from ..knowledge.loader import get_kb
 from ..knowledge import web_evidence
 from ..knowledge.intent import IDENTITY_WORDS, normalize_query, year_window_note
@@ -37,8 +38,22 @@ logger = logging.getLogger("shzu.agent")
 MAX_MODEL_CALLS = 4        # 每轮模型调用次数上限
 MAX_TOOL_CALLS = 4         # 每个工具轮次内的调用数上限（场景：检索+场景工具+定位）
 TURN_BUDGET = deepseek_adapter.TURN_BUDGET
+WEB_LOOKUP_WINDOW = 3.5    # 5 秒交互目标中为最终答复保留约 1.5 秒
 MAX_CITATIONS = 6
 MAX_ACTIONS = 2             # 每轮附加的动作卡片上限
+
+_TRANSCRIPT = r"(?:加盖|盖)?(?:教务处)?(?:公章(?:的)?)?成绩单"
+_PRINT_QUESTION = r"(?:哪里|哪儿|在哪(?:里|儿)?|去哪里|去哪儿)"
+_TRANSCRIPT_LOCATION = re.compile(
+    rf"(?:在校(?:学)?生|本科生)(?:的)?(?:{_PRINT_QUESTION}(?:可以|能)?打印{_TRANSCRIPT}|"
+    rf"{_TRANSCRIPT}{_PRINT_QUESTION}(?:可以|能)?打印)"
+)
+_AWARD_YEAR = r"(?:20\d{2}年?(?:度)?|今年|本年度|本学年)(?:的)?"
+_AWARD_NAME = r"(?:国家)?励志奖学金"
+_AWARD_APPLICATION = r"(?:该|要)?(?:怎么|如何)(?:申请|申报)"
+_AWARD_QUESTION = re.compile(
+    rf"{_AWARD_YEAR}{_AWARD_NAME}{_AWARD_APPLICATION}|{_AWARD_APPLICATION}{_AWARD_YEAR}{_AWARD_NAME}"
+)
 
 # 技术错误文案（系统级错误状态，不是智能体的聊天正文）
 ERRORS = {
@@ -63,6 +78,7 @@ BASE_PROMPT = """你是石河子大学校园服务智能体「石大智多星」
 用户对上一轮追问的简短回答（如只说“学生证”“本科生”“2025 年”）是对该追问的回答：
 结合历史理解为已确认的条件继续处理，不要重复追问同一问题。
 每轮根据问题和已知信息写正文，避免重复固定开场、范围说明或结尾。
+先回答用户实际问的点。简单问题用一两句，复杂问题按需列步骤；引用卡会显示出处，不要在正文重复出处或逐字复述证据。
 一次对话里同时有问候/身份和具体业务（如“你好，你是谁？宿舍漏水找谁”）时：先简短回应对话部分，
 再用工具查业务部分并基于证据作答。reply 中不得出现“稍等/我先查一下再告诉你”等未兑现的承诺——
 要么当场调用工具后用结果作答，要么按已知信息回答或说明缺口。
@@ -80,6 +96,7 @@ BASE_PROMPT = """你是石河子大学校园服务智能体「石大智多星」
 - lookup_official_web：联网补查学校/学院/部门官网最新信息。当本地检索没有足够证据、
   资料可能已过期、用户明确问最新情况，或回答缺少明确年份与适用范围时调用。
   先用 search_campus_knowledge 检索本地，确实不够再联网。
+  若本轮校验已明确指出某年度正式通知缺失，可以在同一批工具调用中先查本地、再补查官网，省去一次中间回复。
   工具返回失败（超时/需登录/无正文/未找到当年正式文件）时，如实说明实际查证情况，
   不得声称已联网核实；本地已有的可靠证据仍然可用。本地材料与网页冲突时，
   分别注明各自的年份和适用范围，不把过期资料当作当前政策。
@@ -104,7 +121,7 @@ BASE_PROMPT = """你是石河子大学校园服务智能体「石大智多星」
 
 最终回复只输出一个 JSON 对象（不输出解释、链接或 Markdown）：
 {"status":"answer|clarify|insufficient|out_of_scope|workflow",
- "reply":"给用户的完整中文回复",
+"reply":"给用户的完整中文回复，最多900字",
  "evidence_ids":["本轮工具返回的证据ID（含 web- 开头的联网证据）"],
  "clarify_choices":["选项标签","…"],
  "flow_id":null}
@@ -112,7 +129,7 @@ BASE_PROMPT = """你是石河子大学校园服务智能体「石大智多星」
 - answer：纯对话（问候/身份/能力/致谢/对话追问）不列 evidence_ids；校园事实（政策/数字/地点/
   电话/日期/手续/专业/师资/职称）至少列一个直接支持的证据 ID，数字、地点、电话、日期和手续
   必须由这些证据支持。回答学院师资职称时只列有明确职称依据的证据。
-- clarify：reply 写结合本轮的具体追问；clarify_choices 给可选标签（如身份或卡种），自由作答类可为空数组。
+- clarify：reply 只写解决歧义所需的具体问题，不预告未核实的承办部门、地点或流程；clarify_choices 给可选标签，自由作答可省略。
 - insufficient：reply 说明这次缺少什么依据、能核实的下一步；可附参考性证据 ID；
   若已尝试联网查证但未取得正文，如实写明查证到的实际状态（查到了哪一年的材料、哪一项仍缺）。
 - out_of_scope：reply 说明为何超出校园官方资料范围并引导回校园事务。
@@ -150,7 +167,9 @@ class ChatState(TypedDict, total=False):
     tools_invoked: List[str]
     tools_used: List[str]            # 去重后本轮实际执行的工具（步骤可见）
     model_error: Optional[str]
+    prepared_reply: Optional[str]
     deadline: float
+    web_deadline: float
     timings: Dict[str, float]
     final: Dict[str, Any]
 
@@ -158,8 +177,7 @@ class ChatState(TypedDict, total=False):
 # ---------- prepare：规范化 + 校验提示注入 ----------
 
 def node_prepare(state: ChatState) -> ChatState:
-    """规则只做两件事：查询规范化（别名/身份/学院）与校验提示（年度/时间窗/歧义）。
-    提示注入模型上下文供其组织回复；不产生任何终点状态（正常对话一律交给模型）。"""
+    """规范化查询、注入校验提示，并为范围明确的单一事项预取证据。"""
     kb = get_kb()
     query = state["query"]
     text, alias_hit, identity = normalize_query(query)
@@ -171,7 +189,14 @@ def node_prepare(state: ChatState) -> ChatState:
     year = detect_year(text)
     if year is None:
         year = _relative_year(text, state["business_date"])
-    if year and year >= 2026 and re.search(r"励志|奖学金", text):
+    missing_award_year = None
+    if year and year > 2025 and "励志奖学金" in text and not any(
+        doc.get("document_year") == year
+        and "励志奖学金" in (doc.get("title") or "")
+        and "通知" in (doc.get("title") or "")
+        for doc in kb.documents.values()
+    ):
+        missing_award_year = year
         notes.append(f"年度校验：用户询问 {year} 年度；库内励志奖学金完整依据包为 2025 年度（历史演示），"
                      f"{year} 年的通知、模板和学院截止日尚未入库。")
 
@@ -206,9 +231,48 @@ def node_prepare(state: ChatState) -> ChatState:
     state["tools_invoked"] = []
     state["tools_used"] = []
     state["model_error"] = None
-    state["deadline"] = time.monotonic() + TURN_BUDGET
+    state["prepared_reply"] = None
+    now = time.monotonic()
+    state["deadline"] = now + TURN_BUDGET
+    state["web_deadline"] = now + min(WEB_LOOKUP_WINDOW, TURN_BUDGET)
     state["timings"] = {"start": time.perf_counter()}
+    _prepare_evidence(state, missing_award_year)
     return state
+
+
+def _prepare_evidence(state: ChatState, missing_award_year: Optional[int]) -> None:
+    """提前调用现有业务工具。只有相关证据可用时才直达模型整理回复。"""
+    if state.get("history") or not deepseek_adapter.is_configured():
+        return
+    text = re.sub(r"\s+", "", state["query"]).rstrip("？?。！!")
+    text = re.sub(r"^请问[，,]?", "", text)
+    if _TRANSCRIPT_LOCATION.fullmatch(text):
+        calls = [("search_campus_knowledge", {"query": "在校生成绩单打印 教务处盖章 一站式服务大厅"})]
+        required = set((get_kb().facts.get("jw-f-cjd-way") or {}).get("evidence_ids") or [])
+        instruction = ("按在校生教务处盖章成绩单的官方指引，简要给出申请入口和自助机地点，"
+                       "引用支持该办理途径的条款。")
+    elif missing_award_year and _AWARD_QUESTION.fullmatch(text):
+        year = missing_award_year
+        calls = [
+            ("check_award_readiness", {"award": "国家励志奖学金", "year": year}),
+            ("lookup_official_web", {"query": f"石河子大学 {year}年 国家励志奖学金 评审 申请通知"}),
+        ]
+        required = {"xg-lz-c1", "xg-lz-c2", "xg-lz-c5", "xg-cj181-c1"}
+        instruction = (f"简要说明 {year} 年度报名依据是否可确认，以及用户下一步该做什么。"
+                       "只有同一年度、同一奖项的正式通知可作为当年申报依据。"
+                       "缺少该通知时用 insufficient，标明 2025 年材料仅供历史参考并引用相关条款；"
+                       "用 2 到 4 句交代已核实的依据和咨询渠道，详细核对项已由工具提供。")
+    else:
+        return
+
+    tool_request = AIMessage(content="", tool_calls=[
+        {"name": name, "args": args, "id": f"prefetch-{index}", "type": "tool_call"}
+        for index, (name, args) in enumerate(calls)
+    ])
+    prepared = node_tools({**state, "messages": [*state["messages"], tool_request]}, None)
+    if required.intersection(prepared["evidence_ids"]):
+        state.update(prepared)
+        state["prepared_reply"] = instruction
 
 
 def _relative_year(text: str, today: str) -> Optional[int]:
@@ -246,6 +310,8 @@ def _system_message(state: ChatState) -> SystemMessage:
     notes = state.get("notes") or []
     if notes:
         parts.append("服务端校验提示（本轮规则核验的事实，回复需与之相符）：\n" + "\n".join("- " + n for n in notes))
+    if state.get("prepared_reply"):
+        parts.append("本轮办事工具已返回资料，请直接输出最终 JSON。" + state["prepared_reply"])
     return SystemMessage(content="\n\n".join(parts))
 
 
@@ -258,7 +324,10 @@ def node_model(state: ChatState, config: RunnableConfig) -> Dict[str, Any]:
     remaining = state.get("deadline", time.monotonic()) - time.monotonic()
     if remaining <= 0.5:
         return {"model_error": "model_timeout"}
-    bound = model.bind_tools(TOOL_LIST)
+    if state.get("prepared_reply"):
+        bound = model.bind_tools(TOOL_LIST, tool_choice="none")
+    else:
+        bound = model.bind_tools(TOOL_LIST)
     msgs = [_system_message(state)] + list(state["messages"])
     # 硬超时看门狗：openai SDK/网络层挂起时按本轮剩余预算强制返回（线程不等待退出）
     from concurrent.futures import ThreadPoolExecutor
@@ -290,7 +359,7 @@ def _tool_config(state: ChatState, config: RunnableConfig) -> Dict[str, Any]:
         t = re.sub(r"\s+", " ", str(m.get("text") or ""))[:120]
         if t:
             ctx += "\n" + t
-    return {"query_context": ctx}
+    return {"query_context": ctx, "web_deadline": state.get("web_deadline")}
 
 
 def _route_after_model(state: ChatState) -> str:
@@ -400,6 +469,8 @@ def _validated_actions(state: ChatState, kb) -> tuple:
                     ("verified", "needs_user", "needs_college", "needs_web") else "verified",
                     "detail": str(it.get("detail") or "")[:400],
                     "evidence_ids": _keep(it.get("evidence_ids")),
+                    # 稳定条目 key 原样保留（只用于流程映射，仍受上面状态/证据校验约束）
+                    "key": (str(it.get("key"))[:40] if it.get("key") else None),
                 })
             if not items:
                 continue
@@ -564,6 +635,15 @@ def _attach_actions(state: ChatState, kb, final, cited_ids):
     return final
 
 
+def _attach_process(state: ChatState, kb, final, candidate):
+    """附加办理路线；组装或校验失败则不加 process，正文/引用/动作卡照常返回。"""
+    proc = build_process(state, kb, final, candidate=candidate,
+                         citations_for=lambda ids: _citations_for(kb, ids))
+    if proc:
+        final["process"] = proc
+    return final
+
+
 def _publish_final(state: ChatState) -> Dict[str, Any]:
     """校验模型输出并产出 ChatResponse dict；校验失败返回技术错误（error），不冒充正常回复。"""
     kb = get_kb()
@@ -580,6 +660,10 @@ def _publish_final(state: ChatState) -> Dict[str, Any]:
         return _build(state, "error", reason_code="turn_budget", message=ERRORS["turn_budget"])
     try:
         obj = deepseek_adapter._extract_json(raw)
+        # 工具已取齐证据时，模型有时用 null 表示没有澄清选项；与省略可选字段等价。
+        for field in ("evidence_ids", "clarify_choices"):
+            if obj.get(field) is None:
+                obj.pop(field, None)
         # 模型偶尔列超过 6 条 evidence：按 MAX_CITATIONS 截前 N 条再校验
         # （不整单丢弃——回复本身有效，超出的引用本就过不了发布校验）
         if isinstance(obj.get("evidence_ids"), list) and len(obj["evidence_ids"]) > MAX_CITATIONS:
@@ -596,6 +680,8 @@ def _publish_final(state: ChatState) -> Dict[str, Any]:
 
     verified = set(state.get("evidence_ids") or [])
     cited = [e for e in decision.evidence_ids if e in verified]
+    # 模型建议的办理步骤（窄入口）：单独取出，校验不过就整张图放弃，绝不影响正文。
+    candidate = obj.pop("process_candidate", None)
 
     if decision.status == "answer":
         if decision.evidence_ids and not cited:
@@ -608,7 +694,8 @@ def _publish_final(state: ChatState) -> Dict[str, Any]:
         final = _build(state, "answer", message=decision.reply,
                        answer={"blocks": blocks, "unknown_fields": []},
                        citations=citations)
-        return _attach_actions(state, kb, final, [c["id"] for c in citations])
+        final = _attach_actions(state, kb, final, [c["id"] for c in citations])
+        return _attach_process(state, kb, final, candidate)
 
     if decision.status == "clarify":
         choices = _normalize_choices(decision.clarify_choices)
@@ -623,7 +710,9 @@ def _publish_final(state: ChatState) -> Dict[str, Any]:
     if decision.status == "insufficient":
         citations = _citations_for(kb, cited)
         final = _build(state, "insufficient", message=decision.reply, citations=citations)
-        return _attach_actions(state, kb, final, [c["id"] for c in citations])
+        final = _attach_actions(state, kb, final, [c["id"] for c in citations])
+        # 只有本轮确有现成场景卡（仍有可展示环节）时才出图，缺项由正文说明
+        return _attach_process(state, kb, final, None)
 
     if decision.status == "out_of_scope":
         return _build(state, "out_of_scope", message=decision.reply)
@@ -631,10 +720,11 @@ def _publish_final(state: ChatState) -> Dict[str, Any]:
     # workflow
     if decision.flow_id and decision.flow_id in (state.get("workflows") or []):
         flow = kb.flows.get(decision.flow_id) or {}
-        return _build(state, "workflow", message=decision.reply, workflow={
+        final = _build(state, "workflow", message=decision.reply, workflow={
             "flow_id": decision.flow_id, "flow_version": flow.get("version", ""),
             "name": flow.get("name", ""), "historical": bool(flow.get("demo_mode")),
             "scope": flow.get("applicable_scope", {}), "summary": decision.reply})
+        return _attach_process(state, kb, final, None)
     logger.warning("model_output check failed (workflow): flow=%s available=%s",
                    decision.flow_id, state.get("workflows"))
     return _build(state, "error", reason_code="model_output", message=ERRORS["model_output"])

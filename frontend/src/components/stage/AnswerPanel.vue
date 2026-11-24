@@ -6,8 +6,9 @@ import { computed, inject, nextTick, onBeforeUnmount, onMounted, ref } from "vue
 import { useChatStore, type ChatTurn } from "@/stores/chat";
 import { useStageStore } from "@/stores/stage";
 import type { StageCtx } from "@/stage/types";
-import type { CitationRef } from "@/api/client";
+import type { CitationRef, ActionFlowRef } from "@/api/client";
 import AnswerBlocks from "@/components/AnswerBlocks.vue";
+import ProcessPanel from "@/components/ProcessPanel.vue";
 import EmblemMark from "@/components/stage/EmblemMark.vue";
 import { shortName } from "@/stage/emblems";
 import { setFlowPreset } from "@/stores/flowDraft";
@@ -112,6 +113,20 @@ function onRetry() {
   if (a) void store.retry(a.request_id);
 }
 
+/** 办理路线里的向导入口要复用本轮已有的预设（workflow 状态 / checklist 卡的 flow） */
+const processFlows = computed<ActionFlowRef[]>(() => {
+  const list: ActionFlowRef[] = [];
+  const wf = resp.value?.workflow;
+  if (wf) {
+    list.push({ flow_id: wf.flow_id, historical: wf.historical,
+                preset_slots: wf.preset_slots, preset_note: wf.preset_note });
+  }
+  for (const a of resp.value?.actions ?? []) {
+    if (a.kind === "checklist" && a.flow) list.push(a.flow);
+  }
+  return list;
+});
+
 /** 进入向导前登记聊天里自述过的身份事实（本科/二年级等），向导首屏待确认带入 */
 function enterFlow(flowId: string, presetSlots?: Record<string, any> | null, presetNote?: string | null) {
   setFlowPreset(flowId, presetSlots, presetNote);
@@ -164,8 +179,28 @@ async function copyRepairDraft(text: string | null | undefined) {
 }
 
 // ---- W5：办理地点与换包 ----
+/** 本轮答案关联的楼（必须与当前 response.request_id 对上）：
+ *  不直接看 stage.place——那个可能是用户早就在看的楼。 */
+const linkedPlace = computed<{ buildingId: string; name: string } | null>(() => {
+  const r = resp.value;
+  const link = stage.answerLink;
+  if (!r || !link || link.requestId !== r.request_id || !link.buildingId) return null;
+  const bid = link.buildingId;
+  const name = ctx?.meta.value?.buildings[bid]?.name
+    ?? (stage.place?.buildingId === bid ? stage.place.name : bid);
+  return { buildingId: bid, name };
+});
+
+/** offer：本轮可以手动定位的候选（跨校区/多楼/歧义） */
+const offer = computed(() => {
+  const r = resp.value;
+  const o = stage.placeOffer;
+  if (!r || !o || o.requestId !== r.request_id) return null;
+  return o;
+});
+
 const placeZoneName = computed(() => {
-  const bid = stage.place?.buildingId;
+  const bid = linkedPlace.value?.buildingId;
   if (!bid) return "";
   const m = ctx?.meta.value;
   const zoneId = m?.buildings[bid]?.zone;
@@ -181,7 +216,7 @@ const placeCollege = computed(() => {
 
 /** 第二行：「片区 · 楼名 楼」（楼名去掉括号，已带「楼」字就不重复） */
 const placeMetaLine = computed(() => {
-  const raw = (stage.place?.name ?? "")
+  const raw = (linkedPlace.value?.name ?? "")
     .replace(/（[^）]*）/g, "")
     .replace(/\([^)]*\)/g, "")
     .trim();
@@ -235,12 +270,18 @@ const leaderPoints = ref("");
 const leaderEnd = ref({ x: 0, y: 0 });
 
 function updateLeader() {
-  if (!stage.place || !stage.answerOpen) {
+  // 红线只在本轮关联的楼确实就是镜头停靠的那栋时画：用户点校区/换楼后，
+  // 办理地点文字可以留着说明，但不再往画面外拉一条线。
+  if (
+    !linkedPlace.value
+    || !stage.answerOpen
+    || stage.place?.buildingId !== linkedPlace.value.buildingId
+  ) {
     leaderPoints.value = "";
     return;
   }
   const handle = ctx?.getHandle();
-  const anchor = ctx?.meta.value?.buildings[stage.place.buildingId]?.anchor;
+  const anchor = ctx?.meta.value?.buildings[linkedPlace.value.buildingId]?.anchor;
   if (!handle || !anchor || !placeEl.value || !scrollEl.value) {
     leaderPoints.value = "";
     return;
@@ -357,7 +398,11 @@ onBeforeUnmount(() => {
             <span v-if="resp.workflow.historical" class="stage-tag">历史演示</span>
           </p>
           <p class="stage-panel-text">{{ resp.workflow.summary }}</p>
+          <ProcessPanel v-if="resp.process" :process="resp.process" :citations="resp.citations"
+                        :flows="processFlows" @cite="onCite" />
+          <!-- 同一向导只保留一个入口：流程里已有入口时不再重复面板按钮 -->
           <router-link
+            v-if="!resp.process?.workflow_entry"
             class="stage-btn"
             :to="`/workflows/${resp.workflow.flow_id}`"
             data-testid="stage-workflow-enter"
@@ -367,8 +412,8 @@ onBeforeUnmount(() => {
 
         <!-- answer / insufficient -->
         <template v-else-if="resp?.status === 'answer' || resp?.status === 'insufficient'">
-          <!-- W5：办理地点（place 在本包时）/ 换过去的钮（楼在另一个沙盘时） -->
-          <div v-if="stage.place" ref="placeEl" class="stage-place" data-testid="stage-panel-place">
+          <!-- W5：办理地点（本轮答案真的关联到这栋楼时）/ 换过去的钮（旧响应/调试入口的跨包线索） -->
+          <div v-if="linkedPlace" ref="placeEl" class="stage-place" data-testid="stage-panel-place">
             <p class="stage-subtitle">办理地点</p>
             <!-- ALIVE A3：楼就是某个学院的楼时，左边 48px 本色院徽 + 两行（学院简称 / 片区·楼） -->
             <p v-if="placeCollege" class="stage-place-emblem-line">
@@ -390,7 +435,7 @@ onBeforeUnmount(() => {
             </p>
             <template v-else>
               <p class="stage-place-line">
-                <span class="stage-place-square" aria-hidden="true"></span>{{ stage.place.name }}
+                <span class="stage-place-square" aria-hidden="true"></span>{{ linkedPlace.name }}
                 <button
                   v-if="nearPack"
                   type="button"
@@ -410,8 +455,37 @@ onBeforeUnmount(() => {
             @click="goOtherPack"
           >这栋楼在「{{ otherPackName }}」沙盘上，点这里换过去</button>
 
+          <!-- offer：本轮有可用目标但不自动飞（多候选/跨校区/场景未就绪/只点名） -->
+          <div v-if="offer && (offer.candidates.length || offer.text)"
+               class="stage-offer" data-testid="stage-place-offer">
+            <p class="stage-subtitle">在沙盘查看</p>
+            <p v-if="offer.text" class="stage-panel-text soft" data-testid="stage-offer-text">{{ offer.text }}</p>
+            <button
+              v-for="c in offer.candidates"
+              :key="c.buildingId"
+              type="button"
+              class="stage-offer-item"
+              :data-testid="`stage-place-offer-${c.buildingId}`"
+              :disabled="!stage.sceneReady"
+              :title="stage.sceneReady ? '' : '沙盘尚未就绪，位置以上方文字说明为准'"
+              @click="stage.choosePlaceTarget(c.buildingId)"
+            >
+              <span class="stage-offer-name">{{ c.name }}</span>
+              <span class="stage-offer-meta">
+                {{ c.inScene ? (c.context || "当前沙盘") : (c.context ? `在「${c.context}」沙盘上` : "位置待确认") }}
+              </span>
+            </button>
+            <p v-if="!stage.sceneReady" class="tiny muted" style="margin: 0;">
+              沙盘尚未就绪，先按上面的位置说明前往；沙盘准备好后可再点这里定位。
+            </p>
+          </div>
+
           <p v-if="resp.status === 'insufficient'" class="stage-panel-text">{{ insufficientText }}</p>
           <p v-if="missingText" class="stage-panel-text soft">{{ missingText }}</p>
+
+          <!-- 办理路线：靠近摘要，正文与官方出处仍在其后 -->
+          <ProcessPanel v-if="resp.process" :process="resp.process" :citations="resp.citations"
+                        :flows="processFlows" @cite="onCite" />
 
           <!-- 沙盘办事单：errand（场景一）/ repair（场景二）卡片，先于长正文（去哪/带什么/报修入口优先） -->
           <div v-for="(a, ai) in stageActions" :key="'act' + ai" class="stage-act" :data-testid="`stage-act-${a.kind}`">
@@ -638,4 +712,39 @@ onBeforeUnmount(() => {
 }
 .stage-act-copy:hover { border-color: var(--st-gold2); color: var(--st-moon); }
 .stage-act-copy:focus-visible { outline: 1px solid var(--st-gold2); outline-offset: 2px; }
+
+/* 按需定位：手动候选项（不自动飞；点一下才动镜头） */
+.stage-offer {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  border: 1px dashed color-mix(in srgb, var(--st-gold3) 80%, transparent);
+  padding: 10px 12px;
+}
+.stage-offer-item {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  width: 100%;
+  padding: 7px 10px;
+  background: none;
+  border: 1px solid var(--st-gold3);
+  border-radius: 0;
+  text-align: left;
+  cursor: pointer;
+}
+.stage-offer-item:hover { border-color: var(--st-gold2); }
+.stage-offer-item:focus-visible { outline: 1px solid var(--st-gold2); outline-offset: 2px; }
+.stage-offer-item:disabled { opacity: 0.55; cursor: not-allowed; }
+.stage-offer-name {
+  font-family: var(--st-song);
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--st-moon);
+}
+.stage-offer-meta {
+  font-size: 12px;
+  color: var(--st-moon2);
+}
 </style>

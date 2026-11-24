@@ -12,6 +12,7 @@ from .config import APP_NAME, BASE_DIR
 from .models import store
 from .api import chat, tasks, sources, system
 from .api import v1
+from .agent.deepseek_adapter import create_chat_model
 
 logging.basicConfig(level=logging.INFO)
 
@@ -36,10 +37,12 @@ app.include_router(system.router)
 
 
 @app.on_event("startup")
-def _warm_indexes():
-    """启动即构建检索索引（万级条款 jieba 分词约 30s；命中磁盘缓存约 2s），
-    并预载向量通道（bge 编码模型约 6-10s；懒加载会拖慢首次全校检索 ~15-20s，
-    有触发工具超时的风险）。后台线程执行，向量加载失败自动退回纯 BM25，不阻塞服务。"""
+def _warm_chat():
+    """启动时构造模型客户端，并在后台预载检索索引。
+
+    模型客户端构造不发送请求，避免首轮承担 SDK 导入与初始化耗时。
+    向量加载失败自动退回纯 BM25。
+    """
     import threading
 
     from .knowledge.retriever import get_indexes, get_vector_channel
@@ -49,6 +52,10 @@ def _warm_indexes():
         get_vector_channel()
 
     threading.Thread(target=_warm, daemon=True, name="index-warmup").start()
+    try:
+        create_chat_model()
+    except Exception:
+        logging.getLogger(__name__).warning("chat client warmup failed", exc_info=True)
 
 
 @app.exception_handler(store.sqlite3.Error)

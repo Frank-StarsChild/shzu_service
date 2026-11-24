@@ -144,17 +144,17 @@ test("4 红色引线：末端与 anchor−6 的投影横向相差 30±3、纵向
   expect(Math.abs(check.dy)).toBeLessThanOrEqual(3);
 });
 
-test("5 成绩单→行政楼、借书→图书馆", async ({ page }) => {
+test("5 成绩单→行政楼、借书→图书馆（问「去哪」才定位）", async ({ page }) => {
   await page.goto("/stage?3d=1&intro=0");
   await waitReady(page);
-  await ask(page, "成绩单怎么打印");
+  await ask(page, "成绩单去哪打印");
   await page.waitForFunction(
     () => window.__campus3d?.stop === "focus:ZQ-B024",
     undefined,
     { timeout: 15_000 }
   );
   expect(await page.evaluate(() => window.__campus3d.shell)).toBe("ZQ-B024");
-  await ask(page, "怎么借书");
+  await ask(page, "去哪借书");
   await page.waitForFunction(
     () => window.__campus3d?.stop === "focus:ZQ-B034",
     undefined,
@@ -180,20 +180,17 @@ test("6 超出范围：不落楼，回 home，无引线无办理地点", async (
   await expect(page.locator('[data-testid="stage-panel-place"]')).toHaveCount(0);
 });
 
-test("7 音乐系：楼在将军山，点换过去后落到 JJ-B019", async ({ page }) => {
+test("7 音乐系：楼在将军山，先给手动入口，点了才落到 JJ-B019", async ({ page }) => {
   await page.goto("/stage?3d=1&intro=0");
   await waitReady(page);
   await ask(page, "音乐系在哪");
-  await page.waitForFunction(
-    () => window.__campus3d?.stop === "home" && window.__campus3d?.moving === false,
-    undefined,
-    { timeout: 15_000 }
-  );
+  await waitNotMoving(page);
   const h0 = await page.evaluate(() => ({ mode: window.__campus3d.mode, pack: window.__campus3d.pack }));
   expect(h0.mode).not.toBe("answer");
   expect(h0.pack).toBe("all");
-  await expect(page.locator('[data-testid="stage-other-pack"]')).toContainText("将军山校区");
-  await page.click('[data-testid="stage-other-pack"]');
+  await expect(page.locator('[data-testid="stage-place-offer"]')).toBeVisible();
+  await expect(page.locator('[data-testid="stage-place-offer-JJ-B019"]')).toContainText("将军山校区");
+  await page.click('[data-testid="stage-place-offer-JJ-B019"]');
   await waitPack(page, "jjs");
   await page.waitForFunction(
     () => window.__campus3d?.stop === "focus:JJ-B019" && window.__campus3d?.moving === false,
@@ -342,14 +339,10 @@ test("12 还在 zq：音乐系指将军山；北区会堂指「全校」沙盘",
   await waitNotMoving(page);
   await page.click('[data-testid="stage-rail-enter"]');
   await waitPack(page, "zq");
-  // 问「音乐系在哪」：楼在 jjs 沙盘上，钮里引号是「将军山校区」
+  // 问「音乐系在哪」：楼在 jjs 沙盘上，先给手动入口（不自动换包）
   await ask(page, "音乐系在哪");
-  await page.waitForFunction(
-    () => window.__campus3d?.stop === "home" && window.__campus3d?.moving === false,
-    undefined,
-    { timeout: 15_000 }
-  );
-  await expect(page.locator('[data-testid="stage-other-pack"]')).toContainText("将军山校区");
+  await waitNotMoving(page);
+  await expect(page.locator('[data-testid="stage-place-offer"]')).toContainText("将军山校区");
   // 直接换目标楼：BQ-B019 不在 zq 沙盘上，换成「全校」
   await page.evaluate(() => window.__campus3d.debugShowAnswer?.("BQ-B019"));
   await page.waitForFunction(

@@ -158,6 +158,8 @@ export type ChecklistItem = {
   state: "verified" | "needs_user" | "needs_college" | "needs_web";
   detail?: string | null;
   evidence_ids: string[];
+  /** 稳定条目 key（如 eligibility / materials）：供办理流程映射，旧响应可能没有 */
+  key?: string | null;
 };
 
 export type ErrandConfirmItem = {
@@ -243,8 +245,41 @@ export type ChatResponse = {
                 preset_slots?: Record<string, any> | null; preset_note?: string | null };
   citations: CitationRef[];
   actions?: ActionCard[];
+  /** 可选：办理路线（旧响应可能没有） */
+  process?: ProcessBody | null;
   tools_used?: string[];
   timing_ms?: number | null;
+};
+
+/** 办理路线的节点状态：有内容可看 / 待你补充 / 待核实 / 后续步骤 */
+export type ProcessState = "ready" | "needs_user" | "needs_check" | "upcoming";
+
+export type ProcessNode = {
+  id: string;
+  title: string;
+  detail: string;
+  state: ProcessState;
+  citation_ids: string[];
+};
+
+export type ProcessEdge = {
+  from_id: string;
+  to_id: string;
+  label?: string | null;
+};
+
+export type ProcessWorkflowEntry = {
+  node_id: string;
+  flow_id: string;
+  historical: boolean;
+};
+
+export type ProcessBody = {
+  title: string;
+  nodes: ProcessNode[];
+  edges: ProcessEdge[];
+  focus_id?: string | null;
+  workflow_entry?: ProcessWorkflowEntry | null;
 };
 
 export type TurnMessage = {

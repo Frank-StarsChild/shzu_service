@@ -11,7 +11,7 @@ import { computed, inject, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import type { StageCtx } from "@/stage/types";
 import { useStageStore } from "@/stores/stage";
 import { shortName, type College } from "@/stage/emblems";
-import { collegeEntries, indexOfCollege } from "@/stage/collegeIndex";
+import { collegeEntries } from "@/stage/collegeIndex";
 import { LABEL_BOARD_KEY } from "@/stage/labelBoard";
 import { shiftOf, type LabelSpec } from "@/stage/labels";
 import { cnNumber } from "@/stage/hud";
@@ -30,34 +30,33 @@ const showLanterns = computed(() => {
 });
 
 /** 与右侧面板同一份学院行（校区态只看当前片区；沙盘首页看全包） */
-const entries = computed(() =>
+const rows = computed(() =>
   collegeEntries(meta.value, store.emblems, store.mode === "campus" ? store.zoneId : null)
 );
 
 type Lantern = {
+  no: number;
   college: College;
   buildingId: string;
   anchor: [number, number, number];
   offset: number;
-  badge: number | null;
+  /** 面板行号（与右侧名单同一个 index） */
+  badge: number;
 };
 
 const lanterns = computed<Lantern[]>(() => {
-  const m = meta.value;
-  if (!m?.buildings || !showLanterns.value) return [];
+  if (!showLanterns.value) return [];
   const picked: Omit<Lantern, "offset">[] = [];
-  for (const e of entries.value) {
-    for (const c of e.colleges) {
-      const bid = c.buildingIds.find((id) => m.buildings[id]?.anchor);
-      if (!bid) continue;
-      picked.push({
-        college: c,
-        buildingId: bid,
-        anchor: m.buildings[bid].anchor as [number, number, number],
-        // 角标只给「这一行的代表学院」，同楼第二所不加号（避免两个号抢同一行）
-        badge: e.buildingId === bid && e.colleges[0]?.no === c.no ? e.index : null,
-      });
-    }
+  for (const r of rows.value) {
+    // 复用名单已经选好的楼与行号：有楼、有锚点、有院徽才画灯牌
+    if (!r.canLocate || !r.anchor || !r.college) continue;
+    picked.push({
+      no: r.no,
+      college: r.college,
+      buildingId: r.buildingId,
+      anchor: r.anchor,
+      badge: r.index,
+    });
   }
   // 同楼多学院：横向错开，第 i 个偏移 (i − (n−1)/2) × 48
   const byBid = new Map<string, Omit<Lantern, "offset">[]>();
@@ -75,6 +74,7 @@ const lanterns = computed<Lantern[]>(() => {
 
 /** 没有院徽的学院行：小序号方块（点位每帧投影） */
 type MarkEntry = {
+  no: number;
   index: number;
   name: string;
   fullName: string;
@@ -83,18 +83,17 @@ type MarkEntry = {
 };
 const markEntries = computed<MarkEntry[]>(() => {
   if (!showLanterns.value) return [];
-  const m = meta.value;
-  if (!m?.buildings) return [];
   const out: MarkEntry[] = [];
-  for (const e of entries.value) {
-    if (e.emblem) continue;
-    if (!e.anchor) continue;
+  for (const r of rows.value) {
+    if (r.college) continue; // 有院徽的走灯牌
+    if (!r.canLocate || !r.anchor) continue;
     out.push({
-      index: e.index,
-      name: e.name,
-      fullName: e.fullName,
-      buildingId: e.buildingId,
-      anchor: e.anchor,
+      no: r.no,
+      index: r.index,
+      name: r.name,
+      fullName: r.fullName,
+      buildingId: r.buildingId,
+      anchor: r.anchor,
     });
   }
   return out;
@@ -122,18 +121,9 @@ function discSize(no: number): number {
   return isCompact(no) ? 30 : 40;
 }
 
-/** 同楼另有几个学院被挤掉了（代表院徽上加「+N」，全名在 aria-label） */
-function extraOf(no: number): number {
-  const self = lanterns.value.find((l) => l.college.no === no);
-  if (!self) return 0;
-  return lanterns.value.filter(
-    (l) => l.buildingId === self.buildingId && l.college.no !== no && isHidden(l.college.no)
-  ).length;
-}
-
+/** 同楼多学院现在各占一行、各有角标，不再有「被挤掉的 +N」 */
 function ariaOf(l: Lantern): string {
-  const extra = extraOf(l.college.no);
-  return extra > 0 ? `${l.college.name}（同楼另有 ${extra} 个学院）` : l.college.name;
+  return l.college.name;
 }
 
 function lanternStyle(no: number): Record<string, string> {
@@ -169,7 +159,7 @@ const lit = computed(() => store.lightSeq > 0);
 const lightDelays = computed(() => {
   const map = new Map<number, number>();
   const arr = lanterns.value.map((l) => ({
-    no: l.college.no,
+    no: l.no,
     d: Math.hypot(l.anchor[0], l.anchor[2]),
   }));
   arr.sort((a, b) => a.d - b.d);
@@ -205,13 +195,14 @@ function tagLeft(no: number): boolean {
   return !!L && L.x + L.w / 2 > window.innerWidth - 250;
 }
 
-function onLanternClick(no: number) {
-  void store.showCollege(no);
+function onLanternClick(no: number, buildingId: string) {
+  store.board = null;
+  void store.showCollege(no, buildingId);
 }
 
 function onMarkClick(e: MarkEntry) {
   store.board = null;
-  void store.showBuilding(e.buildingId);
+  void store.showCollege(e.no, e.buildingId);
 }
 
 function markStyle(index: number): Record<string, string> {
@@ -245,8 +236,8 @@ function updatePositions() {
       && p0.y >= -MARGIN && p0.y <= window.innerHeight + MARGIN;
     if (visible) visibleCount += 1;
     specs.push({
-      id: `lantern-${l.college.no}`,
-      priority: store.collegeNo === l.college.no ? 60 : 50,
+      id: `lantern-${l.no}`,
+      priority: store.collegeNo === l.no ? 60 : 50,
       ax: p0.x + l.offset,
       ay: p0.y,
       w: 46,
@@ -291,9 +282,7 @@ watch(layouts, (ls) => {
   const L = ls[id];
   if (!L || L.form !== "hidden") return;
   const no = Number(id.replace("lantern-", ""));
-  const index = indexOfCollege(entries.value, no);
-  if (!index) return;
-  const row = document.querySelector<HTMLElement>(`[data-testid="stage-college-${index}"]`);
+  const row = document.querySelector<HTMLElement>(`[data-college-no="${no}"]`);
   row?.focus();
 });
 
@@ -316,50 +305,49 @@ onBeforeUnmount(() => {
   <div v-if="showLayer" class="stage-lanterns" aria-label="学院标记">
     <button
       v-for="l in lanterns"
-      :key="l.college.no"
+      :key="l.no"
       type="button"
       class="stage-lantern"
       :class="{
-        'is-hover': isHi(l.college.no),
-        'is-compact': isCompact(l.college.no),
+        'is-hover': isHi(l.no),
+        'is-compact': isCompact(l.no),
         'is-lighting': lighting,
-        'is-dim': mentionNo !== null && mentionNo !== l.college.no,
+        'is-dim': mentionNo !== null && mentionNo !== l.no,
       }"
-      :data-testid="`stage-lantern-${l.college.no}`"
-      :data-lantern-id="`lantern-${l.college.no}`"
+      :data-testid="`stage-lantern-${l.no}`"
+      :data-lantern-id="`lantern-${l.no}`"
       :style="{
-        ...lanternStyle(l.college.no),
-        '--light-delay': `${lightDelays.get(l.college.no) ?? 0}ms`,
+        ...lanternStyle(l.no),
+        '--light-delay': `${lightDelays.get(l.no) ?? 0}ms`,
       }"
       :aria-label="ariaOf(l)"
-      :aria-hidden="isHidden(l.college.no) ? 'true' : undefined"
-      :tabindex="isHidden(l.college.no) ? -1 : undefined"
-      @click="onLanternClick(l.college.no)"
-      @mouseenter="hoverNo = l.college.no"
+      :aria-hidden="isHidden(l.no) ? 'true' : undefined"
+      :tabindex="isHidden(l.no) ? -1 : undefined"
+      @click="onLanternClick(l.no, l.buildingId)"
+      @mouseenter="hoverNo = l.no"
       @mouseleave="hoverNo = null"
-      @focus="hoverNo = l.college.no"
+      @focus="hoverNo = l.no"
       @blur="hoverNo = null"
     >
       <span class="stage-lantern-disc">
         <EmblemMark
           :college="l.college"
-          :size="discSize(l.college.no)"
+          :size="discSize(l.no)"
           tone="gilt"
         />
         <span v-if="l.badge !== null" class="stage-lantern-no" aria-hidden="true">{{ cnNumber(l.badge) }}</span>
-        <span v-if="extraOf(l.college.no) > 0" class="stage-lantern-plus" aria-hidden="true">+{{ extraOf(l.college.no) }}</span>
       </span>
-      <span class="stage-lantern-line" :style="{ height: lineHeight(l.college.no) }"></span>
+      <span class="stage-lantern-line" :style="{ height: lineHeight(l.no) }"></span>
       <span
-        v-if="Math.abs(dxOf(l.college.no)) > 0.5"
+        v-if="Math.abs(dxOf(l.no)) > 0.5"
         class="stage-lantern-leader"
-        :style="leaderStyle(l.college.no)"
+        :style="leaderStyle(l.no)"
       ></span>
       <!-- 悬停：横排短名（有建院年份的下面一行小字）；全名在 aria-label 与右侧面板 -->
       <span
-        v-if="hoverNo === l.college.no"
+        v-if="hoverNo === l.no"
         class="stage-lantern-tag"
-        :class="{ 'is-left': tagLeft(l.college.no) }"
+        :class="{ 'is-left': tagLeft(l.no) }"
       >
         <span class="stage-lantern-tag-name">{{ shortName(l.college) }}</span>
         <span v-if="l.college.year !== null" class="stage-lantern-tag-year">{{ l.college.year }}</span>

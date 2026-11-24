@@ -157,6 +157,26 @@ test("7 问一个问题后去 /chat，后退回舞台：面板保留那轮回答
           time_condition: null,
         },
       ],
+      // 按需定位：只有结构化地点（errand）才自动飞，正文楼名不再指挥镜头
+      actions: [
+        {
+          kind: "errand",
+          title: "学生证 / 乘车优惠卡补办 · 办事单",
+          place: {
+            building: "大学生活动中心（南楼）",
+            room: "301-302室",
+            building_id: "ZQ-B023",
+            campus: "中区",
+            evidence_id: "xsz-1",
+          },
+          dept: "学生事务管理办公室（学生处）",
+          service_scope: "学生证、乘车优惠卡的办理",
+          phone: "0993-2058029",
+          hours: null,
+          materials_confirmed: false,
+          confirms: [],
+        },
+      ],
       timing_ms: 900,
     };
     saved.push({ request_id: rid, seq: 1, role: "user", status: "done", text: body.message ?? "", response: null });

@@ -33,6 +33,9 @@
   --st-bot-edge: 24px;
   --st-bot-side: 260px;
   --st-dock-bottom: 36px;
+  --st-compass-size: 76px;
+  --st-rail-top: 73px;
+  --st-mobile-rail-height: 44px;
   /* 院徽的鎏金（ALIVE 3.1）：全站唯一金属渐变，只许用在院徽的鎏金样子上 */
   --st-gilt: linear-gradient(135deg, #f7e6bd 0%, #e8c98a 38%, #b48a52 62%, #f0d6a0 100%);
 
@@ -89,6 +92,21 @@
   color: var(--st-moon2);
   margin: 0;
   max-width: 44ch;
+}
+@media (max-width: 900px) {
+  .stage .stage-hero {
+    left: 16px;
+    top: clamp(155px, 30vh, 260px);
+    max-width: min(260px, calc(100vw - 32px));
+  }
+  .stage .stage-hero-title {
+    font-size: clamp(26px, 7vw, 38px);
+    margin-bottom: 10px;
+  }
+  .stage .stage-hero-desc {
+    font-size: 12px;
+    line-height: 1.5;
+  }
 }
 .stage .stage-hero-kb {
   margin: 16px 0 0;
@@ -154,6 +172,13 @@
   flex-direction: column;
   max-height: calc(100vh - 264px);
   animation: stage-answer-in 260ms ease-out;
+}
+@media (max-width: 900px) {
+  .stage .stage-answer {
+    --st-panel-top: calc(var(--st-rail-top) + var(--st-mobile-rail-height) + 8px);
+    top: var(--st-panel-top);
+    max-height: calc(100dvh - var(--st-panel-top) - 190px);
+  }
 }
 @keyframes stage-answer-in {
   from { opacity: 0; transform: translateX(16px); }
@@ -1015,5 +1040,41 @@
   .stage .stage-doc,
   .stage .stage-doc-stamp {
     animation: none;
+  }
+}
+
+/* ---- 手动观景：问话栏淡出后，底部留一枚「问智多星」（朱砂底、浅色字） ---- */
+.stage .stage-tour-ask {
+  position: fixed;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: var(--st-dock-bottom, 36px);
+  z-index: 4;
+  min-height: 44px;
+  padding: 0 26px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--st-red);
+  border: 1px solid var(--st-red);
+  color: var(--on-vermilion);
+  font-family: var(--st-song);
+  font-weight: 700;
+  font-size: 15px;
+  letter-spacing: 0.24em;
+  cursor: pointer;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+}
+.stage .stage-tour-ask:hover { filter: brightness(1.08); }
+.stage .stage-tour-ask:focus-visible {
+  outline: 2px solid var(--st-gold);
+  outline-offset: 3px;
+}
+@media (max-width: 900px) {
+  .stage .stage-tour-ask {
+    left: 16px;
+    right: 16px;
+    transform: none;
+    bottom: max(calc(var(--st-dock-bottom, 76px) + 8px), calc(env(safe-area-inset-bottom) + 12px));
   }
 }

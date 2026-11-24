@@ -69,10 +69,11 @@ test("1 ready 后：恰好 7 项；全校选中；将军山远、其余五个不
   await expect(page.locator('[data-testid="stage-rail-enter"]')).toHaveCount(0);
 });
 
-test("2 场景题签：至少 4 块可见；线底端与 projectPoint(zone.label) 相差 ≤3px", async ({ page }) => {
+test("2 场景题签：北苑新区可见；线底端与 projectPoint(zone.label) 相差 ≤3px", async ({ page }) => {
   await page.goto("/stage?3d=1&intro=0");
   await waitReady(page);
   await page.waitForTimeout(400);
+  await expect(page.getByTestId("stage-sign-BY")).toBeVisible();
   const ids = ["BY", "BQ", "ZQ", "NQ", "DQ"];
   let visibleCount = 0;
   for (const id of ids) {
@@ -93,6 +94,40 @@ test("2 场景题签：至少 4 块可见；线底端与 projectPoint(zone.label
     expect(Math.abs(bottom - p.y)).toBeLessThanOrEqual(3);
   }
   expect(visibleCount).toBeGreaterThanOrEqual(4);
+});
+
+for (const viewport of [{ width: 1366, height: 768 }, { width: 1024, height: 700 }]) {
+  test(`首页 ${viewport.width}×${viewport.height}：指南针与校区入口不重叠，北苑新区可点`, async ({ page }) => {
+    await page.setViewportSize(viewport);
+    await page.goto("/stage?3d=1&intro=0");
+    await waitReady(page);
+
+    const compass = page.getByTestId("stage-compass");
+    const rail = (await page.getByTestId("stage-rail").boundingBox())!;
+    const last = page.getByTestId("stage-rail-JJ");
+    const lastBox = (await last.boundingBox())!;
+    expect(lastBox.y + lastBox.height).toBeLessThanOrEqual(rail.y + rail.height);
+    expect(rail.y + rail.height).toBeLessThan((await compass.boundingBox())!.y);
+    await last.click({ trial: true });
+    await compass.click({ trial: true });
+
+    const sign = page.getByTestId("stage-sign-BY");
+    await expect(sign).toHaveText("北苑新区");
+    await sign.click();
+    await expect(page.getByTestId("stage-rail-BY")).toHaveClass(/is-active/);
+  });
+}
+
+test("手机静态地图：北苑新区显示在地图上且可点", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/stage?3d=0&intro=0");
+  const sign = page.getByTestId("stage-sign-BY");
+  await expect(sign).toHaveText("北苑新区");
+  await expect(sign).toBeVisible();
+  await sign.click();
+  await expect(page.getByTestId("stage-rail-BY")).toHaveClass(/is-active/);
+  await page.getByTestId("stage-rail-enter").click();
+  await expect(page.getByTestId("stage-hero").getByRole("heading", { name: "北苑新区" })).toBeVisible();
 });
 
 test("3 点北区：campus/zone/stop 对、题字隐去、只留北区、近看钮、偏红 >0.004", async ({ page }) => {

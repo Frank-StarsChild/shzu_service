@@ -164,8 +164,8 @@ const scaleText = computed(() => (scaleUnit.value ? `${scaleUnit.value} 米` : "
   position: absolute;
   left: var(--st-bot-edge, 24px);
   bottom: calc(var(--st-dock-bottom, 30px) + 4px);
-  width: 76px;
-  height: 76px;
+  width: var(--st-compass-size);
+  height: var(--st-compass-size);
   padding: 0;
   border: 0;
   background: none;
@@ -178,8 +178,8 @@ const scaleText = computed(() => (scaleUnit.value ? `${scaleUnit.value} 米` : "
 }
 .stage-compass-box:disabled { cursor: default; }
 .stage-compass {
-  width: 76px;
-  height: 76px;
+  width: 100%;
+  height: 100%;
   display: block;
 }
 .stage-scale {

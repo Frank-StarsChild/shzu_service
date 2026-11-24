@@ -12,8 +12,8 @@ import json
 import logging
 import os
 import re
-import time
 from dataclasses import dataclass
+from functools import lru_cache
 from typing import Any, Dict, List, Optional
 
 logger = logging.getLogger("shzu.deepseek")
@@ -109,29 +109,26 @@ def error_code(exc: Exception) -> str:
     return "model_response"
 
 
-_MODEL = None
-_MODEL_AT = 0.0
-
-
 def create_chat_model():
     """构造（并缓存）LangChain ChatOpenAI；未配置密钥时返回 None。
 
     绑定工具由 graph.py 通过 model.bind_tools(...) 完成（LangChain 工具调用协议）。
     单次请求超时默认 REQUEST_TIMEOUT；对话图按本轮剩余预算以 invoke(timeout=...) 覆盖。
     """
-    global _MODEL, _MODEL_AT
     cfg = _cfg()
     if not cfg["api_key"]:
         return None
-    now = time.time()
-    if _MODEL is not None and now - _MODEL_AT < 300:
-        return _MODEL
+    return _create_chat_model(**cfg)
+
+
+@lru_cache(maxsize=1)
+def _create_chat_model(api_key: str, model: str, base_url: str):
     from langchain_openai import ChatOpenAI
 
-    _MODEL = ChatOpenAI(
-        model=cfg["model"],
-        api_key=cfg["api_key"],
-        base_url=cfg["base_url"],
+    client = ChatOpenAI(
+        model=model,
+        api_key=api_key,
+        base_url=base_url,
         temperature=0.2,
         # 资料丰富的回答（多工具结果 + 6 证据 + 900 字 reply）总输出可达 2k token；
         # 1100 会把最终 JSON 截成非法尾（model_response 失败的主因）
@@ -139,9 +136,8 @@ def create_chat_model():
         timeout=REQUEST_TIMEOUT,
         max_retries=1,   # SDK 内部重试限制为 1 次（预算控制由对话图负责）
     )
-    _MODEL_AT = now
-    logger.info("deepseek chat model ready (%s @ %s)", cfg["model"], cfg["base_url"])
-    return _MODEL
+    logger.info("deepseek chat model ready (%s @ %s)", model, base_url)
+    return client
 
 
 def describe_config() -> Dict[str, Any]:

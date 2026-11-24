@@ -86,6 +86,24 @@ AWARD_ALIASES = {
 }
 
 
+def _award_type(award: str) -> str:
+    """奖项归一。只有明确指向国家励志奖学金才返回 national_inspirational；
+    其他奖项（国家奖学金/国家助学金/困难认定/未识别）一律返回其类型或空串，
+    由调用方交回常规检索或追问，不得套用励志奖学金依据包。"""
+    a = (award or "").strip()
+    if a in AWARD_ALIASES:
+        return AWARD_ALIASES[a]
+    if "励志" in a:
+        return "national_inspirational"
+    if "助学金" in a:
+        return "national_grant"
+    if "国家奖学金" in a or a == "国奖":
+        return "national_scholarship"
+    if "认定" in a:
+        return "difficulty"
+    return ""
+
+
 @tool
 def check_award_readiness(
     award: Annotated[str, Field(min_length=2, max_length=40,
@@ -103,7 +121,21 @@ def check_award_readiness(
     """
     kb = get_kb()
     facts = (known_facts or "").strip()
-    award_type = AWARD_ALIASES.get(award, "national_inspirational")
+    award_type = _award_type(award)
+
+    # 本工具的依据包只覆盖国家励志奖学金。其他奖项不得套用励志专用条件
+    # （排名前30%、双排名、与国奖互斥等），交回常规检索或追问。
+    if award_type != "national_inspirational":
+        logger.info("tool check_award_readiness skipped award=%r type=%r", award, award_type)
+        return {
+            "award": award,
+            "year": year,
+            "supported": False,
+            "note": ("该核对工具只覆盖国家励志奖学金。本轮请改用 search_campus_knowledge "
+                     "检索所问奖项的官方条款，按检索结果作答；检索不到该奖项的适用依据时，"
+                     "如实说明缺口并提出一个能帮助确认的问题，不要套用励志奖学金的专用条件。"),
+            "evidence": [],
+        }
 
     # ---- 依据包定位（动态检索 + 稳定 ID 兜底，全部校验存在于 kb）----
     lz_amount = _ensure("国家励志奖学金 资助标准 金额 每生每年",
@@ -138,11 +170,13 @@ def check_award_readiness(
     conflict_known = has(r"国家奖学金|国奖")
 
     items = [{
+        "key": "amount",
         "label": "资助标准",
         "state": "verified",
         "detail": "国家励志奖学金每生每年 6000 元（2024 年起由 5000 元提高）。",
         "evidence_ids": [lz_amount] if lz_amount else [],
     }, {
+        "key": "eligibility",
         "label": "基本申请资格",
         "state": "verified" if facts else "needs_user",
         "detail": ("面向全日制本专科（含第二学士学位）二年级以上（含二年级）品学兼优的"
@@ -150,6 +184,7 @@ def check_award_readiness(
                    + ("已按你提供的情况记录身份信息。" if facts else "请说明你的年级与学生层次。")),
         "evidence_ids": [i for i in (lz_cond,) if i],
     }, {
+        "key": "difficulty",
         "label": "家庭经济困难认定（本学年）",
         "state": "verified" if difficulty_passed else "needs_user",
         "detail": ("需为本学年已通过家庭经济困难认定的学生"
@@ -157,33 +192,40 @@ def check_award_readiness(
                    + "认定材料在认定环节存档，申报时不需要重复提交。"),
         "evidence_ids": [lz_cond] if lz_cond else [],
     }, {
+        "key": "rank",
         "label": "学习成绩排名与综合测评排名（双排名要求）",
         "state": "verified" if rank_known else "needs_user",
         "detail": "学习成绩排名、综合测评排名均须位于前 30%（本人排名 ÷ 参评总人数），"
                   "两项按学年度计算。" + ("请提供两项排名与总人数以便对照。" if not rank_known else ""),
         "evidence_ids": [lz_rank] if lz_rank else [],
     }, {
+        "key": "conflict",
         "label": "与国家奖学金的兼得关系",
         "state": "verified" if conflict_known else "needs_user",
         "detail": "同一学年内不可同时获得国家励志奖学金与本专科生国家奖学金；可与国家助学金兼得。"
                   + ("请确认本学年是否申报/已获国家奖学金。" if not conflict_known else ""),
         "evidence_ids": [lz_amount] if lz_amount else [],
     }, {
+        "key": "materials",
         "label": "申请材料",
-        "state": "verified"
-        if (year == 2025 or year is None) else "needs_web",
+        "state": "verified" if year == 2025 else "needs_web",
         "detail": (("《本专科生国家励志奖学金申请表》纸质版一式一份（系统生成后打印），"
-                    "成绩单与获奖证明由学院留存备查。") if (year == 2025 or year is None) else
+                    "成绩单与获奖证明由学院留存备查。") if year == 2025 else
                    (f"{year} 年度材料清单未入库，须以当年正式通知为准；"
-                    "2025 年度口径为：申请表纸质版一式一份，成绩单与获奖证明学院留存备查（仅作参考）。")),
-        "evidence_ids": [lz_mat] if (lz_mat and (year == 2025 or year is None)) else [],
+                    "2025 年度口径为：申请表纸质版一式一份，成绩单与获奖证明学院留存备查（仅作参考）。"
+                    if year else
+                    "申报年度未确认：当年申请表版本与材料清单需以正式通知为准；"
+                    "2025 年度口径为申请表纸质版一式一份、成绩单与获奖证明学院留存备查（往年口径，仅作参考）。")),
+        "evidence_ids": [lz_mat] if (lz_mat and year == 2025) else [],
     }, {
+        "key": "timeline",
         "label": f"申报时间线（{'2025 年度官方时间线' if year == 2025 else str(year or '当年') + ' 年度待官方通知'}）",
         "state": "verified" if year == 2025 else "needs_web",
         "detail": ("2025 年度：学院 10 月 22 日前完成系统提交与材料报送，学生个人收件截止日由学院确定"
                    if year == 2025 else "当年通知未入库，申报起止时间暂无可引依据，需以当年正式通知为准。"),
         "evidence_ids": [lz_time] if (lz_time and year == 2025) else [],
     }, {
+        "key": "college_deadline",
         "label": "学院环节截止日（学生个人收件）",
         "state": "needs_college",
         "detail": "学生个人提交截止日由所在学院确定并通知，需向学院学生工作办公室确认。",
@@ -193,6 +235,7 @@ def check_award_readiness(
     # 转专业×奖学金（跨部门）：库内未见「转专业后按哪个学院/哪个时间点认定排名」的条款 → 待学院确认
     if has(r"转专业|转出专业|换了专业"):
         items.append({
+            "key": "transfer_major",
             "label": "转专业后的学院归属与排名口径",
             "state": "needs_college",
             "detail": "评审办法要求申请人为在籍在校生、排名按学年度计算；但「转专业后按现学院还是原学院、从哪个学期起算排名」"
@@ -518,17 +561,18 @@ def _check_local_announcements(campus, building_name):
     return covered
 
 
-def _check_web_notices(budget_s=6.0):
+def _check_web_notices(config: RunnableConfig):
     """官网首页公告线索核对（仅登记为「线索」，未核验正文不得当成有效公告）。
     源自知识库登记的网络与信息中心域名 nc.shzu.edu.cn。"""
     import time as _t
     import httpx
     from ..knowledge import web_evidence
     t0 = _t.perf_counter()
+    url = "https://nc.shzu.edu.cn/"
     try:
-        with httpx.Client(timeout=budget_s, follow_redirects=True,
-                          headers={"User-Agent": "Mozilla/5.0 ShzuAgent/1.0 (+campus QA)"}) as c:
-            r = c.get("https://nc.shzu.edu.cn/")
+        r = web_evidence.fetch_pages([url], config, "Mozilla/5.0 ShzuAgent/1.0 (+campus QA)")[url]
+        if isinstance(r, Exception):
+            raise r
         if r.status_code != 200 or "text/html" not in r.headers.get("content-type", ""):
             return {"state": "not_found", "detail": f"网络与信息中心首页访问异常（HTTP {r.status_code}）"}
         import re as _re
@@ -544,14 +588,14 @@ def _check_web_notices(budget_s=6.0):
         citation = web_evidence.register(
             title="网络与信息中心官网首页（公告线索）",
             issuer="网络与信息中心",
-            url="https://nc.shzu.edu.cn/",
+            url=url,
             excerpt=preview[:300],
             published_at=None,
             locator="联网查证·首页公告栏线索",
         )
         return {"state": "lead", "detail": f"官网首页发现相关线索：{preview}（标题线索，正文未核验，须点开原文确认覆盖范围）",
                 "evidence_id": citation["id"], "elapsed": round(_t.perf_counter() - t0, 1)}
-    except (httpx.TimeoutException, httpx.ConnectError) as e:
+    except (TimeoutError, httpx.TimeoutException, httpx.ConnectError) as e:
         return {"state": "timeout", "detail": f"网络与信息中心官网访问失败（{type(e).__name__}），本轮未能联网核对公告",
                 "elapsed": round(_t.perf_counter() - t0, 1)}
     except Exception as e:  # noqa: BLE001
@@ -648,7 +692,7 @@ def triage_network_issue(
         checks.append({"label": "本地知识库故障公告核对", "state": "not_found",
                        "note": "库内未收录覆盖该区域的网络故障公告（这不代表该区域没有故障）"})
         local_detail = ""
-    web_ann = _check_web_notices()
+    web_ann = _check_web_notices(config)
     state_map = {"lead": "partial", "not_found": "not_found",
                  "timeout": "partial", "error": "partial"}
     checks.append({"label": "网络与信息中心官网公告核对", "state": state_map.get(web_ann["state"], "partial"),
@@ -676,7 +720,7 @@ def triage_network_issue(
     if scope_mult and steps:
         steps.insert(0, {"text": "同宿舍多台设备都断网时，更可能是楼内接入设备或线路问题，建议直接联系报修电话，"
                                  "并把「受影响设备数量」告诉值班老师（判断依据为官方指南的分域排查思路）。",
-                         "evidence_ids": [steps[0]["evidence_ids"]]})
+                         "evidence_ids": list(steps[0]["evidence_ids"])})
 
     # ---- 报修草稿（无校方授权的在线提单接口：只交付草稿与官方入口，不真实提交）----
     loc_line = f"{campus or '校区待确认'} {building_name or '楼栋待确认'}"

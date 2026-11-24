@@ -22,6 +22,7 @@ const OCCLUDERS = [
   ".stage-dock",
   ".stage-hero",
   ".stage-read",
+  ".stage-compass-box",
   ".stage-scale",
   ".stage-tour-exit",
   ".stage-answer-expand",

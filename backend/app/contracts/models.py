@@ -88,6 +88,9 @@ class ChecklistItem(BaseModel):
     state: Literal["verified", "needs_user", "needs_college", "needs_web"] = "verified"
     detail: str = ""
     evidence_ids: List[str] = []
+    # 稳定条目 key（如 eligibility / materials）：供办理流程把核对项映到节点，
+    # 不改变 label 展示；旧响应无此字段仍正常显示。
+    key: Optional[str] = None
 
 
 class ActionEntry(BaseModel):
@@ -160,6 +163,40 @@ class ActionCard(BaseModel):
     confirms: List[ErrandConfirm] = []  # 出发前需要确认的事项
 
 
+# ---------- 办理路线（可选字段：随回复一起发布的办事步骤图，旧响应无该字段） ----------
+
+class ProcessNode(BaseModel):
+    """办理路线的一个环节。state 只用四种：
+    ready=有内容可看/可做；needs_user=待你补充；needs_check=待核实；upcoming=后续步骤。"""
+    id: str
+    title: str
+    detail: str = ""
+    state: Literal["ready", "needs_user", "needs_check", "upcoming"] = "upcoming"
+    citation_ids: List[str] = []
+
+
+class ProcessEdge(BaseModel):
+    """节点连边；label 用于分支条件（如「已恢复」「仍无法连接」）"""
+    from_id: str
+    to_id: str
+    label: Optional[str] = None
+
+
+class ProcessWorkflowEntry(BaseModel):
+    """材料环节对应的既有向导入口（只引用本轮已有的向导）"""
+    node_id: str
+    flow_id: str
+    historical: bool = False
+
+
+class ProcessBody(BaseModel):
+    title: str
+    nodes: List[ProcessNode]
+    edges: List[ProcessEdge] = []
+    focus_id: Optional[str] = None
+    workflow_entry: Optional[ProcessWorkflowEntry] = None
+
+
 class ChatResponse(BaseModel):
     status: Literal["answer", "clarify", "insufficient", "out_of_scope", "workflow",
                     "error", "model_unavailable"]
@@ -175,6 +212,7 @@ class ChatResponse(BaseModel):
     workflow: Optional[WorkflowRefBody] = None
     citations: List[CitationRef] = []
     actions: List[ActionCard] = []     # 可选：场景动作卡片（旧消息缺省为空）
+    process: Optional[ProcessBody] = None   # 可选：办理路线（旧消息缺省为空）
     tools_used: List[str] = []         # 可选：本轮实际执行的工具（步骤可见）
     timing_ms: Optional[int] = None
 

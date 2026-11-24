@@ -28,6 +28,8 @@ export type LabelSpec = {
   compactW: number;
   compactH: number;
   compactGap: number;
+  /** 校区题签靠近顶栏时，允许把横排签放到地图锚点下方。 */
+  compactBelow?: boolean;
   /** 投影是否在画面里（false 直接 hidden） */
   visible: boolean;
   /** 能否错开：false 时只允许默认位（校区竖签、地标题签）；true 时按 axis 挪 */
@@ -224,8 +226,18 @@ export function layoutLabels(
               ...((spec.axis ?? "xy") === "xy" ? [{ dx: 0, dy: 26 }] : []),
             ])
       : [{ dx: 0, dy: 0 }];
-    for (const o of compactOffsets) {
-      const r = boxOf(spec, spec.compactW, spec.compactH, spec.compactGap, o);
+    const compactCandidates = compactOffsets.map((offset) => ({ offset, gap: spec.compactGap }));
+    if (spec.compactBelow) {
+      const belowGap = -spec.compactH - 12;
+      compactCandidates.push(
+        { offset: { dx: 0, dy: 16 }, gap: spec.compactGap },
+        { offset: { dx: 0, dy: 0 }, gap: belowGap },
+        { offset: { dx: 0, dy: -24 }, gap: belowGap },
+        { offset: { dx: 0, dy: -48 }, gap: belowGap },
+      );
+    }
+    for (const { offset, gap } of compactCandidates) {
+      const r = boxOf(spec, spec.compactW, spec.compactH, gap, offset);
       if (!fits(r, viewport, reserved, accepted)) continue;
       placed = {
         id: spec.id,
@@ -233,8 +245,8 @@ export function layoutLabels(
         ...r,
         ax: spec.ax,
         ay: spec.ay,
-        gap: spec.compactGap,
-        shifted: o.dx !== 0 || o.dy !== 0,
+        gap,
+        shifted: gap < 0 || offset.dx !== 0 || offset.dy !== 0,
       };
       accepted.push(r);
       break;

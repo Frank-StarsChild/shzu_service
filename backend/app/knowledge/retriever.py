@@ -15,8 +15,10 @@ npz 内记录实际模型名，加载时按其加载）。加载失败或未构�
 不影响服务。SHZU_VECTOR=off/0 可整体关闭。
 RRF 融合：BM25(fact) / BM25(clause) / 向量(clause) 各自成排，按名次融合。
 """
+import heapq
 import math
 import re
+from collections import Counter
 from functools import lru_cache
 
 import jieba
@@ -75,41 +77,38 @@ def query_tokens(text):
 
 
 class BM25Index:
-    """小型 BM25：先在给定行子集（scope）内打分，再取 Top K。"""
+    """在范围内对命中查询词的行打分，再取 Top K。"""
 
     def __init__(self, docs_tokens, k1=1.5, b=0.75):
-        self.k1, self.b = k1, b
-        self.docs = docs_tokens
-        self.N = len(docs_tokens)
-        self.avgdl = sum(len(d) for d in docs_tokens) / max(self.N, 1)
-        self.df = {}
-        self.tf = []
-        for d in docs_tokens:
-            tf = {}
-            for t in d:
-                tf[t] = tf.get(t, 0) + 1
-            self.tf.append(tf)
-            for t in tf:
-                self.df[t] = self.df.get(t, 0) + 1
-
-    def score(self, query_tokens, idx):
-        s = 0.0
-        dl = len(self.docs[idx])
-        tf = self.tf[idx]
-        for t in query_tokens:
-            if t not in tf:
-                continue
-            idf = math.log(1 + (self.N - self.df.get(t, 0) + 0.5) / (self.df.get(t, 0) + 0.5))
-            s += idf * (tf[t] * self.k1 + 1) / (tf[t] + self.k1 * (1 - self.b + self.b * dl / self.avgdl))
-        return s
+        self.k1 = k1
+        document_count = len(docs_tokens)
+        avg_length = sum(len(doc) for doc in docs_tokens) / max(document_count, 1)
+        self.postings = {}
+        self.length_penalties = []
+        for row, doc in enumerate(docs_tokens):
+            self.length_penalties.append(k1 * (1 - b + b * len(doc) / avg_length) if avg_length else 0.0)
+            for token, frequency in Counter(doc).items():
+                self.postings.setdefault(token, {})[row] = frequency
+        self.idf = {
+            token: math.log(1 + (document_count - len(rows) + 0.5) / (len(rows) + 0.5))
+            for token, rows in self.postings.items()
+        }
 
     def search(self, query_tokens, top_k=6, only_rows=None):
         """only_rows：范围行集合（先范围后召回）；None 为全校。"""
-        rows = only_rows if only_rows is not None else range(self.N)
-        scores = [(self.score(query_tokens, i), i) for i in rows]
-        scores = [x for x in scores if x[0] > 0]
-        scores.sort(reverse=True)
-        return scores[:top_k]
+        scope = set(only_rows) if only_rows is not None else None
+        scores = {}
+        for token in query_tokens:
+            postings = self.postings.get(token)
+            if not postings:
+                continue
+            idf = self.idf[token]
+            for row, frequency in postings.items():
+                if scope is not None and row not in scope:
+                    continue
+                score = idf * (frequency * self.k1 + 1) / (frequency + self.length_penalties[row])
+                scores[row] = scores.get(row, 0.0) + score
+        return heapq.nlargest(top_k, ((score, row) for row, score in scores.items()))
 
 
 # ---------- 索引构建（含范围元数据） ----------
@@ -264,7 +263,7 @@ def get_vector_channel():
         vectors = data["vectors"].astype("float32")
         from sentence_transformers import SentenceTransformer
         model_name = str(data["model"]) if "model" in data.files else "BAAI/bge-m3"
-        model = SentenceTransformer(model_name)
+        model = SentenceTransformer(model_name, local_files_only=True)
         _VECTOR.update(ok=True, model=model, ids=ids, vectors=vectors)
         return _VECTOR
     except Exception as e:  # noqa: BLE001 —— 任何失败都退回 BM25
@@ -276,12 +275,13 @@ def get_vector_channel():
 
 def vector_query(query: str, top_k: int = 6):
     """向量通道检索：返回 [(clause_id, similarity)]；不可用时返回 []。"""
-    ch = get_vector_channel()
-    if not ch or not ch.get("ok"):
+    # 向量通道由启动阶段或离线脚本预载，问答线程可以先走 BM25。
+    ch = _VECTOR
+    if not ch["ok"]:
         return []
     try:
         import numpy as np
-        qv = ch["model"].encode([query], normalize_embeddings=True)[0].astype("float32")
+        qv = ch["model"].encode([query], normalize_embeddings=True, show_progress_bar=False)[0].astype("float32")
         sims = ch["vectors"] @ qv
         idx = {cid: i for i, cid in enumerate(ch["ids"])}
         clause_ids = get_indexes()["clause_ids"]
@@ -311,8 +311,9 @@ def retrieve(query, scope=None, top_k=6):
         cy = idx["clause_rows_of_year"].get(year, [])
         fy = idx["fact_rows_of_year"].get(year, [])
         if clause_rows is not None:
-            clause_rows = [r for r in clause_rows if r in set(cy)] or clause_rows
-            fact_rows = [r for r in (fact_rows or []) if r in set(fy)] or fact_rows
+            year_clauses, year_facts = set(cy), set(fy)
+            clause_rows = [r for r in clause_rows if r in year_clauses] or clause_rows
+            fact_rows = [r for r in (fact_rows or []) if r in year_facts] or fact_rows
         elif cy:
             clause_rows, fact_rows = cy, fy
         else:

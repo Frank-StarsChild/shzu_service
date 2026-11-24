@@ -10,7 +10,7 @@ import { computed, onMounted, ref, watch } from "vue";
 import { useStageStore } from "@/stores/stage";
 import { useChatStore } from "@/stores/chat";
 import { cnNumber } from "@/stage/hud";
-import { collegeEntries, type CollegeEntry } from "@/stage/collegeIndex";
+import { collegeEntries, type CollegeRow } from "@/stage/collegeIndex";
 import EmblemMark from "@/components/stage/EmblemMark.vue";
 import { api, type ServiceEntry } from "@/api/client";
 
@@ -28,13 +28,37 @@ const campusBuildings = computed(
   () => store.campuses.find((c) => c.id === store.zoneId)?.buildings ?? 0
 );
 
-type CollegeRow = CollegeEntry;
-
-/** 学院列表：与地图标记、灯牌角标同一份数据（collegeIndex，zone 过滤 + 同楼归一行） */
+/** 学院列表：与地图灯牌、角标同一份数据（collegeIndex：按学院号识别，分组与选楼都在里面） */
 const collegeRows = computed<CollegeRow[]>(() => {
   if (store.mode !== "campus") return [];
   return collegeEntries(store.meta, store.emblems, store.zoneId);
 });
+
+/** 本区学院（页头只数这一组，跨区教学点不重复算学院归属） */
+const zoneRows = computed(() => collegeRows.value.filter((r) => r.group === "zone"));
+const crossRows = computed(() => collegeRows.value.filter((r) => r.group === "cross"));
+const affRows = computed(() => collegeRows.value.filter((r) => r.group === "affiliated"));
+
+/** 面板分组：本区学院 / 跨区教学楼 / 附属片区（空组不显示） */
+const collegeGroups = computed(() =>
+  [
+    { key: "zone", title: "学院", rows: zoneRows.value },
+    { key: "cross", title: "跨区教学楼", rows: crossRows.value },
+    { key: "affiliated", title: "附属片区", rows: affRows.value },
+  ].filter((g) => g.rows.length > 0)
+);
+
+/** 行第二行：楼名 + 「共用」/「学院归属X」/ 位置待确认 */
+function rowMeta(row: CollegeRow): string {
+  if (!row.canLocate) return row.confirmed ? "暂无楼栋信息" : "位置待确认";
+  const parts = [row.buildingName || row.buildingId];
+  if (row.group === "cross" && row.homeZoneName) parts.push(`学院归属${row.homeZoneName}`);
+  if (row.group === "affiliated" && row.homeZoneName && row.homeZoneName !== row.buildingName) {
+    parts.push(row.homeZoneName);
+  }
+  if (row.sharedBuilding) parts.push("共用");
+  return parts.join(" · ");
+}
 
 // ---- 五个板块：只在选中片区是 places.boards 里那些楼所在的片区时显示 ----
 const boardZone = computed<string | null>(() => {
@@ -50,10 +74,12 @@ const boards = computed<string[]>(() => {
   return Object.keys(store.places?.boards ?? {});
 });
 
-/** 点学院行：先清 board 再落楼（卡常见错误 4） */
+/** 点学院行：用行上选好的楼定位，同时带上学院号（同楼两所学院靠它区分）；
+ *  没有可定位地址的行（位置待确认）不动镜头。 */
 function pickCollege(row: CollegeRow) {
+  if (!row.canLocate) return;
   store.board = null;
-  void store.showBuilding(row.buildingId);
+  void store.showCollege(row.no, row.buildingId);
 }
 
 function pickBoard(name: string) {
@@ -121,7 +147,7 @@ function askSample(q: string) {
 
       <header class="stage-panel-head">
         <h2 class="stage-panel-title">{{ campusName }}</h2>
-        <span class="stage-panel-meta">{{ campusBuildings }} 栋楼 · {{ collegeRows.length }} 个学院</span>
+        <span class="stage-panel-meta">{{ campusBuildings }} 栋楼 · {{ zoneRows.length }} 个学院</span>
       </header>
 
       <div class="stage-panel-scroll">
@@ -139,25 +165,29 @@ function askSample(q: string) {
         </div>
 
         <template v-if="collegeRows.length">
-          <p class="stage-subtitle">学院</p>
-          <div class="stage-colleges">
-            <button
-              v-for="row in collegeRows"
-              :key="row.buildingId"
-              type="button"
-              class="stage-college"
-              :class="{ 'is-active': store.place?.buildingId === row.buildingId }"
-              :data-testid="`stage-college-${row.index}`"
-              @click="pickCollege(row)"
-            >
-              <span class="stage-college-no">{{ cnNumber(row.index) }}</span>
-              <span v-if="row.emblem" class="stage-college-emblem" aria-hidden="true">
-                <EmblemMark :college="row.emblem" :size="24" tone="gilt" />
-              </span>
-              <span class="stage-college-name">{{ row.name }}<span v-if="!row.confirmed" class="stage-college-unconf">（位置待确认）</span></span>
-              <span class="stage-college-bld">{{ row.buildingName }}</span>
-            </button>
-          </div>
+          <template v-for="g in collegeGroups" :key="g.key">
+            <p class="stage-subtitle">{{ g.title }}</p>
+            <div class="stage-colleges">
+              <button
+                v-for="row in g.rows"
+                :key="row.no"
+                type="button"
+                class="stage-college"
+                :class="{ 'is-active': store.collegeNo === row.no, 'is-off': !row.canLocate }"
+                :data-testid="`stage-college-${row.index}`"
+                :data-college-no="row.no"
+                :aria-disabled="row.canLocate ? undefined : 'true'"
+                @click="pickCollege(row)"
+              >
+                <span class="stage-college-no">{{ cnNumber(row.index) }}</span>
+                <span v-if="row.college" class="stage-college-emblem" aria-hidden="true">
+                  <EmblemMark :college="row.college" :size="24" tone="gilt" />
+                </span>
+                <span class="stage-college-name">{{ row.name }}</span>
+                <span class="stage-college-bld">{{ rowMeta(row) }}</span>
+              </button>
+            </div>
+          </template>
         </template>
         <p v-else class="stage-panel-text">这个校区没有学院，主要是宿舍和生活设施。</p>
       </div>
@@ -262,6 +292,16 @@ function askSample(q: string) {
 }
 .stage .stage-college:hover {
   border-left-color: var(--st-gold2);
+}
+/* 没有可定位地址的行（位置待确认）：仍可读、可聚焦，但不导航 */
+.stage .stage-college.is-off {
+  cursor: default;
+}
+.stage .stage-college.is-off:hover {
+  border-left-color: transparent;
+}
+.stage .stage-college.is-off .stage-college-name {
+  color: var(--st-moon2);
 }
 .stage .stage-college.is-active {
   border-left-color: var(--st-red);
