@@ -51,11 +51,12 @@ def search_campus_knowledge(
     kb = get_kb()
     q = (query or "").strip()[:160]
     college = kb.college_of_text(q)
+    college_leave = bool(college and re.search(r"请假|销假", q))
     # 机构范围（防串答）仅用于学院信息类意图（简介/专业/师资/位置等）：
     # 办事类问法（请假/办理/流程等）的规则常为校级，学院不构成过滤条件。
     scope = None
     if college and re.search(
-            r"简介|概况|介绍|专业|师资|位置|在哪|规模|学科|学位点|沿革|实力|院系设置|有多少(学生|老师|人)|副教授|教授|导师|职称|名单|名册", q):
+            r"简介|概况|介绍|专业|师资|位置|在哪|规模|学科|学位点|沿革|实力|院系设置|有多少(学生|老师|人)|副教授|教授|导师|职称|名单|名册|请假|销假", q):
         scope = {"college": college}
     year = detect_year(q)
     if year:
@@ -120,6 +121,10 @@ def search_campus_knowledge(
                                           "evidence_ids": [cid]})
                     have_clause.add(cid)
     clauses = topic_clauses + clauses
+    if college_leave:
+        clauses = [c for c in clauses if re.search(r"请假|销假", c.get("exact_text") or "")]
+        relevant = {c["clause_id"] for c in clauses}
+        facts = [f for f in facts if relevant.intersection(f.get("evidence_ids") or [])]
     evidence = []
     for c in clauses[:MAX_EVIDENCE_PER_SEARCH]:
         cid = c["clause_id"]

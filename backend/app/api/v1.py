@@ -11,7 +11,7 @@ from fastapi import APIRouter, Header, HTTPException, Response
 from fastapi.responses import FileResponse
 
 from ..contracts import models as M
-from ..agent import deepseek_adapter, graph
+from ..agent import deepseek_adapter, dispatch, graph
 from ..agent.seed_slots import extract_student_facts, filter_for_flow
 from ..knowledge.loader import get_kb
 from ..knowledge import web_evidence
@@ -19,6 +19,7 @@ from ..knowledge.retriever import retrieve
 from ..rules.engine import evaluate_rules
 from ..documents import renderer as doc_renderer
 from ..models import store
+from ..platform import adapter
 
 router = APIRouter(prefix="/api/v1")
 
@@ -48,12 +49,17 @@ def live():
 @router.get("/health/ready", response_model=M.ReadyResponse)
 def ready():
     kb = get_kb()
-    cfg = deepseek_adapter.describe_config()
+    if adapter.platform_enabled():
+        provider = "teleagent"
+        configured = adapter.platform_adapter_status()["workflow_configured"]
+    else:
+        cfg = deepseek_adapter.describe_config()
+        provider, configured = cfg["provider"], cfg["configured"]
     return M.ReadyResponse(knowledge_version=kb.kb_version,
                            knowledge_sources=len(kb.documents),
                            knowledge_evidence=len(kb.clauses),
-                           model_provider=cfg["provider"] or "local-rules",
-                           model_configured=cfg["configured"])
+                           model_provider=provider,
+                           model_configured=configured)
 
 
 # ---------- 会话 ----------
@@ -87,6 +93,7 @@ def delete_session(session_id: str):
 
 @router.post("/chat", response_model=M.ChatResponse)
 def chat(req: M.ChatRequest):
+    started = time.perf_counter()
     row = _load_session(req.session_id)
 
     if not req.message and not req.choice_id:
@@ -103,7 +110,8 @@ def chat(req: M.ChatRequest):
             _err(409, "request_id_conflict", "该 request_id 已用于不同内容", retryable=True)
         assistant = next((t for t in existing if t["role"] == "assistant"), None)
         if assistant and assistant.get("response") \
-                and assistant["response"].get("status") not in ("error", "model_unavailable"):
+                and assistant["response"].get("status") not in ("error", "model_unavailable") \
+                and assistant["response"].get("reason_code") != "turn_deadline":
             return M.ChatResponse(**assistant["response"])
         store.delete_turn(req.session_id, req.request_id)
 
@@ -159,8 +167,7 @@ def chat(req: M.ChatRequest):
 
     history = _history_for(req.session_id)
 
-    result = graph.run_turn(req.session_id, req.request_id, query or "",
-                            slots=slots, entrypoint="vue", history=history)
+    result = dispatch.run_chat(req.session_id, req.request_id, query or "", slots, history, started)
     final = result["final"]
     new_slots = result["slots"]
 

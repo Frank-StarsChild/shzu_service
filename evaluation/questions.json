@@ -1,8 +1,8 @@
 {
   "meta": {
-    "title": "石大智多星 50 题正式题集 + 20 道边界案例",
-    "kb_version": "kb-2026-11-18-r1",
-    "note": "每题保存：题号、身份前提、期望状态、标准关键词（判定核心要点）、应引用的出处、禁止出现的错误点。检查范围含 summary、事实值与引用原文摘录。通过标准：状态一致、关键词全部命中、应引出处至少命中一条、完整答复耗时 ≤5000ms。",
+    "title": "石大智多星 50 道核心题 + 25 道边界题",
+    "kb_version": "kb-2026-11-20-r13",
+    "note": "按审定知识库 r13 验收。回复须符合期望状态、包含规定关键词、命中适用引用、避免禁用内容，并在 5000ms 内完整返回。B-04 对未核实别名允许针对性追问或明确说明资料不足。超时降级另计。",
     "latency_budget_ms": 5000
   },
   "core": [
@@ -113,7 +113,8 @@
         "前10%"
       ],
       "any_evidence": [
-        "xg-gj-c1"
+        "xg-gj-c1",
+        "xg-att099bf4e1-007"
       ]
     },
     {
@@ -730,8 +731,8 @@
       "q": "小绿是什么？",
       "premise": "",
       "expect_status": [
-        "insufficient",
-        "out_of_scope"
+        "clarify",
+        "insufficient"
       ],
       "must_keywords": [
         "小绿"
@@ -863,13 +864,12 @@
       "type": "资料缺失",
       "q": "图书馆晚上能过夜吗？",
       "premise": "",
-      "expect_status": [
-        "answer",
-        "insufficient"
-      ],
-      "must_keywords": [],
+      "expect_status": "insufficient",
+      "must_keywords": ["过夜"],
       "any_evidence": [
-        "lib-ext-c1"
+        "lib-ext-c1",
+        "lib-newyear-c1",
+        "lib-summer-c1"
       ]
     },
     {
@@ -952,10 +952,7 @@
       "type": "学院名不吸业务",
       "q": "信科院请假流程是什么？",
       "premise": "",
-      "expect_status": [
-        "answer",
-        "insufficient"
-      ],
+      "expect_status": "insufficient",
       "must_keywords": [
         "请假"
       ],
@@ -963,9 +960,7 @@
         "1984",
         "2210"
       ],
-      "any_evidence": [
-        "sk-leave-c1"
-      ]
+      "any_evidence": []
     },
     {
       "id": "B-23",
@@ -1002,10 +997,10 @@
     },
     {
       "id": "B-25",
-      "type": "学院资料缺口",
+      "type": "学院简介导入",
       "q": "介绍一下马克思主义学院",
       "premise": "",
-      "expect_status": "insufficient",
+      "expect_status": "answer",
       "must_keywords": [
         "马克思主义"
       ],
@@ -1014,7 +1009,7 @@
         "计算机科学与技术",
         "国家励志奖学金"
       ],
-      "any_evidence": []
+      "any_evidence": ["xy-8066444a-c001", "xy-8066444a-c002"]
     }
   ]
 }

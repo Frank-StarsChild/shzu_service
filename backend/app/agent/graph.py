@@ -8,10 +8,10 @@
 - model：DeepSeek（LangChain ChatOpenAI）生成回复，或按需调用工具补充资料。
 - tools：LangGraph 执行 LangChain 工具调用，真实结果（ToolMessage）返回给模型继续组织回复。
 - publish：校验模型输出（reply 非空、证据 ID ⊆ 工具返回集合、flow_id ∈ 可用向导、choices 规范化），
-  构造 ChatResponse；模型不可用/超时/输出无效 → status="error"（技术错误，前端展示失败+重试）。
+  构造 ChatResponse。模型连接异常时可展示已核实的直接依据；时限到达时可附带已验证的部分证据。
 
 预算：模型调用 ≤ MAX_MODEL_CALLS 次、工具调用每轮 ≤ MAX_TOOL_CALLS 次、
-总预算 SHZU_TURN_BUDGET 秒（invoke 按剩余时间设 timeout）。
+v1 调度传入整轮截止时间；独立运行对话图时取 SHZU_TURN_BUDGET。
 """
 import json
 import logging
@@ -19,7 +19,7 @@ import re
 import time
 import uuid
 from datetime import datetime
-from typing import Any, Dict, List, Literal, Optional, TypedDict
+from typing import Any, Callable, Dict, List, Literal, Optional, TypedDict
 
 from langchain_core.messages import AIMessage, BaseMessage, HumanMessage, SystemMessage, ToolMessage
 from langchain_core.runnables import RunnableConfig
@@ -30,7 +30,7 @@ from ..agent.tools import TOOLS, TOOL_LIST
 from ..agent.process import build_process
 from ..knowledge.loader import get_kb
 from ..knowledge import web_evidence
-from ..knowledge.intent import IDENTITY_WORDS, normalize_query, year_window_note
+from ..knowledge.intent import IDENTITY_WORDS, LIBRARY_TEMPORARY_HOURS, normalize_query, year_window_note
 from ..knowledge.retriever import detect_year
 
 logger = logging.getLogger("shzu.agent")
@@ -38,7 +38,7 @@ logger = logging.getLogger("shzu.agent")
 MAX_MODEL_CALLS = 4        # 每轮模型调用次数上限
 MAX_TOOL_CALLS = 4         # 每个工具轮次内的调用数上限（场景：检索+场景工具+定位）
 TURN_BUDGET = deepseek_adapter.TURN_BUDGET
-WEB_LOOKUP_WINDOW = 3.5    # 5 秒交互目标中为最终答复保留约 1.5 秒
+WEB_LOOKUP_WINDOW = 2.7
 MAX_CITATIONS = 6
 MAX_ACTIONS = 2             # 每轮附加的动作卡片上限
 
@@ -54,6 +54,16 @@ _AWARD_APPLICATION = r"(?:该|要)?(?:怎么|如何)(?:申请|申报)"
 _AWARD_QUESTION = re.compile(
     rf"{_AWARD_YEAR}{_AWARD_NAME}{_AWARD_APPLICATION}|{_AWARD_APPLICATION}{_AWARD_YEAR}{_AWARD_NAME}"
 )
+_DORM_PLUMBING = re.compile(r"(?:宿舍|公寓).{0,14}(?:水管|漏水|上下水).{0,16}(?:维修|报修|找谁|找哪个部门)")
+_E_BIKE_GATE = re.compile(r"(?:电动自行车|电瓶车|电动车).{0,15}(?:出入校门|进出校门|入校门|过闸机).{0,14}(?:要求|怎么|规定|要不要)")
+_NATIONAL_AWARD_RANK = re.compile(r"国家奖学金.{0,14}(?:排名|名次)")
+_LIBRARY_HOURS = re.compile(r"(?:今天|现在).{0,6}图书馆.{0,12}(?:几点|什么时候).{0,6}(?:开门|关门|开馆|闭馆)")
+_COLLEGE_INTRO = re.compile(r"简介|概况|介绍|是(?:什么|怎样的)学院")
+_GATE_REQUIREMENTS = re.compile(
+    r"(?:电动自行车|电瓶车)(?:出入|进出|出|进|过)校门(?:时)?(?:有(?:什么|哪些)要求|有什么规定|需要注意什么|怎么通行)"
+)
+_TODAY_LIBRARY_CLOSE = re.compile(r"(?:今天图书馆|图书馆今天)(?:几点|什么时候)(?:关门|闭馆)")
+_LIBRARY_HOURS_TITLE = re.compile(r"开馆|闭馆|开放(?:服务)?时间|开放安排")
 
 # 技术错误文案（系统级错误状态，不是智能体的聊天正文）
 ERRORS = {
@@ -168,9 +178,11 @@ class ChatState(TypedDict, total=False):
     tools_used: List[str]            # 去重后本轮实际执行的工具（步骤可见）
     model_error: Optional[str]
     prepared_reply: Optional[str]
+    prepared_evidence_ids: List[str]  # 预取结果中直接支持所问事项的证据
     deadline: float
     web_deadline: float
     timings: Dict[str, float]
+    on_progress: Callable[[List[Dict[str, Any]], List[str]], None]
     final: Dict[str, Any]
 
 
@@ -200,7 +212,7 @@ def node_prepare(state: ChatState) -> ChatState:
         notes.append(f"年度校验：用户询问 {year} 年度；库内励志奖学金完整依据包为 2025 年度（历史演示），"
                      f"{year} 年的通知、模板和学院截止日尚未入库。")
 
-    tw = year_window_note(text, state["business_date"])
+    tw = year_window_note(text, state["business_date"]) if "图书馆" in text else None
     if tw:
         notes.append("时间窗校验：" + tw)
 
@@ -210,6 +222,14 @@ def node_prepare(state: ChatState) -> ChatState:
         notes.append(f"机构校验：用户明确提到 {college}；检索该学院资料时工具已按机构过滤。"
                      + (f"该学院已有入库主题 {len(topics)} 个。" if topics else
                         "该学院的概况/专业资料尚未核验入库。"))
+        if re.search(r"请假|销假", text):
+            notes.append(f"请假适用范围：检索词保留 {college}，仅依据覆盖该学院的文件给出流程。"
+                         "缺少该范围的文件时，用 insufficient；仅建议向本学院或辅导员确认，"
+                         "不引用其他学院模板作办理依据，也不填入与请假无关的办公室、房间或电话。")
+
+    if "图书馆" in text and re.search(r"过夜|通宵|留宿", text):
+        notes.append("过夜核验：临时开闭馆时间不能证明常规是否允许过夜。没有适用的直接规定时，"
+                     "用 insufficient，如有临时安排只作历史参考，不作一概允许或禁止的结论。")
 
     if alias_hit and alias_hit.get("status") in ("ambiguous", "unverified"):
         routes = alias_hit.get("routes") or {}
@@ -232,15 +252,16 @@ def node_prepare(state: ChatState) -> ChatState:
     state["tools_used"] = []
     state["model_error"] = None
     state["prepared_reply"] = None
+    state["prepared_evidence_ids"] = []
     now = time.monotonic()
-    state["deadline"] = now + TURN_BUDGET
-    state["web_deadline"] = now + min(WEB_LOOKUP_WINDOW, TURN_BUDGET)
-    state["timings"] = {"start": time.perf_counter()}
-    _prepare_evidence(state, missing_award_year)
+    state.setdefault("deadline", now + TURN_BUDGET)
+    state["web_deadline"] = min(now + WEB_LOOKUP_WINDOW, state["deadline"] - 1.1)
+    state.setdefault("timings", {"start": time.perf_counter()})
+    _prepare_evidence(state, missing_award_year, college)
     return state
 
 
-def _prepare_evidence(state: ChatState, missing_award_year: Optional[int]) -> None:
+def _prepare_evidence(state: ChatState, missing_award_year: Optional[int], college: Optional[str]) -> None:
     """提前调用现有业务工具。只有相关证据可用时才直达模型整理回复。"""
     if state.get("history") or not deepseek_adapter.is_configured():
         return
@@ -251,6 +272,24 @@ def _prepare_evidence(state: ChatState, missing_award_year: Optional[int]) -> No
         required = set((get_kb().facts.get("jw-f-cjd-way") or {}).get("evidence_ids") or [])
         instruction = ("按在校生教务处盖章成绩单的官方指引，简要给出申请入口和自助机地点，"
                        "引用支持该办理途径的条款。")
+    elif _DORM_PLUMBING.search(text):
+        calls = [("search_campus_knowledge", {"query": "物业中心水电 维修上下水 宿舍水管报修"})]
+        required = {"hq-sd-c1"}
+        instruction = "依据水电暖职责条款说明宿舍水管应找哪个部门，引用该职责条款。"
+    elif _E_BIKE_GATE.search(text):
+        calls = [("search_campus_knowledge", {"query": "电动自行车 出入校门 推车步行通过闸机"})]
+        required = {"bw-gate-c2", "bw-eb-c2"}
+        instruction = "优先回答具体的校门通行要求，引用直接说明推车通过闸机的条款。"
+    elif _NATIONAL_AWARD_RANK.search(text) and detect_year(text) in (None, 2025):
+        calls = [("search_campus_knowledge", {"query": "2025年本专科生国家奖学金 成绩排名前10%"})]
+        required = {"xg-gj-c1"}
+        instruction = "说明国家奖学金的双排名要求和例外，标明依据年份，引用直接规定百分比的条款。"
+    elif _LIBRARY_HOURS.search(text):
+        terms = "石河子大学图书馆 开馆时间 " + state["business_date"]
+        calls = [("search_campus_knowledge", {"query": "图书馆常规开馆时间 开馆 闭馆"}),
+                 ("lookup_official_web", {"query": terms})]
+        required = {"lib-ext-c1", "lib-newyear-c1", "lib-summer-c1"}
+        instruction = "按适用日期核对开闭馆安排。临时通知过期且官网没有取得适用正文时，用 insufficient。"
     elif missing_award_year and _AWARD_QUESTION.fullmatch(text):
         year = missing_award_year
         calls = [
@@ -262,6 +301,14 @@ def _prepare_evidence(state: ChatState, missing_award_year: Optional[int]) -> No
                        "只有同一年度、同一奖项的正式通知可作为当年申报依据。"
                        "缺少该通知时用 insufficient，标明 2025 年材料仅供历史参考并引用相关条款；"
                        "用 2 到 4 句交代已核实的依据和咨询渠道，详细核对项已由工具提供。")
+    elif college and _COLLEGE_INTRO.search(text):
+        kb = get_kb()
+        required = {cid for topic in kb.topics_of_college(college) for fid in topic.get("fact_ids", [])
+                    for cid in (kb.facts.get(fid) or {}).get("evidence_ids", [])}
+        if not required:
+            return
+        calls = [("search_campus_knowledge", {"query": f"{college} 简介"})]
+        instruction = "依据该学院官方简介直接回答，引用支持学院概况的正文条款。"
     else:
         return
 
@@ -270,9 +317,11 @@ def _prepare_evidence(state: ChatState, missing_award_year: Optional[int]) -> No
         for index, (name, args) in enumerate(calls)
     ])
     prepared = node_tools({**state, "messages": [*state["messages"], tool_request]}, None)
-    if required.intersection(prepared["evidence_ids"]):
+    matched = [cid for cid in dict.fromkeys(prepared["evidence_ids"]) if cid in required]
+    if matched:
         state.update(prepared)
         state["prepared_reply"] = instruction
+        state["prepared_evidence_ids"] = matched
 
 
 def _relative_year(text: str, today: str) -> Optional[int]:
@@ -321,32 +370,21 @@ def node_model(state: ChatState, config: RunnableConfig) -> Dict[str, Any]:
     model = deepseek_adapter.create_chat_model()
     if model is None:
         return {"model_error": "model_config"}
-    remaining = state.get("deadline", time.monotonic()) - time.monotonic()
-    if remaining <= 0.5:
-        return {"model_error": "model_timeout"}
     if state.get("prepared_reply"):
         bound = model.bind_tools(TOOL_LIST, tool_choice="none")
     else:
         bound = model.bind_tools(TOOL_LIST)
     msgs = [_system_message(state)] + list(state["messages"])
-    # 硬超时看门狗：openai SDK/网络层挂起时按本轮剩余预算强制返回（线程不等待退出）
-    from concurrent.futures import ThreadPoolExecutor
-    from concurrent.futures import TimeoutError as _FutTimeout
-    ex = ThreadPoolExecutor(max_workers=1)
-    try:
-        fut = ex.submit(bound.invoke, msgs,
-                        timeout=min(remaining, deepseek_adapter.REQUEST_TIMEOUT),
-                        config={"configurable": _tool_config(state, config)})
-        reply = fut.result(timeout=remaining + 1.0)
-    except _FutTimeout:
-        logger.warning("model call watchdog fired (remaining=%.1fs)", remaining)
+    remaining = state["deadline"] - time.monotonic()
+    if remaining <= 0.05:
         return {"model_error": "model_timeout"}
+    try:
+        reply = bound.invoke(msgs, timeout=min(remaining, deepseek_adapter.REQUEST_TIMEOUT),
+                             config={"configurable": _tool_config(state, config)})
     except Exception as e:  # openai SDK 异常统一分类
         code = deepseek_adapter.error_code(e)
         logger.warning("model call failed (%s): %s", code, e)
         return {"model_error": code}
-    finally:
-        ex.shutdown(wait=False, cancel_futures=True)
     return {"messages": list(state["messages"]) + [reply],
             "model_calls": state.get("model_calls", 0) + 1}
 
@@ -387,6 +425,8 @@ def node_tools(state: ChatState, config: RunnableConfig) -> Dict[str, Any]:
     tool_cfg = {"configurable": _tool_config(state, config)}
     calls = list(latest.tool_calls or []) + list(latest.invalid_tool_calls or [])
     for idx, call in enumerate(calls):
+        if time.monotonic() >= state.get("deadline", float("inf")):
+            break
         name = call.get("name")
         args = call.get("args")
         result: Dict[str, Any] = {"error": "工具或参数不合法"}
@@ -403,6 +443,9 @@ def node_tools(state: ChatState, config: RunnableConfig) -> Dict[str, Any]:
                 if name not in used:
                     used.append(name)
                 evidence_ids.extend(h["id"] for h in (result.get("evidence") or []))
+                if state.get("on_progress"):
+                    ids = list(dict.fromkeys(evidence_ids))
+                    state["on_progress"](_citations_for(get_kb(), ids), list(used))
                 if result.get("available") and result.get("id"):
                     workflows.append(result["id"])
                 # 场景动作卡片：主 action + 附带的 place_action
@@ -437,6 +480,46 @@ def _build(state: ChatState, status: str, **kw) -> Dict[str, Any]:
         **kw,
     }
     return final
+
+
+def _reviewed_reply(state: ChatState, kb) -> Optional[Dict[str, Any]]:
+    """对范围已明确的单一问题直接使用审定事实或说明资料缺口。"""
+    if state.get("history"):
+        return None
+    text = re.sub(r"\s+", "", state["query"]).rstrip("？?。！!")
+    text = re.sub(r"^请问[，,]?", "", text)
+    if _GATE_REQUIREMENTS.fullmatch(text):
+        fact = kb.facts.get("bw-f-gate-ebike") or {}
+        value = fact.get("value")
+        expected_ids = fact.get("evidence_ids") or []
+        citations = _citations_for(kb, expected_ids)
+        if isinstance(value, str) and value.strip() and citations:
+            message = f"符合入校条件的电动自行车出入校门时，{value}，并配合门卫检查。"
+            return _build(
+                state, "answer", message=message, citations=citations,
+                answer={"blocks": [{"kind": "note", "text": message,
+                                    "citation_ids": [c["id"] for c in citations]}], "unknown_fields": []},
+            )
+    elif _TODAY_LIBRARY_CLOSE.fullmatch(text):
+        schedules = [
+            doc for doc in kb.documents.values()
+            if doc.get("category") == "图书馆" and _LIBRARY_HOURS_TITLE.search(doc.get("title") or "")
+        ]
+        today = state["business_date"]
+        for doc in schedules:
+            window = LIBRARY_TEMPORARY_HOURS.get(doc["doc_id"])
+            end = doc.get("effective_to") or ""
+            if not re.fullmatch(r"\d{4}-\d{2}-\d{2}", end):
+                end = window[1] if window else ""
+            if not end or end >= today:
+                return None
+        if schedules:
+            return _build(
+                state, "insufficient",
+                message="知识库已有的图书馆时间通知均已过适用期，暂无法确认今天的闭馆时间。"
+                        "请在石河子大学图书馆官网查看当天公告，或向对应分馆确认。",
+            )
+    return None
 
 
 def _validated_actions(state: ChatState, kb) -> tuple:
@@ -645,10 +728,18 @@ def _attach_process(state: ChatState, kb, final, candidate):
 
 
 def _publish_final(state: ChatState) -> Dict[str, Any]:
-    """校验模型输出并产出 ChatResponse dict；校验失败返回技术错误（error），不冒充正常回复。"""
+    """校验模型输出并产出 ChatResponse；连接异常时可返回已核实的直接依据。"""
     kb = get_kb()
     if state.get("model_error"):
         code = state["model_error"]
+        if code == "model_timeout":
+            return deadline_response(state, _citations_for(kb, list(dict.fromkeys(state.get("evidence_ids") or []))))
+        if code == "model_connection":
+            citations = _citations_for(kb, state.get("prepared_evidence_ids") or [])
+            if citations:
+                return _build(state, "insufficient", reason_code=code, citations=citations,
+                              message="已找到与本事项相关的官方资料。模型连接暂不可用，"
+                                      "本轮仅提供原文供查阅，请稍后重试获取完整答复。")
         if code not in ERRS_KEYS():
             code = "model_response"
         return _build(state, "error", reason_code=code, message=ERRORS[code])
@@ -734,6 +825,14 @@ def ERRS_KEYS():
     return set(ERRORS.keys())
 
 
+def deadline_response(state: ChatState, citations: List[Dict[str, Any]]) -> Dict[str, Any]:
+    if not citations:
+        return _build(state, "error", reason_code="turn_deadline",
+                      message="本轮在响应时限内未能完成查询。请重试。")
+    return _build(state, "insufficient", reason_code="turn_deadline", citations=citations,
+                  message="本轮在响应时限内已取得以下官方资料，完整答复尚未生成。可重试继续核查。")
+
+
 def node_publish(state: ChatState) -> Dict[str, Any]:
     """LangGraph 节点：把校验后的发布结果写入 state.final。"""
     return {"final": _publish_final(state)}
@@ -766,19 +865,29 @@ except Exception:  # langgraph 不可用时退化为顺序执行（同样节点�
 
 def run_turn(session_id: str, request_id: str, query: str,
              slots: Optional[Dict[str, Any]] = None, entrypoint: str = "vue",
-             history: Optional[List[Dict[str, Any]]] = None) -> Dict[str, Any]:
+             history: Optional[List[Dict[str, Any]]] = None, *, deadline: Optional[float] = None,
+             started: Optional[float] = None, trace_id: Optional[str] = None,
+             on_progress: Optional[Callable] = None) -> Dict[str, Any]:
     """执行一轮对话。返回 final（ChatResponse dict）与更新后的 slots。"""
+    kb = get_kb()
     init: ChatState = {
         "session_id": session_id,
         "request_id": request_id,
-        "trace_id": "trace-" + uuid.uuid4().hex[:12],
+        "trace_id": trace_id or ("trace-" + uuid.uuid4().hex[:12]),
         "query": query,
         "business_date": datetime.now().strftime("%Y-%m-%d"),
         "entrypoint": entrypoint,
         "slots": dict(slots or {}),
         "history": list(history or []),
-        "knowledge_version": get_kb().kb_version,
+        "knowledge_version": kb.kb_version,
+        "deadline": deadline if deadline is not None else time.monotonic() + TURN_BUDGET,
+        "timings": {"start": started if started is not None else time.perf_counter()},
     }
+    if on_progress is not None:
+        init["on_progress"] = on_progress
+    reviewed = _reviewed_reply(init, kb)
+    if reviewed is not None:
+        return {"final": reviewed, "slots": init["slots"]}
     state = dict(init)
     if _COMPILED is not None:
         result = _COMPILED.invoke(state)

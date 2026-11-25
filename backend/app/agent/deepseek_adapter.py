@@ -134,7 +134,7 @@ def _create_chat_model(api_key: str, model: str, base_url: str):
         # 1100 会把最终 JSON 截成非法尾（model_response 失败的主因）
         max_tokens=2400,
         timeout=REQUEST_TIMEOUT,
-        max_retries=1,   # SDK 内部重试限制为 1 次（预算控制由对话图负责）
+        max_retries=0,   # 在这轮的剩余时间内只发一次，重试由用户或调用方触发
     )
     logger.info("deepseek chat model ready (%s @ %s)", model, base_url)
     return client

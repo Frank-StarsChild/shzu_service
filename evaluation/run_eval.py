@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""50 题正式评测脚本（v1 契约版）：先建会话，再逐题带 request_id 调用 /api/v1/chat。
+"""75 题正式评测脚本（v1 契约版）：逐题独立会话，带 request_id 调用 /api/v1/chat。
 用法：先启动后端（uvicorn 8300），再运行本脚本。输出 CSV 报告到 evaluation/results/。
 契约映射：answer.blocks[].text / unknown_fields / citations[].id|excerpt|title|locator。
 """
@@ -12,7 +12,6 @@ import urllib.request
 
 BASE = os.path.dirname(os.path.abspath(__file__))
 API = os.environ.get("SHZU_API", "http://127.0.0.1:8300")
-TODAY = os.environ.get("SHZU_TODAY", "2026-11-18")
 # 验收按完整答复耗时判定；HTTP 读取时限仍允许收集较慢的实际结果。
 EVAL_TIMEOUT_MS = int(os.environ.get("SHZU_EVAL_TIMEOUT_MS", "5000"))
 
@@ -61,6 +60,7 @@ def run_one(item, session_id):
     compact = text.replace(" ", "").replace("\u00a0", "")  # 关键词匹配去除空格（模型数字两侧常加空格）
 
     status = resp.get("status")
+    reason_code = resp.get("reason_code") or ""
     expect_raw = item.get("expect_status")
     if isinstance(expect_raw, list):
         expect = [STATUS_MAP.get(e, e) for e in expect_raw]
@@ -70,6 +70,8 @@ def run_one(item, session_id):
         expect = STATUS_MAP.get(expect_raw, expect_raw)
         expect_show = expect
         expect_ok = status == expect
+    if status == "clarify":
+        expect_ok = expect_ok and bool(((resp.get("clarify") or {}).get("question") or "").strip())
     kws = item.get("must_keywords", [])
     missing = [k for k in kws if k.replace(" ", "") not in compact]
 
@@ -80,10 +82,13 @@ def run_one(item, session_id):
         evidence_ok = any(e in cited for e in ev)
 
     forbidden = [k for k in item.get("forbidden_keywords", []) if k.replace(" ", "") in compact]
-    passed = expect_ok and not missing and evidence_ok and not forbidden and elapsed_ms <= EVAL_TIMEOUT_MS
+    passed = (reason_code not in {"turn_deadline", "model_connection"} and expect_ok and not missing
+              and evidence_ok and not forbidden and elapsed_ms <= EVAL_TIMEOUT_MS)
     return {
         "id": item["id"], "board": item.get("board") or item.get("type"), "q": q,
-        "expect": expect_show, "status": status,
+        "expect": expect_show, "status": status, "reason_code": reason_code,
+        "knowledge_version": resp.get("knowledge_version") or "",
+        "workflow_run_id": resp.get("workflow_run_id") or "",
         "keywords_ok": "Y" if not missing else "N", "missing_keywords": " ".join(missing),
         "evidence_ok": "Y" if evidence_ok else "N",
         "forbidden": " ".join(forbidden),
@@ -96,15 +101,19 @@ def run_one(item, session_id):
 def main():
     with open(os.path.join(BASE, "questions.json"), encoding="utf-8") as f:
         data = json.load(f)
+    ready = http("/api/v1/health/ready")
+    version = ready.get("knowledge_version")
+    if version != data["meta"]["kb_version"]:
+        raise SystemExit(f"题集需要 {data['meta']['kb_version']}，服务端实际为 {version}。")
     rows = []
     for item in data["core"] + data["boundary"]:
         # 每题新会话：隔离历史噪声（多轮连问的历史会改变模型检索词与侧重）
-        session_id = create_session()
         try:
-            rows.append(run_one(item, session_id))
+            rows.append(run_one(item, create_session()))
         except Exception as e:
             rows.append({"id": item["id"], "board": item.get("board") or item.get("type"), "q": item["q"],
-                         "expect": item.get("expect_status"), "status": "ERROR", "keywords_ok": "N",
+                         "expect": item.get("expect_status"), "status": "ERROR", "reason_code": "",
+                         "knowledge_version": version, "workflow_run_id": "", "keywords_ok": "N",
                          "missing_keywords": str(e), "evidence_ok": "N", "forbidden": "",
                          "elapsed_ms": -1, "pass": "N", "citations": "", "summary": ""})
     outdir = os.path.join(BASE, "results")
@@ -127,14 +136,17 @@ def main():
         return vals[idx]
 
     print("=" * 70)
-    print("评测模式：每题独立会话（模型优先链路，避免历史噪声）")
-    print("会话：{}（知识日期 {}）".format(session_id, TODAY))
+    print(f"评测模式：每题独立会话 · 知识版本 {version} · 对话服务 {ready.get('model_provider')}")
     print("核心题：{}/{} 通过".format(sum(1 for r in core_rows if r["pass"] == "Y"), len(core_rows)))
     print("边界题：{}/{} 通过".format(sum(1 for r in b_rows if r["pass"] == "Y"), len(b_rows)))
-    print("时延：平均 {:.0f}ms，P95 {:.0f}ms，最大 {:.0f}ms，超时(>{}ms) {}".format(
-        statistics.mean(lat) if lat else -1, pct(lat, 95), max(lat) if lat else -1,
+    print("时延：平均 {:.0f}ms，P95 {:.0f}ms，P99 {:.0f}ms，最大 {:.0f}ms，超时(>{}ms) {}".format(
+        statistics.mean(lat) if lat else -1, pct(lat, 95), pct(lat, 99), max(lat) if lat else -1,
         EVAL_TIMEOUT_MS,
         sum(1 for v in lat if v > EVAL_TIMEOUT_MS)))
+    print("时限降级：{} 题".format(sum(r["reason_code"] == "turn_deadline" for r in rows)))
+    print("模型连接异常：{} 题，其中 {} 题附官方资料".format(
+        sum(r["reason_code"] == "model_connection" for r in rows),
+        sum(r["reason_code"] == "model_connection" and bool(r["citations"]) for r in rows)))
     for r in rows:
         if r["pass"] != "Y":
             print("FAIL", r["id"], "expect=" + str(r["expect"]), "got=" + str(r["status"]),

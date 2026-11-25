@@ -44,7 +44,7 @@ start "SHZU Backend 8300" /D "%ROOT%" cmd /k %PY% -m uvicorn backend.app.main:ap
 set /a TRIES=0
 :WAIT_BACK_LOOP
 set /a TRIES+=1
-if %TRIES% GTR 30 goto BACK_FAIL
+if %TRIES% GTR 120 goto BACK_FAIL
 powershell -NoProfile -Command "try{Invoke-WebRequest -Uri '%BACK_URL%/api/v1/health/live' -UseBasicParsing -TimeoutSec 2|Out-Null;exit 0}catch{exit 1}" >nul 2>&1
 if errorlevel 1 goto BACK_RETRY
 echo         Backend is ready.
@@ -55,7 +55,7 @@ ping -n 2 127.0.0.1 >nul
 goto WAIT_BACK_LOOP
 
 :BACK_FAIL
-echo   [X] Backend not ready after 30 tries. Check the "SHZU Backend 8300" window for errors.
+echo   [X] Backend not ready after 120 tries. Check the "SHZU Backend 8300" window for errors.
 echo       Common fix - recreate the virtual environment:
 echo         cd /d %ROOT%
 echo         python -m venv .venv

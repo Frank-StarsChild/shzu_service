@@ -203,6 +203,7 @@ class ChatResponse(BaseModel):
     session_id: str
     request_id: str
     trace_id: str
+    workflow_run_id: Optional[str] = None
     knowledge_version: str
     answer: Optional[AnswerBody] = None
     clarify: Optional[ClarifyBody] = None

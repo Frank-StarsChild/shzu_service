@@ -6,7 +6,13 @@ services:
     ports:
       - "8300:8300"
     environment:
-      - SHZU_PLATFORM_MODE=local-stub
+      SHZU_PLATFORM_MODE: ${SHZU_PLATFORM_MODE:-local-stub}
+      SHZU_CHAT_BUDGET_SECONDS: ${SHZU_CHAT_BUDGET_SECONDS:-4.2}
+      SHZU_TELEAGENT_WORKFLOW_URL: ${SHZU_TELEAGENT_WORKFLOW_URL:-}
+      SHZU_TELEAGENT_WORKFLOW_TOKEN: ${SHZU_TELEAGENT_WORKFLOW_TOKEN:-}
+      SHZU_TELEAGENT_H5_URL: ${SHZU_TELEAGENT_H5_URL:-}
+      SHZU_TELEAGENT_QR_URL: ${SHZU_TELEAGENT_QR_URL:-}
+      DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY:-}
     volumes:
       - ../data/artifacts:/app/data/artifacts
     restart: unless-stopped

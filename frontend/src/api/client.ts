@@ -235,6 +235,7 @@ export type ChatResponse = {
   session_id: string;
   request_id: string;
   trace_id: string;
+  workflow_run_id?: string | null;
   knowledge_version: string;
   answer?: { blocks: { kind: string; text: string; citation_ids: string[] }[]; unknown_fields: string[] };
   clarify?: { question: string; choices: { id: string; label: string }[]; input_hint?: string | null };

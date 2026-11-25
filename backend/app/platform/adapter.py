@@ -1,26 +1,67 @@
-# -*- coding: utf-8 -*-
-"""平台适配层：赛事账号确认前使用本地占位（方案 4.2 D0 待确认项）。
-接入真实平台后，由本模块转发 Workflow 调用并保留真实运行记录。"""
-import time
+"""Connect to the competition Workflow through a deployment-configured JSON gateway."""
+import os
+from urllib.parse import urlsplit
+
+import httpx
 
 from ..config import PLATFORM_MODE
 
 
-def platform_adapter_status():
+def _https_url(key: str) -> str:
+    value = os.environ.get(key, "").strip()
+    try:
+        url = urlsplit(value)
+        return value if url.scheme == "https" and url.hostname and not url.username else ""
+    except ValueError:
+        return ""
+
+
+def platform_enabled() -> bool:
+    return PLATFORM_MODE == "teleagent"
+
+
+def _workflow_settings() -> tuple[str, str]:
+    return _https_url("SHZU_TELEAGENT_WORKFLOW_URL"), os.environ.get("SHZU_TELEAGENT_WORKFLOW_TOKEN", "").strip()
+
+
+def platform_adapter_status() -> dict:
+    endpoint, token = _workflow_settings()
+    h5_url = _https_url("SHZU_TELEAGENT_H5_URL")
     return {
         "mode": PLATFORM_MODE,
-        "registered": False,
-        "note": "本地占位：意图路由、检索、规则与文档工具在本服务内执行；"
-                "接入赛事认可的 TeleAgent 编排环境后，chat 请求将经平台 Workflow 调度并记录真实 run id。",
-        "d0_checklist": [
-            "赛事认可的产品、账号及编排入口",
-            "发布 Web/H5（平台链接、二维码）",
-            "调用自建检索与文档工具",
-            "会话、结构化输出、API/流式能力",
-            "自定义页面或网页小应用的承载方式",
-        ],
+        "workflow_configured": platform_enabled() and bool(endpoint and token),
+        "h5_url": h5_url or None,
+        "qr_url": (_https_url("SHZU_TELEAGENT_QR_URL") or None) if h5_url else None,
     }
 
 
-def new_workflow_run_id(prefix="local"):
-    return f"{prefix}-run-{int(time.time() * 1000)}"
+class WorkflowError(Exception):
+    def __init__(self, code: str):
+        self.code = code
+        super().__init__(code)
+
+
+def run_workflow(payload: dict, timeout: float) -> tuple[str, dict]:
+    """Send one turn through the configured gateway. Use the upstream run ID verbatim."""
+    endpoint, token = _workflow_settings()
+    if not endpoint or not token:
+        raise WorkflowError("platform_config")
+    try:
+        response = httpx.post(endpoint, json=payload, timeout=timeout,
+                              headers={"Authorization": f"Bearer {token}"})
+        response.raise_for_status()
+        data = response.json()
+    except httpx.TimeoutException as exc:
+        raise TimeoutError from exc
+    except httpx.HTTPError as exc:
+        raise WorkflowError("platform_connection") from exc
+    except ValueError as exc:
+        raise WorkflowError("platform_response") from exc
+
+    if not isinstance(data, dict):
+        raise WorkflowError("platform_response")
+    run_id = data.get("run_id")
+    result = data.get("result")
+    if not isinstance(run_id, str) or not run_id.strip() or not isinstance(result, dict):
+        raise WorkflowError("platform_response")
+    return run_id, result

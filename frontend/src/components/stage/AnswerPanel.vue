@@ -46,7 +46,7 @@ const title = computed(() => {
   if (isError.value) return "这一轮没有答出来";
   switch (a.response?.status) {
     case "clarify": return "还要问你一句";
-    case "insufficient": return "资料不足";
+    case "insufficient": return a.response.reason_code === "turn_deadline" ? "已取得部分资料" : "资料不足";
     case "out_of_scope": return "不在办事范围内";
     case "workflow": return "办事向导";
     default: return "答";
@@ -481,6 +481,8 @@ onBeforeUnmount(() => {
           </div>
 
           <p v-if="resp.status === 'insufficient'" class="stage-panel-text">{{ insufficientText }}</p>
+          <button v-if="resp.reason_code === 'turn_deadline'" type="button" class="stage-btn"
+                  :disabled="store.busy" @click="onRetry">重试查询</button>
           <p v-if="missingText" class="stage-panel-text soft">{{ missingText }}</p>
 
           <!-- 办理路线：靠近摘要，正文与官方出处仍在其后 -->

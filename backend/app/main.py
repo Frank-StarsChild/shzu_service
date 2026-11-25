@@ -38,7 +38,7 @@ app.include_router(system.router)
 
 @app.on_event("startup")
 def _warm_chat():
-    """启动时构造模型客户端，并在后台预载检索索引。
+    """就绪前载入 BM25，向量通道在后台预热。
 
     模型客户端构造不发送请求，避免首轮承担 SDK 导入与初始化耗时。
     向量加载失败自动退回纯 BM25。
@@ -47,11 +47,8 @@ def _warm_chat():
 
     from .knowledge.retriever import get_indexes, get_vector_channel
 
-    def _warm():
-        get_indexes()
-        get_vector_channel()
-
-    threading.Thread(target=_warm, daemon=True, name="index-warmup").start()
+    get_indexes()
+    threading.Thread(target=get_vector_channel, daemon=True, name="vector-warmup").start()
     try:
         create_chat_model()
     except Exception:

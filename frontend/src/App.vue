@@ -26,7 +26,7 @@ const route = useRoute();
           回答均给出可点开的官方出处链接；无依据时明确说"不足"，不编造。<br />
           <template v-if="ready">
             知识库 <span class="mono">{{ ready.knowledge_version }}</span> · {{ ready.knowledge_sources }} 来源 / {{ ready.knowledge_evidence }} 证据
-            · 模型 {{ ready.model_configured ? ready.model_provider : "本地规则引擎（未配置 DeepSeek 密钥）" }}
+            · 对话服务 {{ ready.model_provider }}{{ ready.model_configured ? "" : "（待配置）" }}
           </template>
           <template v-else>连接知识服务中…</template>
         </div>

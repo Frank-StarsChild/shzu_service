@@ -11,6 +11,13 @@ import re
 
 from .loader import get_kb
 
+LIBRARY_TEMPORARY_HOURS = {
+    "lib-newyear2026": ("2026-01-01", "2026-01-03"),
+    "lib-summer2026": ("2026-07-07", "2026-08-25"),
+    # 通知只写至考试周结束，按 2026 年考试周期估计窗口。
+    "lib-extended-hours": ("2026-05-18", "2026-06-30"),
+}
+
 IDENTITY_WORDS = {
     "本科生": "undergraduate", "本科": "undergraduate", "专科生": "associate", "专科": "associate",
     "硕士生": "graduate_master", "硕士": "graduate_master", "研究生": "graduate_master",
@@ -50,12 +57,7 @@ def year_window_note(query, today):
     text = query or ""
     if not re.search(r"开馆|闭馆|关门|开放时间|几点关|几点开|开门", text):
         return None
-    timed = {
-        "lib-newyear2026": ("2026-01-01", "2026-01-03"),
-        "lib-summer2026": ("2026-07-07", "2026-08-25"),
-        # 延长开馆：通知写明"至考试周结束"，按 2026 年考试周期（5-6 月）估计适用窗口
-        "lib-extended-hours": ("2026-05-18", "2026-06-30"),
-    }
+    timed = LIBRARY_TEMPORARY_HOURS
     applies = [d for d, (s, e) in timed.items() if s <= today <= e]
     pointed = None
     for kw, doc_id in [("元旦", "lib-newyear2026"), ("暑期", "lib-summer2026"), ("暑假", "lib-summer2026"),

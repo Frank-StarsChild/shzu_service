@@ -7,20 +7,20 @@
 本仓库是方案《石大智多星_Vue3_FastAPI_详细技术方案》的落地工程：
 **Vue 3 + TypeScript + Pinia + Vue Router 前端**（瑞士国际主义风格，六路由多视图）、
 **FastAPI 后端**（版本化 /api/v1 契约、DeepSeek + LangChain/LangGraph 对话图）。
-决策策略为**模型优先 + 工具调用 + 规则校验**：每轮把当前消息、相关会话历史和工具清单交给
-DeepSeek（LangChain 工具调用协议），模型自行判断直接回答、追问或调用工具；LangGraph 执行工具并
-把真实结果返回模型，由模型生成全部用户可见正文（reply）。关键词/别名/日期规则不再提前结束对话：
-仅用于查询规范化（别名归一/身份识别）、检索候选匹配（主题触发词）、结果校验（证据 ID 合法性、
-向导适用性、机构范围防串答）。模型不可用/超时/输出未过校验时返回 `error` 技术错误状态
-（页面显示失败与重试入口，不冒充智能体回答；重试会真实重跑）。
+本地模式使用 **DeepSeek、LangGraph 工具调用与发布校验**。对明确的单一事项可先检索再由模型组织答复，
+其余问题根据当前消息、会话历史和工具结果判断是否需要追问。`POST /api/v1/chat` 默认给调度 4.2 秒，
+到点返回已核验的引用（`insufficient`）或可重试错误（`error`）。两种时限降级均标记 `turn_deadline`。
+首次提问的电动自行车校门通行规则可直接引用审定事实。询问当日图书馆闭馆时间时，
+若库内时间通知均已过适用期，则直接说明资料缺口。能找到可能适用的时间通知时，继续按正常流程核查。
+正常结果继续校验证据和向导适用性。配置赛事 Workflow 网关后，聊天转由网关调度并保存上游运行 ID。
+本地模型连接失败时，如查询已预取并核对到直接依据，聊天仍展示这部分官方资料，并标记 `model_connection`。
 前端提供问答与证据联动、办事向导（表单→规则核对→文书导出）、服务目录与证据详情。
 
-- 知识版本：`kb-2026-11-19-r5`（45 份官方来源、79 条审定条款；含信科院与文学艺术学院两个学院概况主题）
+- 知识版本 `kb-2026-11-20-r13`，含 1,637 份来源、24,830 条审定条款与 1,216 条结构化事实。运行时数据见 `/api/v1/health/ready` 和 `/api/v1/kb/info`。
 - 五大办事板块：学工、教务、后勤、保卫、图书馆；学院概况经离线导入流水线接入（`scripts/import_college_intro.py`，从原始采集资料逐段对照入库）
 - 三个向导：国家励志奖学金（2025 历史演示）、课程请假（生命科学学院模板）、教学场所借用
-- 对话策略：对话图（`backend/app/agent/graph.py`）每轮执行 prepare（规范化+校验提示注入：年度覆盖/时间窗/歧义/学院机构）→ model（LangChain 绑定工具，模型调用次数 ≤4、单轮预算 ≤24s、硬超时看门狗）⇄ tools（LangGraph 执行）→ publish（校验后发布）。三个工具：`search_campus_knowledge`（分段多路 BM25+RRF 融合+主题触发词候选置顶；学院信息类意图按机构严格过滤防串答）、`list_campus_colleges`（全校教学机构目录，含“（筹）”筹建限定，条目数仅作采集清单口径不作官方总数）、`find_service_workflow`（向导适用性校验：2025 历史演示年度/生科院模板等硬边界）
-- 所有聊天正文（问候/身份/能力/澄清/资料不足/超出范围/向导摘要）由 DeepSeek 按当轮问题撰写；发布前校验证据 ID ⊆ 工具返回集合、flow_id ∈ 工具确认可用集合，前端原样渲染 reply 并按 ID 填充引用、选项与向导按钮（不再按状态或原因码替换正文）
-- 评测：核心 50 题 + 边界 25 题，模型优先链路全量通过（75/75，每题独立会话避免历史噪声）；平均约 2.6s，最大 <5s；验收含模拟模型唯一测试文本经 LangChain→FastAPI 到 Vue 气泡的端到端断言与真实 DeepSeek 复测
+- 对话图经过 prepare → model ⇄ tools → publish。搜索工具以 BM25、主题匹配和 RRF 召回证据，按学院和年度控制适用范围。官方网页补查使用单独的较短预算，为最终答复留出时间。
+- 题集含 50 道核心题与 25 道边界题。2026-11-25 整改前复测通过 67/75，平均 2,877ms，P95 4,537ms，P99 5,307ms。原始结果见该次本地评测 CSV `evaluation/results/eval_report_20261125_101323.csv`。整改后成绩以真实模型或赛事 Workflow 的 CSV 为准。
 - 模型配置：项目根 `.env`（已 git ignore）设置 `DEEPSEEK_API_KEY / DEEPSEEK_MODEL / DEEPSEEK_BASE_URL / DEEPSEEK_TIMEOUT`，后端启动时自动加载
 
 > 演示与测试使用虚构个人信息；2025 国家励志奖学金流程明确标注“历史演示，不可用于当前年度申报”。
@@ -67,7 +67,7 @@ cd frontend
 npm run dev        # http://127.0.0.1:5180 ，已配置 /api 代理到 8300
 ```
 
-### 运行 50+20 题评测
+### 运行 75 题评测
 
 ```powershell
 $env:SHZU_API = 'http://127.0.0.1:8300'
@@ -75,7 +75,7 @@ $env:SHZU_API = 'http://127.0.0.1:8300'
 # 报告输出到 evaluation/results/eval_report_*.csv
 ```
 
-也可以在页面“50题自测”中一键运行并导出 CSV。
+评测通过命令行运行。脚本核对知识版本、为每题建立独立会话，并记录端到端时延、时限降级和 Workflow 运行 ID。
 
 ---
 
@@ -100,7 +100,7 @@ shzu-service-agent/
   data/
     reviewed/                     # 审定知识包（documents/clauses/facts/qa_topics）
     workflows/                    # 流程配置 flows.json、rules.json、aliases.json
-  evaluation/                     # 50+20 题集与 v1 契约评测脚本
+  evaluation/                     # 50 道核心题、25 道边界题与 v1 评测脚本
   prompts/                        # 路由/回答/规则解释/文书表达 Prompt（冻结 v1）
   deployment/                     # Dockerfile 与 compose 示例
   scripts/                        # 冒烟测试（smoke_v1.py 验证 v1 契约）
@@ -114,7 +114,8 @@ shzu-service-agent/
 | 接口 | 职责 |
 |---|---|
 | `POST /api/v1/sessions` / `GET /sessions/{id}/messages` / `DELETE /sessions/{id}` | 会话生命周期（24h 过期，410 语义） |
-| `POST /api/v1/chat` | 对话轮：session_id + request_id 幂等（重复 ID 不同内容 409）；判别响应 answer/clarify/insufficient/out_of_scope/workflow |
+| `POST /api/v1/chat` | 对话轮按 session_id + request_id 识别。已完成的答复可重放，时限降级可用原 request_id 重试。平台模式返回 `workflow_run_id`。 |
+| `GET /api/v1/platform/status` | 当前调度模式、网关配置状态及已填写的 H5 和二维码地址 |
 | `GET /api/v1/services` | 服务目录（板块/关键词筛选） |
 | `GET /api/v1/evidence/{id}` | 证据详情（含摘录、定位、生效期） |
 | `GET /api/v1/workflows` / `GET /workflows/{id}` | 向导清单与详情（slots/steps/rules/materials） |
@@ -128,7 +129,7 @@ shzu-service-agent/
 {
   "status": "answer",
   "session_id": "ses-...", "request_id": "req-...", "trace_id": "trace-...",
-  "knowledge_version": "kb-2026-11-19-r4",
+  "knowledge_version": "kb-2026-11-20-r13",
   "answer": {
     "blocks": [
       {"kind": "fact", "text": "国家励志奖学金金额：6000元/生·年（application_year:2025）", "citation_ids": ["xg-lz-c1"]},
@@ -140,8 +141,7 @@ shzu-service-agent/
     {"id": "xg-lz-c1", "title": "关于做好2025年本专科生国家励志奖学金、国家助学金评审工作的通知",
      "issuer": "石河子大学学生处", "locator": "网页正文·三、资助范围和标准",
      "url": "https://xgb.shzu.edu.cn/2025/1001/c1025a224593/page.htm"}
-  ],
-  "timing_ms": 76
+  ]
 }
 ```
 
@@ -159,7 +159,7 @@ shzu-service-agent/
 - 机构概况类问法（“介绍一下某某学院”）不按范围外硬拒：有审定主题则带引用回答（如信科院），无证据的学院返回“资料不足”说明缺口；
 - 2025 励志奖学金流程为历史演示包；2026 年度缺口（通知正文、模板确认、学院收件截止日）明确列出。
 
-评测口径见 `evaluation/questions.json` 的 meta：状态一致 + 关键词命中 + 应引出处命中 + 无禁止内容 + ≤5000ms。
+评测口径见 `evaluation/questions.json`。B-04 对未核实别名接受有具体问题的 `clarify` 或明确说明资料缺口的 `insufficient`。时限降级和模型连接异常均单独统计，不计为通过。以完整应答的状态、关键词、引用、禁用内容与 5 秒时限共同判定结果。
 
 ## 5. 首页校园沙盘（夜景 v2）
 
@@ -183,28 +183,27 @@ shzu-service-agent/
 
 ## 6. 交付边界与待办（如实说明）
 
-- **平台发布**：`/api/v1/platform/status` 显示当前为 `local-stub`。赛事账号确认后（方案 4.2 的 D0 项）：
-  用平台 Workflow 承载路由/澄清/工具调用，本服务的 `/tools/*` 作为被调用工具；发布 Web/H5 链接与二维码。
-- **PDF**：当前通过浏览器“打印 → 另存为 PDF”（真实用户操作）；生产可按方案用 LibreOffice 将同一 DOCX 转 PDF。
-- **向量检索**：首轮使用 jieba 分词 + BM25 + RRF 融合结构（`retriever.py` 已预留向量候选接口）；
-  bge-small-zh 向量模型在效果与时延本地测试后再冻结启用。
-- **50 题标准答案**：当前题集为开发验收基线，正式提交前须由审核人交叉校对标准要点与允许的澄清问题。
+- **平台发布**。应用需在赛事控制台完成 Workflow 配置与发布，后端 API 的调用契约以对应应用服务管理页为准。平台前端页面渠道提供访问链接与二维码。[中国电信发布渠道配置](https://www.teleai.com.cn/doc/o0o7Iu0RoFsKoKfUQkKx/zERT6CTMCNqNHtruruHE)
+- **本项目的 Workflow 网关**。设置 `SHZU_PLATFORM_MODE=teleagent`、`SHZU_TELEAGENT_WORKFLOW_URL`（HTTPS）和 `SHZU_TELEAGENT_WORKFLOW_TOKEN`。网关接收 JSON `session_id`、`request_id`、`query`、`slots`、`history`、`timeout_ms`，返回 `{"run_id":"上游运行ID","result":{"final":{...},"slots":{...}}}`。`final` 使用 v1 会话响应结构。网关负责按赛事控制台的实际接口完成调度。后端将运行 ID 和答复一并写入会话历史。发布后可用 `SHZU_TELEAGENT_H5_URL`、`SHZU_TELEAGENT_QR_URL` 登记平台签发的链接。
+- **容器配置**。在项目根目录使用 `docker compose --env-file .env -f deployment/docker-compose.yml up -d --build`，将本机配置传入容器。模型密钥和 Workflow 令牌均使用服务端环境变量。
+- **文档导出**。已支持 DOCX，满足 Word 导出路径。浏览器也可将预览打印为 PDF。
+- **向量检索**。按本地向量资产可用性启用，与 BM25 用 RRF 融合。服务启动先载入 BM25，再后台预热可选向量通道。
 - **数据示例**：演示使用虚构个人信息；正式使用时敏感字段可留空、下载后线下填写。
 
 ## 7. 验收对照（方案第 1.2 节矩阵）
 
 | 编号 | 本轮实现状态 |
 |---|---|
-| R1 官方知识库与 RAG | ✅ 43 份来源 / 67 条款 / 106 事实；BM25+主题路由+范围过滤 |
+| R1 官方知识库与 RAG | ✅ r13，1,637 来源 / 24,830 条款 / 1,216 条结构化事实 |
 | R2 答案附官方链接/摘录 | ✅ 事实卡 ↔ 出处侧栏/抽屉联动；服务端生成 URL 与定位 |
 | R3 口语、错别字、多轮追问 | ✅ 别名表（生科院/一卡通）、歧义澄清（补办卡）、身份追问、年度缺口 |
 | R4 请假、场地、评奖向导 | ✅ 三个 FlowSpec + 任务状态 + 自动保存 |
 | R5 政策→条件→材料→生成 Workflow | ✅ 规则引擎三态 + 材料清单 + 时间线 + 版本化导出 |
 | R6 标准化文档与导出 | ✅ DOCX（申请表/请假条含存根/办理清单）+ 独立“填写依据”；PDF 走打印 |
-| R7 平台发布 | ⏳ 待赛事账号（D0） |
-| R8 50 题 100% 一致、库外不编造 | ✅ v1 契约全量评测 70/70；边界案例覆盖范围外/缺口/过期/对象不符/夹带指令 |
-| R9 ≤5 秒 | ✅ v1 契约下平均约 76ms，P95 约 75ms，最大值 <2s（冷启动） |
-| R10 文档、视频、地址、测试报告 | ✅ 工程、测试报告与运行说明；视频与平台地址见团队交付 |
+| R7 平台发布 | 网关接入代码已实现，待赛事控制台实发并校验访问链接与二维码 |
+| R8 核心题与边界验证 | 整改前 67/75。已将题集对齐 r13，整改后待真实模型全量复测 |
+| R9 端到端 ≤5 秒 | 默认 4.2 秒调度时限，记录降级。生产 P99 待复测 |
+| R10 文档、视频、地址、测试报告 | 工程和评测脚本可用。赛题提交材料按团队进度准备 |
 
 ## 8. 开发与测试
 

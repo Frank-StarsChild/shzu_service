@@ -22,10 +22,11 @@ DB_PATH = DATA_DIR / "app.sqlite3"
 SOURCE_ROOT = os.environ.get("SHZU_SOURCE_ROOT", r"E:\比赛\teleagent\学校资料")
 
 APP_NAME = "石大智多星 · 校园一站式服务智能体"
-KB_VERSION = "kb-2026-11-19-r5"
+KB_VERSION = "kb-2026-11-20-r13"
 
-# 平台适配：赛事账号确认前使用本地占位工作流运行标识（方案 4.2 D0 项）
+# 正式调度由部署配置开启，本地开发默认执行内置对话图。
 PLATFORM_MODE = os.environ.get("SHZU_PLATFORM_MODE", "local-stub")
+CHAT_BUDGET_SECONDS = min(4.5, max(0.1, float(os.environ.get("SHZU_CHAT_BUDGET_SECONDS", "4.2"))))
 
 # 检索阈值：候选不足时进入“资料不足”分支（按开发样本校准）
 RETRIEVE_TOP_K = 6
