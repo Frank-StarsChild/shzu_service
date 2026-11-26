@@ -30,6 +30,23 @@ const lastUser = computed<ChatTurn | null>(() => {
   return store.turns.find((t) => t.request_id === a.request_id && t.role === "user") ?? null;
 });
 
+/** 顶部问话条：选项轮显示「原问题 · 选项文字」（如「怎么补办卡 · 学生证」），
+ *  不直接显示 store 里的「[选择] 学生证」标记。 */
+const questionText = computed(() => {
+  const u = lastUser.value;
+  if (!u) return "";
+  if (!u.choiceId) return u.text;
+  const label = u.text.replace(/^\[选择\]\s*/, "");
+  const idx = store.turns.findIndex(
+    (t) => t.request_id === u.request_id && t.role === "user",
+  );
+  for (let i = idx - 1; i >= 0; i--) {
+    const t = store.turns[i];
+    if (t.role === "user" && !t.choiceId && t.text) return `${t.text} · ${label}`;
+  }
+  return label;
+});
+
 const resp = computed(() => lastAssistant.value?.response ?? null);
 
 const isError = computed(() => {
@@ -337,7 +354,7 @@ onBeforeUnmount(() => {
     <!-- v-show 保留 DOM：滚动位置、已展开的公文卡、焦点上下文都在 -->
     <div v-show="stage.answerOpen" class="stage-answer-body" id="stage-answer-body">
       <!-- 用户的问话（面板上方一小条宣纸；与面板同一纵向布局，长问题自然换行） -->
-      <p v-if="lastUser" class="stage-question" data-testid="stage-question">{{ lastUser.text }}</p>
+      <p v-if="lastUser" class="stage-question" data-testid="stage-question">{{ questionText }}</p>
 
       <section class="stage-panel" data-testid="stage-panel">
         <i class="stage-corner c-tl" aria-hidden="true"></i>

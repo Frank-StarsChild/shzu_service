@@ -644,6 +644,12 @@ def node_tools(state: ChatState, config: RunnableConfig) -> Dict[str, Any]:
                 if name not in used:
                     used.append(name)
                 evidence_ids.extend(h["id"] for h in (result.get("evidence") or []))
+                # 审定事实（facts）里带的条款编号同样是「本轮工具返回过的证据」：
+                # 模型常直接引用它们，不登记就会被发布校验当成未核实而丢掉
+                # （XG-04 的 10 月 22 日、B-20 的 5000 元正是这样丢的）
+                for f in (result.get("facts") or []):
+                    if isinstance(f, dict):
+                        evidence_ids.extend(f.get("evidence_ids") or [])
                 if state.get("on_progress"):
                     ids = list(dict.fromkeys(evidence_ids))
                     state["on_progress"](_citations_for(get_kb(), ids), list(used))
@@ -904,12 +910,24 @@ def _validated_actions(state: ChatState, kb) -> tuple:
     return cards, list(dict.fromkeys(extra_ids))
 
 
-# 数字对证：回复里的「数字 + 单位」（4周 / 6000元 / 301-302室），逐个要在所引条款原文里找得到。
-# 单位仅用于圈定「是事实数字」——比较时只比数字本身（「20 本」与证据里的「20 册」等价）。
-_NUMBER_CLAIM = re.compile(
-    r"(?<![\dA-Za-z])(\d+(?:\.\d+)?(?:[-－—]\d+)?)\s*"
-    r"(?=周|天|日|年|个月|月|元|册|本|个|次|名|人|张|份|米|公里|千米|分钟|小时|分|点|%|％|栋|层|室|号|届|场|间|套|学年|学期|工作日)"
-)
+# 数字对证：回复里的「数字 + 单位」整体（4周 / 6000元 / 301-302室 / 10月22日）。
+# 按纯数字子串比会把「10000 元」错配到研究生学业奖学金、把「10 月」错配到财教 181 号文，
+# 所以比较时用「数字+单位」整体，补引另有资格限制（见 _claim_eligible）。
+_UNIT = (r"(?:工作日|学年|学期|个月|公里|千米|分钟|小时|"
+         r"周|天|日|年|月|元|册|本|个|次|名|人|张|份|米|分|点|%|％|栋|层|室|号|届|场|间|套)")
+_NUMBER_CLAIM = re.compile(rf"(?<![\dA-Za-z])(\d+(?:\.\d+)?(?:[-－—]\d+)?)({_UNIT})")
+
+# 补引资格：个位数、区间里含个位数、日期（月/日/年/号/届/点/分）与金额/百分比
+# 不参与补引——这些数字在大量条款里重复出现，补引只会把出处配错。
+_NO_RECITE_UNITS = {"月", "日", "年", "号", "届", "点", "分", "元", "%", "％"}
+
+
+def _claim_eligible(digits: str, unit: str) -> bool:
+    """这条「数字+单位」能不能在找不到时补引到其他证据。"""
+    if unit in _NO_RECITE_UNITS:
+        return False
+    parts = [p for p in re.split(r"[-－—]", digits) if p]
+    return bool(parts) and all(len(p) >= 2 for p in parts)
 
 
 def _evidence_texts(kb, ids: List[str]) -> List[str]:
@@ -930,47 +948,55 @@ def _verify_number_claims(state: ChatState, kb, reply: str,
                           cited_ids: List[str]) -> List[str]:
     """数字对证（发布 answer 之前）：返回校验后的引用列表。
 
-    - 回复里的「数字+单位」逐个比：能在所引条款原文里找到就过；
-    - 找不到时先看本轮工具返回过的其他证据里包含它的，就把引用改到那一条
-      （JW-10 修的就是这个：4 周在休学指南里，不在复学流程里）；
-    - 都找不到只记告警、保留原引用，不拒发：年份（2026）、区间（1–2 天）与
-      统计规模（某年 1609 人）很难逐字对上，严格拒发会误杀大量正常回答
-      （实测 13/76 题），而「全量评测通过数不下降」同样是验收条件。
+    - 回复里的「数字+单位」整体（10000元 / 301-302室 / 4周）逐个比：能在所引条款原文里找到就过；
+    - 找不到时，只有「期限/数量/房间号」类且数字不是个位数/日期/金额时才补引到
+      本轮其他证据（避免「10000 元」被补引到研究生学业奖学金、「10 月」被补引到财教 181 号）；
+    - 仍找不到只记告警、保留原引用，不拒发：
+      严格拒发会误杀大量正常回答（实测 13/76 题），而「全量评测通过数不下降」同样是验收条件。
     """
-    claims = list(dict.fromkeys(_NUMBER_CLAIM.findall(reply or "")))
+    claims = list(dict.fromkeys(_NUMBER_CLAIM.finditer(reply or "")))
     if not claims:
         return cited_ids
     verified = list(dict.fromkeys(state.get("evidence_ids") or []))
     new_cited = list(dict.fromkeys(cited_ids))
     texts = _evidence_texts(kb, new_cited)
 
-    def found(num: str, corpus: List[str]) -> bool:
-        if any(num in t for t in corpus):
+    def found(claim: str, corpus: List[str]) -> bool:
+        if any(claim in t for t in corpus):
             return True
-        # 区间「1-2」「301-302」「2024-2025」：任一段命中即可（写法常是 1～2 / 301—302）
-        parts = [p for p in re.split(r"[-－—]", num) if p]
-        return len(parts) > 1 and any(any(p in t for t in corpus) for p in parts)
+        # 区间「301-302室」「1-2天」：整体没对上时按各段+单位再试（写法常是 301—302 室）
+        m = _NUMBER_CLAIM.match(claim)
+        if not m:
+            return False
+        digits, unit = m.group(1), m.group(2)
+        parts = [p for p in re.split(r"[-－—]", digits) if p]
+        return len(parts) > 1 and any(f"{p}{unit}" in t for t in corpus for p in parts)
 
-    for num in claims:
-        if re.fullmatch(r"(?:19|20)\d{2}", num):
+    for m in claims:
+        digits, unit = m.group(1), m.group(2)
+        claim = f"{digits}{unit}"
+        if re.fullmatch(r"(?:19|20)\d{2}", digits):
             continue  # 年份不参与对证（年度口径由校验提示与 time_condition 管）
-        if found(num, texts):
+        if found(claim, texts):
+            continue
+        if not _claim_eligible(digits, unit):
+            logger.info("number check: %r not cited; single-digit/date/amount, no re-cite", claim)
             continue
         hit = None
         for cid in verified:
             if cid in new_cited:
                 continue
             t = _evidence_texts(kb, [cid])
-            if t and found(num, t):
+            if t and found(claim, t):
                 hit = cid
                 break
         if hit:
             new_cited.append(hit)
             texts = _evidence_texts(kb, new_cited)
-            logger.info("number check: claim %r re-cited to %s", num, hit)
+            logger.info("number check: claim %r re-cited to %s", claim, hit)
             continue
         logger.warning("number check: %r not found in any evidence; keep citations (reply=%s)",
-                       num, (reply or "")[:100])
+                       claim, (reply or "")[:100])
     return new_cited
 
 
