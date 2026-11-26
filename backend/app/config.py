@@ -26,10 +26,8 @@ KB_VERSION = "kb-2026-11-20-r13"
 
 # 正式调度由部署配置开启，本地开发默认执行内置对话图。
 PLATFORM_MODE = os.environ.get("SHZU_PLATFORM_MODE", "local-stub")
-# 整轮预算：评测验收要求 5000ms 内完整返回，留 0.5s 给网络与序列化。
-# （11-26 实测：4.2s 时两次模型调用贴边，XG/HQ/B 多题随机 turn_deadline；
-#  4.5s 仍在 5s 验收内，让常规「工具轮 + 作答轮」不再随机降级）
-CHAT_BUDGET_SECONDS = min(4.5, max(0.1, float(os.environ.get("SHZU_CHAT_BUDGET_SECONDS", "4.5"))))
+# 整轮故障兜底时限，允许正常的多轮检索、官网补查和作答完成。
+CHAT_BUDGET_SECONDS = max(0.1, float(os.environ.get("SHZU_CHAT_BUDGET_SECONDS", "60.0")))
 
 # 检索阈值：候选不足时进入“资料不足”分支（按开发样本校准）
 RETRIEVE_TOP_K = 6

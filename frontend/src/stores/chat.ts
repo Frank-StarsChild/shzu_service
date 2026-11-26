@@ -2,6 +2,7 @@ import { defineStore } from "pinia";
 import { api, ChatResponse, TurnMessage } from "@/api/client";
 
 const SESSION_KEY = "shzu.session_id";
+const SLOW_REPLY_MS = 5000;
 
 function newRequestId(): string {
   return "req-" + (crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2) + Date.now());
@@ -28,8 +29,12 @@ export const useChatStore = defineStore("chat", {
     lastSubmitText: "" as string,
     sessionInvalid: false as boolean,
     busy: false,
+    slowResponse: false,
   }),
   getters: {
+    pendingMessage: (state) => state.slowResponse
+      ? "仍在核查资料，完成后会自动显示结果…"
+      : "正在检索审定资料并组织回答…",
     lastClarify(state): ChatResponse | null {
       for (let i = state.turns.length - 1; i >= 0; i--) {
         const t = state.turns[i];
@@ -106,6 +111,7 @@ export const useChatStore = defineStore("chat", {
         this.pendingRequestId = null;
       }
       this.busy = false;
+      this.slowResponse = false;
     },
     async send(text: string) {
       const msg = text.trim();
@@ -134,6 +140,7 @@ export const useChatStore = defineStore("chat", {
       await this._doRequest(requestId, { session_id: this.sessionId, request_id: requestId, choice_id: choiceId });
     },
     async retry(requestId: string) {
+      if (this.busy) return;
       const userTurn = this.turns.find((t) => t.request_id === requestId && t.role === "user");
       if (!userTurn) return;
       // A0：追问选项轮必须用记下的选项 id 重发（choice_id）；
@@ -151,7 +158,9 @@ export const useChatStore = defineStore("chat", {
       await this._doRequest(requestId, body);
     },
     async _doRequest(requestId: string, body: { session_id: string; request_id: string; message?: string; choice_id?: string }) {
-      const assistant = this.turns.find((t) => t.request_id === requestId && t.role === "assistant");
+      const slowTimer = setTimeout(() => {
+        if (this.pendingRequestId === requestId) this.slowResponse = true;
+      }, SLOW_REPLY_MS);
       try {
         const resp = await api.chat(body);
         const cur = this.turns.find((t) => t.request_id === requestId && t.role === "assistant");
@@ -172,8 +181,12 @@ export const useChatStore = defineStore("chat", {
         }
         cur.retryable = e?.retryable ?? true;
       } finally {
-        this.busy = false;
-        this.pendingRequestId = null;
+        clearTimeout(slowTimer);
+        if (this.pendingRequestId === requestId) {
+          this.busy = false;
+          this.slowResponse = false;
+          this.pendingRequestId = null;
+        }
       }
     },
   },

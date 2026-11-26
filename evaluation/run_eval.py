@@ -19,11 +19,11 @@ EVAL_TIMEOUT_MS = int(os.environ.get("SHZU_EVAL_TIMEOUT_MS", "5000"))
 STATUS_MAP = {"answered": "answer"}
 
 
-def http(path, payload=None, method=None):
+def http(path, payload=None, method=None, timeout=30):
     data = json.dumps(payload).encode("utf-8") if payload is not None else None
     req = urllib.request.Request(API + path, data=data, method=method or ("POST" if data else "GET"),
                                  headers={"Content-Type": "application/json"})
-    with urllib.request.urlopen(req, timeout=30) as resp:
+    with urllib.request.urlopen(req, timeout=timeout) as resp:
         body = resp.read().decode("utf-8")
         return json.loads(body) if body else {}
 
@@ -54,7 +54,7 @@ def run_one(item, session_id):
     q = item["q"]
     request_id = "eval-{}-{}".format(item["id"], int(time.time() * 1000))
     t0 = time.perf_counter()
-    resp = http("/api/v1/chat", {"session_id": session_id, "request_id": request_id, "message": q})
+    resp = http("/api/v1/chat", {"session_id": session_id, "request_id": request_id, "message": q}, timeout=65)
     elapsed_ms = (time.perf_counter() - t0) * 1000
     text = haystack(resp)
     compact = text.replace(" ", "").replace("\u00a0", "")  # 关键词匹配去除空格（模型数字两侧常加空格）
@@ -82,7 +82,7 @@ def run_one(item, session_id):
         evidence_ok = any(e in cited for e in ev)
 
     forbidden = [k for k in item.get("forbidden_keywords", []) if k.replace(" ", "") in compact]
-    passed = (reason_code not in {"turn_deadline", "model_connection"} and expect_ok and not missing
+    passed = (reason_code not in {"turn_deadline", "model_timeout", "model_connection"} and expect_ok and not missing
               and evidence_ok and not forbidden and elapsed_ms <= EVAL_TIMEOUT_MS)
     return {
         "id": item["id"], "board": item.get("board") or item.get("type"), "q": q,

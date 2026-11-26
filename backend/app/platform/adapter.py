@@ -1,5 +1,6 @@
 """Connect to the competition Workflow through a deployment-configured JSON gateway."""
 import os
+from functools import lru_cache
 from urllib.parse import urlsplit
 
 import httpx
@@ -41,14 +42,22 @@ class WorkflowError(Exception):
         super().__init__(code)
 
 
+@lru_cache(maxsize=1)
+def _client() -> httpx.Client:
+    return httpx.Client()
+
+
 def run_workflow(payload: dict, timeout: float) -> tuple[str, dict]:
     """Send one turn through the configured gateway. Use the upstream run ID verbatim."""
     endpoint, token = _workflow_settings()
     if not endpoint or not token:
         raise WorkflowError("platform_config")
     try:
-        response = httpx.post(endpoint, json=payload, timeout=timeout,
-                              headers={"Authorization": f"Bearer {token}"})
+        client = _client()
+        request = client.build_request("POST", endpoint, json=payload, timeout=timeout,
+                                       headers={"Authorization": f"Bearer {token}"})
+        request.headers.pop("Cookie", None)  # 复用连接，但每轮只用显式传入的身份凭据
+        response = client.send(request)
         response.raise_for_status()
         data = response.json()
     except httpx.TimeoutException as exc:

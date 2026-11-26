@@ -17,7 +17,7 @@ import httpx
 REGISTRY: Dict[str, dict] = {}
 _TTL_SECONDS = 6 * 3600
 _last_gc = 0.0
-WEB_LOOKUP_SECONDS = 1.5
+WEB_LOOKUP_SECONDS = 8.0
 
 
 def fetch_pages(urls: list[str], config: Optional[dict], user_agent: str) -> dict:

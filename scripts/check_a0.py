@@ -169,6 +169,47 @@ def check_history():
 check_history()
 
 
+def check_latency_routes():
+    from copy import copy
+    from time import perf_counter
+    from unittest.mock import patch
+    from backend.app.agent import graph
+    from backend.app.knowledge.loader import get_kb
+
+    kb = get_kb()
+    state = {"session_id": "test", "request_id": "test", "trace_id": "test",
+             "knowledge_version": kb.kb_version, "business_date": "2026-11-26",
+             "timings": {"start": perf_counter()}}
+
+    def reply(query):
+        return graph._reviewed_reply({**state, "query": query}, kb)
+
+    card = reply("请问，怎么补卡？")
+    check("卡种不明直接追问，可选三种卡",
+          card and [c["id"] for c in card["clarify"]["choices"]] == ["学生证", "校园卡", "银行卡"])
+    check("明确卡种及复合问题保留正常问答",
+          reply("怎么补办学生证？") is None and reply("怎么补办卡？校园网也连不上。") is None)
+    alias = reply("“小绿”是什么意思？")
+    check("未知别名按已登记资料澄清", alias and alias["status"] == "clarify" and "未核实" in alias["message"])
+    award_question = "我是本科生，申请国家励志奖学金需要什么条件？"
+    award = reply(award_question)
+    check("单一奖学金条件问题直接引用正式通知",
+          award and "2025 年度" in award["message"] and "前30%" in award["message"]
+          and {c["id"] for c in award["citations"]} == {"xg-lz-c1", "xg-lz-c2"})
+    check("指定申报年度保留正常核查", reply("2026年国家励志奖学金申请条件是什么？") is None)
+    new_kb = copy(kb)
+    new_kb.documents = {**kb.documents, "new-award": {"document_year": 2026, "title": "2026年国家励志奖学金评审通知"}}
+    check("出现新版通知时历史条件不走直答", graph._reviewed_reply({**state, "query": award_question}, new_kb) is None)
+    with patch.object(graph.deepseek_adapter, "is_configured", return_value=True):
+        prepared = graph.node_prepare({**state, "query": "校外访客怎么进校？"})
+    check("首轮预检索给模型带上已审定证据，仍允许补查",
+          len(prepared["messages"]) == 1 and bool(prepared["evidence_ids"]) and not prepared["prepared_reply"]
+          and prepared["evidence_ids"][0] in graph._system_message(prepared).content)
+
+
+check_latency_routes()
+
+
 print("=" * 30)
 if all(RESULTS):
     print("A0 全部通过")

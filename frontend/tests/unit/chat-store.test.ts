@@ -161,4 +161,27 @@ describe("A0 · chat store 重试选项与切页恢复", () => {
     await store.restore();
     expect(store.turns.length).toBe(0);
   });
+
+  it("等待超过五秒时提示继续核查，收到回答后结束等待", async () => {
+    const { useChatStore } = await import("@/stores/chat");
+    const store = useChatStore();
+    await store.ensureSession();
+    vi.useFakeTimers();
+    try {
+      fake.hangChat = true;
+      const pending = store.send("教务处发布了哪些新通知？");
+      await vi.advanceTimersByTimeAsync(5000);
+      expect(store.pendingMessage).toContain("仍在核查资料");
+      expect(store.busy).toBe(true);
+      expect(fake.chatCalls).toHaveLength(1);
+
+      fake.hangReleasers[0]({ status: "answer", message: "已查到教务处通知" });
+      await pending;
+      expect(store.turns.at(-1)).toMatchObject({ status: "done", text: "已查到教务处通知" });
+      expect(store.busy).toBe(false);
+      expect(store.slowResponse).toBe(false);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
 });

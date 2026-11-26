@@ -16,13 +16,15 @@ from dataclasses import dataclass
 from functools import lru_cache
 from typing import Any, Dict, List, Optional
 
+from ..config import CHAT_BUDGET_SECONDS
+
 logger = logging.getLogger("shzu.deepseek")
 
 DEFAULT_BASE_URL = "https://api.deepseek.com"
 # 单次请求超时：DeepSeek 工具调用响应含长目录/多轮检索时可能超过 8s，默认 12s
 REQUEST_TIMEOUT = float(os.environ.get("DEEPSEEK_TIMEOUT", "12.0"))
-# 单轮总预算（含 openai SDK 内部重试）；每轮模型调用次数上限见 graph.py
-TURN_BUDGET = float(os.environ.get("SHZU_TURN_BUDGET", "24.0"))
+# 单独运行对话图时也沿用整轮时限，可单独覆盖。
+TURN_BUDGET = float(os.environ.get("SHZU_TURN_BUDGET", CHAT_BUDGET_SECONDS))
 
 
 def _cfg():
@@ -134,7 +136,7 @@ def _create_chat_model(api_key: str, model: str, base_url: str):
         # 1100 会把最终 JSON 截成非法尾（model_response 失败的主因）
         max_tokens=2400,
         timeout=REQUEST_TIMEOUT,
-        max_retries=0,   # 在这轮的剩余时间内只发一次，重试由用户或调用方触发
+        max_retries=0,   # 由对话图按整轮剩余时间重试
     )
     logger.info("deepseek chat model ready (%s @ %s)", model, base_url)
     return client

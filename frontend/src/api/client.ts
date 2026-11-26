@@ -31,18 +31,17 @@ const DEFAULT_TIMEOUT_MS = 20000;
 async function request<T>(
   path: string,
   init: RequestInit & { signal?: AbortSignal } = {},
-  timeoutMs = DEFAULT_TIMEOUT_MS
+  timeoutMs: number | null = DEFAULT_TIMEOUT_MS
 ): Promise<T> {
-  const ctrl = new AbortController();
-  const timer = setTimeout(() => ctrl.abort(), timeoutMs);
-  // 合并调用方 signal（页面取消）
-  if (init.signal) {
+  const ctrl = timeoutMs === null ? null : new AbortController();
+  const timer = timeoutMs === null ? undefined : setTimeout(() => ctrl?.abort(), timeoutMs);
+  if (ctrl && init.signal) {
     init.signal.addEventListener("abort", () => ctrl.abort(), { once: true });
   }
   try {
     const resp = await fetch(BASE + path, {
       ...init,
-      signal: ctrl.signal,
+      signal: ctrl?.signal ?? init.signal,
       headers: {
         "Content-Type": "application/json",
         ...(init.headers || {}),
@@ -365,7 +364,7 @@ export const api = {
   deleteSession: (sid: string) => request<void>(`/api/v1/sessions/${sid}`, { method: "DELETE" }),
 
   chat: (req: ChatRequest, signal?: AbortSignal) =>
-    request<ChatResponse>("/api/v1/chat", { method: "POST", body: JSON.stringify(req), signal }),
+    request<ChatResponse>("/api/v1/chat", { method: "POST", body: JSON.stringify(req), signal }, null),
 
   services: (board?: string, q?: string) =>
     request<{ services: ServiceEntry[]; knowledge_version: string }>(

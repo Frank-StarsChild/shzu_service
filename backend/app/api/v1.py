@@ -104,7 +104,7 @@ def chat(req: M.ChatRequest):
         _err(422, "invalid_request", "message 与 choice_id 只能选一个")
 
     # 幂等：相同 request_id 复用已完成结果；内容不同则 409。
-    # 技术错误轮（error）不复用——删除旧记录重新执行，使前端"重试"真正重跑。
+    # 技术失败或仅返回部分资料的超时轮允许重新执行。
     existing = store.find_turn(req.session_id, req.request_id)
     if existing:
         user_turn = next((t for t in existing if t["role"] == "user"), None)
@@ -113,7 +113,7 @@ def chat(req: M.ChatRequest):
         assistant = next((t for t in existing if t["role"] == "assistant"), None)
         if assistant and assistant.get("response") \
                 and assistant["response"].get("status") not in ("error", "model_unavailable") \
-                and assistant["response"].get("reason_code") != "turn_deadline":
+                and assistant["response"].get("reason_code") not in ("turn_deadline", "model_timeout"):
             return M.ChatResponse(**assistant["response"])
         store.delete_turn(req.session_id, req.request_id)
 

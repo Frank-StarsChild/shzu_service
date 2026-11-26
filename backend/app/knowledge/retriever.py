@@ -115,6 +115,8 @@ class BM25Index:
 
 @lru_cache(maxsize=1)
 def get_indexes():
+    # 命中磁盘分词缓存也预热词典，让首次在线检索直接分词。
+    _jieba_ready()
     kb = get_kb()
     fact_ids = list(kb.facts.keys())
     clause_ids = list(kb.clauses.keys())
@@ -264,6 +266,7 @@ def get_vector_channel():
         from sentence_transformers import SentenceTransformer
         model_name = str(data["model"]) if "model" in data.files else "BAAI/bge-m3"
         model = SentenceTransformer(model_name, local_files_only=True)
+        model.encode(["石河子大学"], normalize_embeddings=True, show_progress_bar=False)
         _VECTOR.update(ok=True, model=model, ids=ids, vectors=vectors)
         return _VECTOR
     except Exception as e:  # noqa: BLE001 —— 任何失败都退回 BM25

@@ -236,7 +236,7 @@ const SAMPLES_EMPTY = [
               <template v-if="t.status === 'pending'">
                 <div class="pending-line">
                   <span class="pending-block"></span><span class="pending-block d1"></span><span class="pending-block d2"></span>
-                  <span class="muted small">正在检索审定资料并组织回答…</span>
+                  <span class="muted small" role="status">{{ store.pendingMessage }}</span>
                 </div>
                 <button type="button" class="btn-sm no-print" @click="store.cancel()">不再等待</button>
               </template>
@@ -312,9 +312,9 @@ const SAMPLES_EMPTY = [
 
                 <!-- insufficient：正文为模型 reply；有出处才展示出处 -->
                 <div v-else-if="t.response.status === 'insufficient'" class="box-fill" style="padding: var(--gap-4);">
-                  <span class="tag tag-soft">{{ t.response.reason_code === 'turn_deadline' ? '已取得部分资料' : '资料不足' }}</span>
+                  <span class="tag tag-soft">{{ t.response.reason_code === 'turn_deadline' || t.response.reason_code === 'model_timeout' ? '已取得部分资料' : '资料不足' }}</span>
                   <p class="small" style="margin: 6px 0 0; white-space: pre-line;">{{ t.response.message }}</p>
-                  <button v-if="t.response.reason_code === 'turn_deadline'" type="button" class="btn-sm"
+                  <button v-if="t.response.reason_code === 'turn_deadline' || t.response.reason_code === 'model_timeout'" type="button" class="btn-sm"
                           :disabled="store.busy" @click="retry(t.request_id)">重试查询</button>
                   <p v-if="t.response.unknown_fields && t.response.unknown_fields.length" class="tiny muted" style="margin: 6px 0 0;">
                     待获取：{{ t.response.unknown_fields.join("；") }}
