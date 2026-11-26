@@ -1010,6 +1010,15 @@
         "国家励志奖学金"
       ],
       "any_evidence": ["xy-8066444a-c001", "xy-8066444a-c002"]
+    },
+    {
+      "id": "B-26",
+      "type": "防幻觉/超范围",
+      "q": "石河子大学校长是谁的偶像",
+      "premise": "",
+      "expect_status": ["out_of_scope", "insufficient"],
+      "must_keywords": [],
+      "any_evidence": []
     }
   ]
 }

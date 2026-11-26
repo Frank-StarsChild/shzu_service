@@ -87,6 +87,8 @@ export const useStageStore = defineStore("stage", {
     mention: null as Mention | null,
     /** 每次 applyPlace（showAnswer/showBuilding）加一；换包后等待落楼时用它判断「作废」 */
     placeSeq: 0,
+    /** 每次 beginTurn（新一轮提问）加一：换包等待落楼时用户开了新一问 → 作废 */
+    turnSeq: 0,
     /** 本轮回答关联的目标楼（带 request_id）：右侧「办理地点」与红线只认它，
      *  不直接看 place——那可能是用户早就在看的楼。 */
     answerLink: null as { requestId: string; buildingId: string | null } | null,
@@ -190,6 +192,7 @@ export const useStageStore = defineStore("stage", {
     },
     /** 新一轮开始：清本轮的办理地点关联与候选，不动 pack/mode/zone/已选楼与镜头 */
     beginTurn(requestId: string) {
+      this.turnSeq += 1; // 「近看」等待落楼时据此判断用户是否已开始新的一问
       this.answerLink = { requestId, buildingId: null };
       this.placeOffer = null;
       this.board = null; // W9：板块面板换回回答面板
@@ -214,8 +217,9 @@ export const useStageStore = defineStore("stage", {
       const pack = this.places?.packOf[buildingId];
       if (!pack) return false;
       const seq = this.placeSeq;
+      const turn = this.turnSeq;
       this.switchPack(pack);
-      await this.waitPackThenShow(pack, buildingId, seq);
+      await this.waitPackThenShow(pack, buildingId, seq, turn);
       return true;
     },
     goHome() {
@@ -348,17 +352,19 @@ export const useStageStore = defineStore("stage", {
       const bid = this.place?.buildingId;
       if (!bid) return;
       const seq = this.placeSeq;
+      const turn = this.turnSeq;
       this.switchPack(near);
-      await this.waitPackThenShow(near, bid, seq);
+      await this.waitPackThenShow(near, bid, seq, turn);
     },
     /** W5/W10 共用：换沙盘后等场景就绪，再落到那栋楼上。
      *  等待条件是「目标包的元数据已放进来 且 场景 就绪 且 还在这个包上」——
      *  switchPack 会同步把 meta 清成 null，所以旧场景残留的 ready 不可能抢跑成「新沙盘就绪」
      *  （卡常见错误第 1 条：showAnswer 调早了会被 meta 为 null 复位掉）。
-     *  等待期间用户又问了新的问题（placeSeq 变了）或又换了沙盘（packId 变了）：
-     *  记下的楼号作废，不再 showAnswer。 */
-    async waitPackThenShow(packId: string, buildingId: string, seq?: number) {
+     *  等待期间用户又问了新的问题（turnSeq 变了）、重新定位过（placeSeq 变了）
+     *  或又换了沙盘（packId 变了）：记下的楼号作废，不再 showAnswer。 */
+    async waitPackThenShow(packId: string, buildingId: string, seq?: number, turnMark?: number) {
       const mark = seq ?? this.placeSeq;
+      const turn = turnMark ?? this.turnSeq;
       // 注意：immediate 回调会同步执行，stop 必须先声明（let）再赋值——
       // 写成 const 会在回调里踩到暂时性死区（真机 8300 实测发现过 ReferenceError）。
       let stop: (() => void) | null = null;
@@ -380,7 +386,7 @@ export const useStageStore = defineStore("stage", {
           { immediate: true }
         );
       });
-      if (this.packId !== packId || this.placeSeq !== mark) return;
+      if (this.packId !== packId || this.placeSeq !== mark || this.turnSeq !== turn) return;
       await this.showAnswer(buildingId);
     },
     /** showAnswer / showBuilding 共用的落楼逻辑（W5 卡第 3 条）。

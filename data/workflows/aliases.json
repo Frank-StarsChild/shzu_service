@@ -10,6 +10,8 @@
     { "alias": "保卫处", "target": "党委保卫部（武装部、综合治理办公室）", "status": "verified" },
     { "alias": "保卫部", "target": "党委保卫部（武装部、综合治理办公室）", "status": "verified" },
     { "alias": "一卡通", "target": "校园卡", "status": "verified", "note": "图书馆规定中『一卡通』即本人校园卡" },
+    { "alias": "讨论间", "target": "图书馆讨论间", "status": "verified", "note": "图书馆研讨间/讨论间规定：lib-disc-c1（预约与使用）" },
+    { "alias": "研讨间", "target": "图书馆讨论间", "status": "verified", "note": "图书馆研讨间/讨论间规定：lib-disc-c1（预约与使用）" },
     { "alias": "励志奖学金", "target": "国家励志奖学金", "status": "verified" },
     { "alias": "国奖", "target": "国家奖学金", "status": "verified" },
     { "alias": "国助金", "target": "国家助学金", "status": "verified" },

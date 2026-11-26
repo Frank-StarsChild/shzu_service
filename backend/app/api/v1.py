@@ -4,6 +4,7 @@ import hashlib
 import json
 import os
 import time
+import uuid
 from datetime import datetime
 from typing import Optional
 
@@ -13,6 +14,7 @@ from fastapi.responses import FileResponse
 from ..contracts import models as M
 from ..agent import deepseek_adapter, dispatch, graph
 from ..agent.seed_slots import extract_student_facts, filter_for_flow
+from ..config import KB_VERSION
 from ..knowledge.loader import get_kb
 from ..knowledge import web_evidence
 from ..knowledge.retriever import retrieve
@@ -167,9 +169,19 @@ def chat(req: M.ChatRequest):
 
     history = _history_for(req.session_id)
 
-    result = dispatch.run_chat(req.session_id, req.request_id, query or "", slots, history, started)
-    final = result["final"]
-    new_slots = result["slots"]
+    # 卡种选了「银行卡」：属于个人金融事务，不调模型，直接按超范围回答
+    # （只拦选项轮；后续用户换别的问题时 slots 里的 card_type 不再参与拦截）
+    bank_card_direct = bool(effective_choice) and slots.get("card_type") == "银行卡"
+    if bank_card_direct:
+        final = graph.static_out_of_scope(
+            req.session_id, req.request_id, "trace-" + uuid.uuid4().hex[:12],
+            KB_VERSION, started, graph.bank_card_out_of_scope_reply(),
+        )
+        new_slots = slots
+    else:
+        result = dispatch.run_chat(req.session_id, req.request_id, query or "", slots, history, started)
+        final = result["final"]
+        new_slots = result["slots"]
 
     # 办事体验改造：进入向导的响应上附带「会话里学生自述过的身份事实」
     # （本科/二年级）。仅取学生自己说过的第一人称事实，后说的覆盖先说的；

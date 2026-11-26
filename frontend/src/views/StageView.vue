@@ -141,10 +141,21 @@ const lastAssistantKey = computed(() => {
   return "";
 });
 
-/** 这一轮用户问的原话（翻查题签用） */
+/** 这一轮用户问的原话（翻查题签用）。
+ *  选项轮在 chat store 里存成「[选择] 学生证（…）」：问位置时这种文字看不到「在哪/去哪」，
+ *  而原问题（如「怎么补办卡」）也未必含位置词。按后端 v1.py 的回放口径，用
+ *  「上一条非选项的用户原话 + 空格 + 选项文字」——前后端一致，按需定位才能看到办事单。 */
 function questionOf(requestId: string): string {
-  const user = chat.turns.find((t) => t.request_id === requestId && t.role === "user");
-  return user?.text ?? "";
+  const idx = chat.turns.findIndex((t) => t.request_id === requestId && t.role === "user");
+  const user = idx >= 0 ? chat.turns[idx] : null;
+  if (!user) return "";
+  if (!user.choiceId) return user.text;
+  const label = user.text.replace(/^\[选择\]\s*/, "");
+  for (let i = idx - 1; i >= 0; i--) {
+    const t = chat.turns[i];
+    if (t.role === "user" && !t.choiceId && t.text) return `${t.text} ${label}`.trim();
+  }
+  return label;
 }
 
 /** 镜头停下 1.2 秒后回到 idle（requestId 已变就作废） */

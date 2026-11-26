@@ -155,7 +155,13 @@ export function decidePlace(input: DecidePlaceInput): PlaceDecision {
   if (!response) return HOLD;
   if (response.status !== "answer" && response.status !== "insufficient") return HOLD;
   const q = (question || "").trim();
-  if (!asksLocation(q)) return HOLD;
+  // 追问选项轮：「怎么补办卡 学生证（含乘车优惠卡）」本身没有「在哪/去哪」。
+  // 但办事单（errand）带楼号就说明是到楼办理——按问地点处理，后面的 auto/offer 照旧。
+  // 只有学生证补办这类线下办理才有 errand；借书、成绩单打印没有，仍然是 hold。
+  const hasErrandBuilding = (response.actions ?? []).some(
+    (a) => a.kind === "errand" && !!a.place?.building_id,
+  );
+  if (!asksLocation(q) && !hasErrandBuilding) return HOLD;
   if (isSmallTalk(q)) return HOLD;
 
   const { targets, ambiguous, text } = collectStructured(response);

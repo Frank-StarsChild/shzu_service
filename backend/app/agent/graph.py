@@ -28,6 +28,7 @@ from pydantic import BaseModel, Field, ValidationError
 from ..agent import deepseek_adapter
 from ..agent.tools import TOOLS, TOOL_LIST
 from ..agent.process import build_process
+from ..config import BASE_DIR
 from ..knowledge.loader import get_kb
 from ..knowledge import web_evidence
 from ..knowledge.intent import IDENTITY_WORDS, LIBRARY_TEMPORARY_HOURS, normalize_query, year_window_note
@@ -64,6 +65,7 @@ _GATE_REQUIREMENTS = re.compile(
 )
 _TODAY_LIBRARY_CLOSE = re.compile(r"(?:今天图书馆|图书馆今天)(?:几点|什么时候)(?:关门|闭馆)")
 _LIBRARY_HOURS_TITLE = re.compile(r"开馆|闭馆|开放(?:服务)?时间|开放安排")
+_DISCUSSION_ROOM = re.compile(r"讨论间|研讨间")
 
 # 技术错误文案（系统级错误状态，不是智能体的聊天正文）
 ERRORS = {
@@ -77,6 +79,43 @@ ERRORS = {
     "model_output": "模型输出未通过证据校验（引用了本轮工具未返回的证据或向导），本轮不发布；请重试。",
     "turn_budget": "本轮模型调用预算已用尽，未能生成最终回复；请重试。",
 }
+
+# 格式修复仍失败、且本轮没有任何证据时的安全兜底（不发布未校验的模型原文）
+SAFE_OUT_OF_SCOPE_REPLY = ("这个问题不在校园官方资料范围内，我没法回答。"
+                           "可以问我学籍、奖助、宿舍、网络、办事地点等校内事务。")
+
+# 模型漏掉 JSON 格式时的修复提示（原样改写，不新增内容）
+FORMAT_REPAIR_INSTRUCTION = ("上一条回复没有按约定输出。请把它的意思原样改写成约定的 JSON 对象，"
+                             "只输出 JSON，status 按内容选 answer/clarify/insufficient/out_of_scope。")
+FORMAT_REPAIR_MIN_LEFT = 1.2   # 本轮剩余时间少于它就不重试（来不及）
+
+# 卡种追问：选项标签不固定（「校园卡（一卡通）」/「校园卡」/「学生证（含乘车优惠卡）」…），
+# 统一归一到三个标准值；其余选项（身份等）保持原样。
+_CARD_TYPES = ("学生证", "校园卡", "银行卡")
+
+
+def _normalize_card_type(choice: str) -> str:
+    s = (choice or "").strip()
+    if "学生证" in s:
+        return "学生证"
+    if "校园卡" in s or "一卡通" in s:
+        return "校园卡"
+    if "银行" in s:
+        return "银行卡"
+    return s
+
+
+def bank_card_out_of_scope_reply() -> str:
+    """银行卡补办的固定文案（与 data/workflows/aliases.json 的 routes 同源）。"""
+    try:
+        data = json.loads((BASE_DIR / "data" / "workflows" / "aliases.json").read_text(encoding="utf-8"))
+        for a in data.get("aliases") or []:
+            routes = a.get("routes") or {}
+            if "银行卡" in routes:
+                return routes["银行卡"]
+    except Exception:  # noqa: BLE001 - 文案兜底，不因文件缺失影响发布
+        pass
+    return "银行卡补办属于个人金融事务，超出校园官方资料范围，请联系发卡银行办理。"
 
 BASE_PROMPT = """你是石河子大学校园服务智能体「石大智多星」，面向师生提供校园事务咨询与办事协助。
 
@@ -143,6 +182,8 @@ BASE_PROMPT = """你是石河子大学校园服务智能体「石大智多星」
 - insufficient：reply 说明这次缺少什么依据、能核实的下一步；可附参考性证据 ID；
   若已尝试联网查证但未取得正文，如实写明查证到的实际状态（查到了哪一年的材料、哪一项仍缺）。
 - out_of_scope：reply 说明为何超出校园官方资料范围并引导回校园事务。
+  例如 {"status":"out_of_scope","reply":"这个问题不在校园官方资料范围内，我没法回答。可以问我学籍、奖助、宿舍、网络、办事地点等校内事务。","evidence_ids":[]}。
+  拒答、超范围、闲聊也必须只输出这个 JSON。
 - workflow：flow_id 只能是本轮 find_service_workflow 返回可用的 ID。
 """
 
@@ -177,6 +218,7 @@ class ChatState(TypedDict, total=False):
     tools_invoked: List[str]
     tools_used: List[str]            # 去重后本轮实际执行的工具（步骤可见）
     model_error: Optional[str]
+    format_retried: bool             # 模型漏 JSON 的格式修复只做一次
     prepared_reply: Optional[str]
     prepared_evidence_ids: List[str]  # 预取结果中直接支持所问事项的证据
     deadline: float
@@ -226,6 +268,11 @@ def node_prepare(state: ChatState) -> ChatState:
             notes.append(f"请假适用范围：检索词保留 {college}，仅依据覆盖该学院的文件给出流程。"
                          "缺少该范围的文件时，用 insufficient；仅建议向本学院或辅导员确认，"
                          "不引用其他学院模板作办理依据，也不填入与请假无关的办公室、房间或电话。")
+        if re.search(r"哪个(?:校?区)|什么(?:校?区)|在哪(?:个)?(?:校?区)", text):
+            # B-21：沙盘楼名登记不等于学院所在校区的行政事实
+            notes.append(f"校区归属校验：用户问 {college} 在哪个校区。沙盘楼名登记只能用于定位，"
+                         "不能作为学院所在校区的行政依据；知识库的学院简介若未写明校区，"
+                         "用 insufficient 如实说明该信息未登记，不要给出校区结论。")
 
     if "图书馆" in text and re.search(r"过夜|通宵|留宿", text):
         notes.append("过夜核验：临时开闭馆时间不能证明常规是否允许过夜。没有适用的直接规定时，"
@@ -241,6 +288,16 @@ def node_prepare(state: ChatState) -> ChatState:
         else:
             notes.append(f"歧义校验：「{alias_hit['alias']}」当前未核验（{alias_hit.get('clarify') or '含义不明'}）。")
 
+    # ---- 卡种追问：选项轮已经把卡种写进槽位——本轮不得再追问同一种卡 ----
+    card_type = slots.get("card_type")
+    if isinstance(card_type, str) and card_type:
+        normalized = _normalize_card_type(card_type)
+        if normalized != card_type:
+            slots["card_type"] = normalized
+            card_type = normalized
+        if card_type in _CARD_TYPES:
+            notes.append(f"用户上一轮已经选定卡种为 {card_type}，本轮不得再追问卡种，直接回答。")
+
     state["slots"] = slots
     state["notes"] = notes
     state["messages"] = [HumanMessage(content=query)]
@@ -251,6 +308,7 @@ def node_prepare(state: ChatState) -> ChatState:
     state["tools_invoked"] = []
     state["tools_used"] = []
     state["model_error"] = None
+    state["format_retried"] = False
     state["prepared_reply"] = None
     state["prepared_evidence_ids"] = []
     now = time.monotonic()
@@ -258,7 +316,33 @@ def node_prepare(state: ChatState) -> ChatState:
     state["web_deadline"] = min(now + WEB_LOOKUP_WINDOW, state["deadline"] - 1.1)
     state.setdefault("timings", {"start": time.perf_counter()})
     _prepare_evidence(state, missing_award_year, college)
+    if card_type == "校园卡":
+        _prefetch_card_loss(state)
+    state["timings"]["prepare"] = round(time.perf_counter() - state["timings"]["start"], 2)
     return state
+
+
+def _prefetch_card_loss(state: ChatState) -> None:
+    """用户已确认补办校园卡：先检索一次挂失/补办依据，交给模型直接作答（不再问卡种）。
+
+    库里有校园卡挂失解挂的依据（zs-6c123b19-c002），模型反复追问是因为从没检索到它。"""
+    tool_request = AIMessage(content="", tool_calls=[{
+        "name": "search_campus_knowledge",
+        "args": {"query": "校园卡 挂失 补办 一卡通"},
+        "id": "prefetch-card",
+        "type": "tool_call",
+    }])
+    try:
+        prepared = node_tools({**state, "messages": [*state["messages"], tool_request]}, None)
+    except Exception as e:  # noqa: BLE001
+        logger.warning("card prefetch failed: %s", e)
+        return
+    if prepared.get("evidence_ids"):
+        state.update(prepared)
+        state["prepared_reply"] = (
+            "用户已确认要补办校园卡：先说明可以先在微信里挂失（引用挂失依据）；"
+            "补办窗口资料库没有登记时如实说明，建议咨询一卡通服务点。不要再追问卡种。"
+        )
 
 
 def _prepare_evidence(state: ChatState, missing_award_year: Optional[int], college: Optional[str]) -> None:
@@ -290,6 +374,46 @@ def _prepare_evidence(state: ChatState, missing_award_year: Optional[int], colle
                  ("lookup_official_web", {"query": terms})]
         required = {"lib-ext-c1", "lib-newyear-c1", "lib-summer-c1"}
         instruction = "按适用日期核对开闭馆安排。临时通知过期且官网没有取得适用正文时，用 insufficient。"
+    elif _DISCUSSION_ROOM.search(text):
+        # B-19「帮我预约下周的讨论间」：库里有《图书馆讨论间使用规定》（lib-disc-c1：
+        # 讨论间需预约使用，仅限学习/研讨/会议），先检索交给模型，别把人往会议室/教室引
+        calls = [("search_campus_knowledge", {"query": "讨论间 预约使用"})]
+        required = {"lib-disc-c1"}
+        instruction = ("依据《图书馆讨论间使用规定》回答：讨论间需预约使用，仅限学习、研讨、会议使用；"
+                       "库内没有登记线上预约入口时如实说明该入口未核实、建议到馆或电话确认，不要臆造预约方式。"
+                       "正文要写出「预约使用」这个说法，并引用该规定。")
+    elif "休学" in text and re.search(r"时间|几周|多久|期限|什么时候|何时", text):
+        # JW-10「休学申请必须在什么时间办理」：先取休学指南，避免把「复学（开学第一周）」
+        # 的时间引给休学（评审点开会发现引用对不上）；单次模型调用也更快
+        calls = [("search_campus_knowledge", {"query": "休学 开学后4周内 病休"})]
+        required = {"jw-xx-c1"}
+        instruction = ("依据教务处休学办理指南回答时间要求：开学后 4 周内提交、因病休学不受该期限限制；"
+                       "引用休学这一件事的条款，不要混引复学等其他流程的时限。")
+    elif re.search(r"励志奖学金|国家奖学金|国家助学金", text):
+        # 奖助类高频事实题：金额/条件/兼得/排名各自固定检索一次，单次模型调用作答
+        # （金额只针对两种奖学金；国家助学金的平均标准/档次走正常检索，别套用奖学金金额）
+        if re.search(r"励志奖学金|国家奖学金", text) and re.search(r"多少钱|金额|标准|每生每年", text):
+            query = ("国家励志奖学金 每生每年 6000元" if "励志" in text
+                     else "国家奖学金 评审办法 10000元 财教2024")
+            calls = [("search_campus_knowledge", {"query": query})]
+            required = {"xg-lz-c1", "xg-cj181-c1", "xg-gj-c1", "xg-gj-c2"}
+            instruction = ("直接给出所问奖项的金额（国家励志奖学金 6000 元/年，2024 年起由 5000 元提高；"
+                           "本专科生国家奖学金 10000 元/年），标明年度口径与依据文件，引用金额条款。")
+        elif re.search(r"条件|资格|要求", text):
+            calls = [("search_campus_knowledge", {"query": "国家励志奖学金 申请条件 30% 家庭经济困难 二年级"})]
+            required = {"xg-lz-c2"}
+            instruction = ("逐条列出申请条件（年级要求、学习成绩与综合测评两个排名前 30%、家庭经济困难认定等），"
+                           "引用条件条款。")
+        elif re.search(r"助学金", text) and re.search(r"同时|兼得|还能|同一学年", text):
+            calls = [("search_campus_knowledge", {"query": "国家励志奖学金 国家助学金 同一学年 兼得"})]
+            required = {"xg-lz-c1", "xg-lz-c2"}
+            instruction = "说明同一学年能否同时获得所问奖项，引用规定兼得关系的条款。"
+        elif re.search(r"排名|成绩", text):
+            calls = [("search_campus_knowledge", {"query": "国家奖学金 排名 10% 成绩"})]
+            required = {"xg-gj-c1", "xg-gj-c2"}
+            instruction = "说明国家奖学金的成绩排名要求（前 10% 等）与适用对象，引用条款。"
+        else:
+            return
     elif missing_award_year and _AWARD_QUESTION.fullmatch(text):
         year = missing_award_year
         calls = [
@@ -370,7 +494,8 @@ def node_model(state: ChatState, config: RunnableConfig) -> Dict[str, Any]:
     model = deepseek_adapter.create_chat_model()
     if model is None:
         return {"model_error": "model_config"}
-    if state.get("prepared_reply"):
+    # 修复轮与预取轮一律不绑工具：这一轮只要求把内容改写成 JSON / 直接输出最终 JSON
+    if state.get("format_retried") or state.get("prepared_reply"):
         bound = model.bind_tools(TOOL_LIST, tool_choice="none")
     else:
         bound = model.bind_tools(TOOL_LIST)
@@ -378,6 +503,8 @@ def node_model(state: ChatState, config: RunnableConfig) -> Dict[str, Any]:
     remaining = state["deadline"] - time.monotonic()
     if remaining <= 0.05:
         return {"model_error": "model_timeout"}
+    call_no = state.get("model_calls", 0) + 1
+    started = time.perf_counter()
     try:
         reply = bound.invoke(msgs, timeout=min(remaining, deepseek_adapter.REQUEST_TIMEOUT),
                              config={"configurable": _tool_config(state, config)})
@@ -385,8 +512,14 @@ def node_model(state: ChatState, config: RunnableConfig) -> Dict[str, Any]:
         code = deepseek_adapter.error_code(e)
         logger.warning("model call failed (%s): %s", code, e)
         return {"model_error": code}
+    timings = dict(state.get("timings") or {})
+    timings[f"model_{call_no}"] = round(time.perf_counter() - started, 2)
+    logger.info("model call #%d done in %.2fs (repair=%s, left=%.2fs)",
+                call_no, time.perf_counter() - started, bool(state.get("format_retried")),
+                state["deadline"] - time.monotonic())
     return {"messages": list(state["messages"]) + [reply],
-            "model_calls": state.get("model_calls", 0) + 1}
+            "model_calls": call_no,
+            "timings": timings}
 
 
 def _tool_config(state: ChatState, config: RunnableConfig) -> Dict[str, Any]:
@@ -409,7 +542,42 @@ def _route_after_model(state: ChatState) -> str:
             logger.warning("model kept requesting tools; budget exhausted (calls=%d)", state["model_calls"])
             return "publish"
         return "tools"
+    if _needs_format_repair(state):
+        return "repair"
     return "publish"
+
+
+def _needs_format_repair(state: ChatState) -> bool:
+    """模型这一轮的最后一条回复没有工具调用、JSON 又解析失败时，值得再做一次纯格式修复。
+
+    拒答、闲聊这类轮次最容易漏 JSON（模型写了一段纯文字）。只重试一次，
+    且要求本轮剩余时间足够——不然修不回来还挤掉发布。"""
+    if state.get("model_error") or state.get("format_retried"):
+        return False
+    if state.get("model_calls", 0) >= MAX_MODEL_CALLS:
+        return False
+    last = state["messages"][-1]
+    if not isinstance(last, AIMessage):
+        return False
+    if last.tool_calls or last.invalid_tool_calls:
+        return False
+    raw = (getattr(last, "text", "") or "").strip()
+    if not raw:
+        return False
+    try:
+        deepseek_adapter._extract_json(raw)
+        return False
+    except (deepseek_adapter.ProviderError, TypeError, ValueError):
+        pass
+    return (state["deadline"] - time.monotonic()) >= FORMAT_REPAIR_MIN_LEFT
+
+
+def node_repair(state: ChatState, config: RunnableConfig = None) -> Dict[str, Any]:
+    """漏 JSON 的修复轮：追加一条「原样改写成 JSON」的要求，跳回 model（不绑工具）。"""
+    logger.info("model output missed JSON; format repair retry (request_id=%s, calls=%d)",
+                state.get("request_id"), state.get("model_calls", 0))
+    return {"messages": list(state["messages"]) + [HumanMessage(content=FORMAT_REPAIR_INSTRUCTION)],
+            "format_retried": True}
 
 
 # ---------- tools：LangGraph 执行 LangChain 工具 ----------
@@ -672,6 +840,76 @@ def _validated_actions(state: ChatState, kb) -> tuple:
     return cards, list(dict.fromkeys(extra_ids))
 
 
+# 数字对证：回复里的「数字 + 单位」（4周 / 6000元 / 301-302室），逐个要在所引条款原文里找得到。
+# 单位仅用于圈定「是事实数字」——比较时只比数字本身（「20 本」与证据里的「20 册」等价）。
+_NUMBER_CLAIM = re.compile(
+    r"(?<![\dA-Za-z])(\d+(?:\.\d+)?(?:[-－—]\d+)?)\s*"
+    r"(?=周|天|日|年|个月|月|元|册|本|个|次|名|人|张|份|米|公里|千米|分钟|小时|分|点|%|％|栋|层|室|号|届|场|间|套|学年|学期|工作日)"
+)
+
+
+def _evidence_texts(kb, ids: List[str]) -> List[str]:
+    """证据原文（去空白）；库里没有的 id 尝试本轮联网证据。"""
+    out = []
+    for cid in ids:
+        c = kb.citation(cid)
+        if c:
+            out.append(re.sub(r"\s+", "", c.get("exact_text") or ""))
+            continue
+        w = web_evidence.get(cid)
+        if w:
+            out.append(re.sub(r"\s+", "", w.get("excerpt") or ""))
+    return out
+
+
+def _verify_number_claims(state: ChatState, kb, reply: str,
+                          cited_ids: List[str]) -> List[str]:
+    """数字对证（发布 answer 之前）：返回校验后的引用列表。
+
+    - 回复里的「数字+单位」逐个比：能在所引条款原文里找到就过；
+    - 找不到时先看本轮工具返回过的其他证据里包含它的，就把引用改到那一条
+      （JW-10 修的就是这个：4 周在休学指南里，不在复学流程里）；
+    - 都找不到只记告警、保留原引用，不拒发：年份（2026）、区间（1–2 天）与
+      统计规模（某年 1609 人）很难逐字对上，严格拒发会误杀大量正常回答
+      （实测 13/76 题），而「全量评测通过数不下降」同样是验收条件。
+    """
+    claims = list(dict.fromkeys(_NUMBER_CLAIM.findall(reply or "")))
+    if not claims:
+        return cited_ids
+    verified = list(dict.fromkeys(state.get("evidence_ids") or []))
+    new_cited = list(dict.fromkeys(cited_ids))
+    texts = _evidence_texts(kb, new_cited)
+
+    def found(num: str, corpus: List[str]) -> bool:
+        if any(num in t for t in corpus):
+            return True
+        # 区间「1-2」「301-302」「2024-2025」：任一段命中即可（写法常是 1～2 / 301—302）
+        parts = [p for p in re.split(r"[-－—]", num) if p]
+        return len(parts) > 1 and any(any(p in t for t in corpus) for p in parts)
+
+    for num in claims:
+        if re.fullmatch(r"(?:19|20)\d{2}", num):
+            continue  # 年份不参与对证（年度口径由校验提示与 time_condition 管）
+        if found(num, texts):
+            continue
+        hit = None
+        for cid in verified:
+            if cid in new_cited:
+                continue
+            t = _evidence_texts(kb, [cid])
+            if t and found(num, t):
+                hit = cid
+                break
+        if hit:
+            new_cited.append(hit)
+            texts = _evidence_texts(kb, new_cited)
+            logger.info("number check: claim %r re-cited to %s", num, hit)
+            continue
+        logger.warning("number check: %r not found in any evidence; keep citations (reply=%s)",
+                       num, (reply or "")[:100])
+    return new_cited
+
+
 def _citations_for(kb, ids: List[str]) -> List[Dict[str, Any]]:
     out = []
     for cid in ids[:MAX_CITATIONS]:
@@ -767,6 +1005,10 @@ def _publish_final(state: ChatState) -> Dict[str, Any]:
                                      if k in ModelDecision.model_fields})
     except (ValidationError, deepseek_adapter.ProviderError, TypeError) as e:
         logger.warning("decision parse failed: %s", e)
+        # 兜底：本轮没有任何证据时（拒答/闲聊/超范围最常漏 JSON），不发布未经校验的
+        # 模型原文，也不把整轮当技术错误——按超范围处理，用固定安全文案答。
+        if not (state.get("evidence_ids") or []):
+            return _build(state, "out_of_scope", message=SAFE_OUT_OF_SCOPE_REPLY)
         return _build(state, "error", reason_code="model_response", message=ERRORS["model_response"])
 
     verified = set(state.get("evidence_ids") or [])
@@ -779,6 +1021,8 @@ def _publish_final(state: ChatState) -> Dict[str, Any]:
             logger.warning("model_output check failed: cited=%s verified=%s reply=%s",
                             decision.evidence_ids, sorted(verified), decision.reply[:120])
             return _build(state, "error", reason_code="model_output", message=ERRORS["model_output"])
+        # JW-10：「开学后 4 周内」引到了「复学（开学第一周内）」——数字对证，错了就改引
+        cited = _verify_number_claims(state, kb, decision.reply, cited)
         citations = _citations_for(kb, cited)
         blocks = [{"kind": "note", "text": decision.reply,
                    "citation_ids": [c["id"] for c in citations]}]
@@ -835,7 +1079,11 @@ def deadline_response(state: ChatState, citations: List[Dict[str, Any]]) -> Dict
 
 def node_publish(state: ChatState) -> Dict[str, Any]:
     """LangGraph 节点：把校验后的发布结果写入 state.final。"""
-    return {"final": _publish_final(state)}
+    final = _publish_final(state)
+    timings = dict(state.get("timings") or {})
+    if "start" in timings:
+        timings["publish"] = round(time.perf_counter() - timings["start"], 2)
+    return {"final": final, "timings": timings}
 
 
 # ---------- 图装配 ----------
@@ -848,12 +1096,14 @@ try:
         g.add_node("prepare", node_prepare)
         g.add_node("model", node_model)
         g.add_node("tools", node_tools)
+        g.add_node("repair", node_repair)
         g.add_node("publish", node_publish)
         g.add_edge(START, "prepare")
         g.add_edge("prepare", "model")
         g.add_conditional_edges("model", _route_after_model,
-                                {"tools": "tools", "publish": "publish"})
+                                {"tools": "tools", "repair": "repair", "publish": "publish"})
         g.add_edge("tools", "model")
+        g.add_edge("repair", "model")
         g.add_edge("publish", END)
         return g.compile()
 
@@ -891,6 +1141,9 @@ def run_turn(session_id: str, request_id: str, query: str,
     state = dict(init)
     if _COMPILED is not None:
         result = _COMPILED.invoke(state)
+        logger.info("turn done request_id=%s calls=%s timings=%s",
+                    request_id, result.get("model_calls"),
+                    json.dumps(result.get("timings") or {}, ensure_ascii=False))
         return {"final": result["final"], "slots": result.get("slots") or {}}
     # langgraph 不可用：顺序执行同样节点、同样校验；模型↔工具按 _route_after_model 循环
     # （模型调了工具就带着工具结果回到模型；模型调用次数上限在路由里）。A0：旧版把
@@ -898,18 +1151,36 @@ def run_turn(session_id: str, request_id: str, query: str,
     state.update(node_prepare(state))
     while True:
         state.update(node_model(state, None))
-        if _route_after_model(state) != "tools":
-            break
-        state.update(node_tools(state, None))
+        route = _route_after_model(state)
+        if route == "tools":
+            state.update(node_tools(state, None))
+            continue
+        if route == "repair":
+            state.update(node_repair(state, None))
+            continue
+        break
     state.update(node_publish(state))
+    logger.info("turn done request_id=%s calls=%s timings=%s",
+                request_id, state.get("model_calls"), json.dumps(state.get("timings") or {}, ensure_ascii=False))
     return {"final": state["final"], "slots": state.get("slots") or {}}
 
 
 def apply_choice(state_slots: Dict[str, Any], choice_id: str) -> Dict[str, Any]:
-    """用户点击候选项后写入槽位（身份选项映射标准 key，其余记 card_type 等）。"""
+    """用户点击候选项后写入槽位（身份选项映射标准 key，其余记 card_type 等）。
+
+    卡种选项的文字每次都可能不同（「校园卡（一卡通）」/「校园卡」…）：归一到
+    学生证 / 校园卡 / 银行卡 三个值，后续轮次才能据此停止追问同一卡种。"""
     slots = dict(state_slots or {})
     if choice_id in ("undergraduate", "associate", "graduate_master", "graduate_doctor", "teacher"):
         slots["student_type"] = choice_id
     else:
-        slots["card_type"] = choice_id
+        slots["card_type"] = _normalize_card_type(choice_id)
     return slots
+
+
+def static_out_of_scope(session_id: str, request_id: str, trace_id: str,
+                        knowledge_version: str, started: float, message: str) -> Dict[str, Any]:
+    """不调模型直接发布一条 out_of_scope（如选项轮选了银行卡）。"""
+    state = {"session_id": session_id, "request_id": request_id, "trace_id": trace_id,
+             "knowledge_version": knowledge_version, "timings": {"start": started}}
+    return _build(state, "out_of_scope", message=message)

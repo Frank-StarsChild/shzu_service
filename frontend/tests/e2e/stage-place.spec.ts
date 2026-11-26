@@ -371,3 +371,27 @@ async function packReadyAndAnswer(page: Page, packId: string, buildingId: string
     { timeout: 40_000 }
   );
 }
+
+test("13 追问「怎么补办卡」选「学生证」：6 秒内沙盘落到 ZQ-B023", async ({ page }) => {
+  await page.goto("/stage?3d=1&intro=0");
+  await waitReady(page);
+  await ask(page, "怎么补办卡");
+  // 追问选项：校园卡 / 学生证（fixtures 对 choice-xsz 返回办事单响应）
+  const choice = page.locator('[data-testid="stage-panel"] .stage-choice', { hasText: "学生证" });
+  await expect(choice).toBeVisible();
+  await choice.click();
+  // 原话「怎么补办卡 学生证」不含位置词，但办事单有楼号 → auto，镜头落到同一栋楼
+  await page.waitForFunction(
+    () => window.__campus3d?.shell === "ZQ-B023",
+    undefined,
+    { timeout: 6_000, polling: 100 }
+  );
+  const h = await page.evaluate(() => ({
+    mode: window.__campus3d.mode,
+    shell: window.__campus3d.shell,
+    stop: window.__campus3d.stop,
+  }));
+  expect(h.mode).toBe("answer");
+  expect(h.shell).toBe("ZQ-B023");
+  expect(h.stop).toBe("focus:ZQ-B023");
+});

@@ -57,6 +57,27 @@ async function mockSlowChat(page: Page) {
             time_condition: null,
           },
         ],
+        // 按需定位只认结构化动作（11-24 起）：办事单 + 地点卡，与 fixtures 的学生证办事单一致
+        actions: [
+          {
+            kind: "errand",
+            title: "学生证 / 乘车优惠卡补办 · 办事单",
+            place: { building: "大学生活动中心（南楼）", room: "301-302室", building_id: "ZQ-B023", campus: "中区", evidence_id: "xsz-1" },
+            dept: "学生事务管理办公室（学生处）",
+            service_scope: "学生证、乘车优惠卡的办理",
+            phone: "0993-2058029",
+            hours: null,
+            materials_confirmed: false,
+            confirms: [],
+          },
+          {
+            kind: "place",
+            title: "地点定位",
+            ambiguous: false,
+            matches: [{ building_id: "ZQ-B023", label: "大学生活动中心（南楼）", category: "办公", campus: "中区", note: "办事单定位" }],
+            fallback_text: null,
+          },
+        ],
         timing_ms: 1200,
       }),
     });

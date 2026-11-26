@@ -174,6 +174,48 @@ describe("decidePlace：自动定位（auto）", () => {
     expect(decidePlace({ question: "图书馆在哪", response: r, places, inScene: ZQ }).candidates[0].buildingId)
       .toBe("ZQ-B034");
   });
+
+  it("追问选了「学生证」：原话不带位置词，但办事单有楼号 → 按问地点处理（auto）", () => {
+    // StageView.questionOf 对选项轮返回「上一条非选项原话 + 选项文字」
+    const r = resp(
+      ["到大学生活动中心南楼301-302室办理。"],
+      ["石河子大学学生处"],
+      [
+        {
+          kind: "errand",
+          place: { building: "大学生活动中心（南楼）", building_id: "ZQ-B023", campus: "中区" },
+        } as ActionCard,
+      ],
+    );
+    const d = decidePlace({
+      question: "怎么补办卡 学生证（含乘车优惠卡）",
+      response: r,
+      places,
+      inScene: ZQ,
+    });
+    expect(d.action).toBe("auto");
+    expect(d.candidates[0].buildingId).toBe("ZQ-B023");
+  });
+
+  it("同样的办事单但楼不在当前场景 → 手动入口（offer），不默认第一条", () => {
+    const r = resp(
+      ["到大学生活动中心南楼301-302室办理。"],
+      ["石河子大学学生处"],
+      [
+        {
+          kind: "errand",
+          place: { building: "大学生活动中心（南楼）", building_id: "ZQ-B023", campus: "中区" },
+        } as ActionCard,
+      ],
+    );
+    const d = decidePlace({
+      question: "怎么补办卡 学生证（含乘车优惠卡）",
+      response: r,
+      places,
+      inScene: new Set(["ZQ-B034"]),
+    });
+    expect(d.action).toBe("offer");
+  });
 });
 
 describe("decidePlace：手动入口（offer）", () => {

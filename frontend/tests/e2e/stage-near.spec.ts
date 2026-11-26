@@ -105,7 +105,7 @@ test("3 换沙盘全程没有新的 POST /api/v1/chat", async ({ page }) => {
   expect(chatPosts).toBe(1); // 换沙盘不重新提问
 });
 
-test("4 在 zq 里继续问借书：落 ZQ-B034，没有近看钮", async ({ page }) => {
+test("4 在 zq 里继续问图书馆：落 ZQ-B034，没有近看钮", async ({ page }) => {
   test.setTimeout(120_000);
   await page.goto("/stage?3d=1&intro=0");
   await waitReady(page);
@@ -114,7 +114,8 @@ test("4 在 zq 里继续问借书：落 ZQ-B034，没有近看钮", async ({ pag
   await page.click('[data-testid="stage-place-near"]');
   await waitPack(page, "zq");
   await waitCamStill(page);
-  await ask(page, "怎么借书");
+  // 明确问位置的题才自动落楼（「怎么借书」属于操作说明，按需定位保持视角）
+  await ask(page, "图书馆在哪");
   await waitFocus(page, "focus:ZQ-B034");
   const h = await page.evaluate(() => ({
     pack: window.__campus3d.pack,
@@ -129,7 +130,7 @@ test("5 回全校：回 home、楼不红了，回答面板还在", async ({ page
   test.setTimeout(120_000);
   await page.goto("/stage?3d=1&intro=0");
   await waitReady(page);
-  await ask(page, "怎么借书");
+  await ask(page, "图书馆在哪");
   await waitFocus(page, "focus:ZQ-B034");
   await page.click('[data-testid="stage-rail-ALL"]');
   await waitPack(page, "all");
@@ -142,7 +143,7 @@ test("5 回全校：回 home、楼不红了，回答面板还在", async ({ page
   expect(h.shell).toBeNull();
   const panel = page.locator('[data-testid="stage-panel"]');
   await expect(panel).toBeVisible();
-  await expect(panel).toContainText("借阅"); // 上一问的回答还在
+  await expect(panel).toContainText("图书馆"); // 上一问的回答还在
 });
 
 test("6 问范围外的问题：没有办理地点、没有近看钮", async ({ page }) => {

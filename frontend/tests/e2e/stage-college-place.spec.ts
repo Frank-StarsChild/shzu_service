@@ -66,7 +66,16 @@ async function mockCollegeAnswer(page: Page) {
               time_condition: null,
             },
           ],
-          actions: [],
+          // 按需定位只认结构化动作（11-24 起）：补一张地点卡，楼号取自沙盘登记
+          actions: [
+            {
+              kind: "place",
+              title: "地点定位",
+              ambiguous: false,
+              matches: [{ building_id: "BQ-B013", label: "绿2", category: "教学", campus: "北区", note: "登记楼" }],
+              fallback_text: null,
+            },
+          ],
           unknown_fields: [],
           timing_ms: 80,
         }),

@@ -293,10 +293,27 @@ def check_award_readiness(
 
 
 # =====================================================================
-# 校园沙盘地点索引（campus.meta.json：buildingId ↔ 名称/类别）
+# 校园沙盘地点索引（v3 七包 campus.meta.json 合并：buildingId ↔ 名称/类别/校区）
 # =====================================================================
 
 _META_CACHE = {"loaded": False, "buildings": {}, "aliases": {}}
+
+# 七块沙盘（全校 + 六个校区）。校区包的楼与 all 里楼号相同、坐标不同，
+# 按楼号去重后合并 = all 303 栋 + jjs 19 栋 = 322 栋。
+_CAMPUS_PACKS = ("all", "by", "bq", "zq", "nq", "dq", "jjs")
+
+# 楼号前缀 → 校区；附属单位归在南区那块沙盘里
+_ZONE_CAMPUS = {
+    "BY": "北苑新区", "BQ": "北区", "ZQ": "中区",
+    "NQ": "南区", "DQ": "东区", "JJ": "将军山校区",
+    "FY": "南区", "HX": "南区",
+}
+
+
+def _campus_of(building_id: str) -> str:
+    """楼号 → 所在校区（按前缀，见 packs.json 的 campuses 划分）。"""
+    return _ZONE_CAMPUS.get((building_id or "")[:2], "")
+
 
 _EXTRA_ALIASES = {
     "图书馆": "ZQ-B034", "总馆": "ZQ-B034",
@@ -312,24 +329,44 @@ _EXTRA_ALIASES = {
 
 
 def _load_campus_meta():
+    """合并 v3 七块沙盘的 meta，再补 places.json 的楼名别名（273 条）。
+
+    校区名由楼号前缀决定（见 _ZONE_CAMPUS）；第一附属医院（FY）与护士学校（HX）
+    不是校区，它们的楼在南区那块沙盘上。"""
     if _META_CACHE["loaded"]:
         return _META_CACHE
     import json as _json
-    path = BASE_DIR / "frontend" / "public" / "campus3d" / "campus.meta.json"
+    root = BASE_DIR / "frontend" / "public" / "campus3d"
+    buildings = {}
+    aliases = {}
     try:
-        meta = _json.loads(path.read_text(encoding="utf-8"))
-        buildings = {}
-        aliases = {}
-        for bid, b in (meta.get("buildings") or {}).items():
-            if not b.get("name"):
+        for pack in _CAMPUS_PACKS:
+            path = root / pack / "campus.meta.json"
+            if not path.exists():
+                logger.warning("campus meta missing for pack %s", pack)
                 continue
-            buildings[bid] = {"name": b["name"], "category": b.get("category", ""),
-                              "anchor": b.get("anchor")}
-            aliases[b["name"]] = bid
-            # 通用别名：去「（…）」注释后的短名
-            short = re.sub(r"（.*?）", "", b["name"])
-            if short and short != b["name"]:
-                aliases.setdefault(short, bid)
+            meta = _json.loads(path.read_text(encoding="utf-8"))
+            for bid, b in (meta.get("buildings") or {}).items():
+                if bid in buildings:
+                    continue
+                name = b.get("name") or ""
+                # 部分附属建筑在 meta 里 name 为空（允许）：仍计入楼数，只是不建别名
+                buildings[bid] = {"name": name, "category": b.get("category", ""),
+                                  "anchor": b.get("anchor")}
+                if not name:
+                    continue
+                aliases[name] = bid
+                # 通用别名：去「（…）」注释后的短名
+                short = re.sub(r"（.*?）", "", name)
+                if short and short != name:
+                    aliases.setdefault(short, bid)
+        # places.json：楼名/学院名 → 楼号（位置未确认的 null 跳过）
+        places_path = root / "places.json"
+        if places_path.exists():
+            places = _json.loads(places_path.read_text(encoding="utf-8"))
+            for name, bid in places.get("names") or []:
+                if name and bid and bid in buildings:
+                    aliases.setdefault(name, bid)
         # 公寓名模式：6号学生公寓 → 6号楼/6号楼宿舍/6号公寓
         for bid, b in buildings.items():
             m = re.match(r"(\d+)号学生公寓", b["name"])
@@ -338,10 +375,11 @@ def _load_campus_meta():
                             f"{m.group(1)}号学生公寓", f"{m.group(1)}号楼宿舍"):
                     aliases.setdefault(alt, bid)
         for k, v in _EXTRA_ALIASES.items():
-            if v is not None:
-                aliases.setdefault(k, v.lstrip("."))
+            if v is not None and v in buildings:
+                aliases.setdefault(k, v)
         _META_CACHE["buildings"] = buildings
         _META_CACHE["aliases"] = aliases
+        logger.info("campus meta merged: %d buildings / %d aliases", len(buildings), len(aliases))
     except Exception as e:  # noqa: BLE001
         logger.warning("campus meta load failed: %s", e)
     _META_CACHE["loaded"] = True
@@ -393,8 +431,11 @@ def locate_campus_place(
     """把校园地点映射到 3D 沙盘建筑（buildingId）或文字定位。
 
     回答涉及具体办事地点/楼栋（图书馆、行政楼、保卫部、学生公寓楼栋等）时调用。
-    返回：沙盘已登记建筑的 buildingId（前端可聚焦高亮）、类别与匹配词；未登记或
-    不在沙盘覆盖范围（沙盘仅中区校园）时返回文字定位说明。不含路径规划。
+    沙盘是七块（全校 + 六个校区，共 322 栋）：已登记建筑返回 buildingId、类别、
+    所在校区与匹配词（前端可聚焦，跨校区时给「换过去/在沙盘查看」入口）；
+    楼号前缀决定校区（BY 北苑新区、BQ 北区、ZQ 中区、NQ 南区、DQ 东区、
+    JJ 将军山校区，FY 第一附属医院与 HX 护士学校在南区那块沙盘上）。
+    未登记时返回文字定位说明。不含路径规划。
     """
     cache = _load_campus_meta()
     text = (place or "").strip()
@@ -407,31 +448,39 @@ def locate_campus_place(
     if not hits:
         m = re.search(r"(\d+)\s*号(?:楼|学生公寓|公寓|宿舍)", text)
         if m and not campus:
-            action["fallback_text"] = ("学生公寓楼栋需结合校区确认位置；沙盘当前仅覆盖中区校园。"
-                                       "请补充校区（如「中区」），或按官方通知上的地点前往。")
+            action["fallback_text"] = ("学生公寓楼栋需结合校区确认位置。"
+                                       "请补充校区（如「中区」「北区」），或按官方通知上的地点前往。")
         elif m:
-            action["fallback_text"] = (f"{campus} {m.group(1)} 号楼不在沙盘已登记建筑里"
-                                       "（沙盘登记了中区 6/7/16/17/18 号学生公寓等 45 栋）；"
+            action["fallback_text"] = (f"{campus} {m.group(1)} 号楼不在沙盘已登记建筑里；"
                                        "具体位置以学校官方通知为准，可向所在学院或后勤确认。")
         else:
             action["fallback_text"] = "未能在校园沙盘登记数据中匹配该地点；可换标准建筑名（如图书馆、行政楼）再试。"
         action["ambiguous"] = bool(m and not campus)
         return {"note": action["fallback_text"], "evidence": [], "action": action}
 
-    # 校区不在沙盘覆盖（中区）：已登记建筑仍在沙盘可见，但如实说明覆盖范围
-    matches = [{
-        "building_id": bid if (campus in (None, "中区")) else None,
-        "label": name, "category": cat, "campus": "中区",
-        "note": f"匹配词「{term}」" + ("" if campus in (None, "中区") else f"；用户提到{campus}，沙盘仅覆盖中区，请以官方地点为准"),
-    } for bid, name, cat, term in hits]
-    if campus and campus != "中区":
-        action["fallback_text"] = f"用户提到的{campus}不在沙盘覆盖范围（沙盘仅中区校园）；以下为同名建筑的文字定位。"
+    # 七块沙盘都能处理跨包楼号：building_id 一律照给；校区照实标注
+    matches = []
+    for bid, name, cat, term in hits:
+        b_campus = _campus_of(bid)
+        note = f"匹配词「{term}」"
+        if campus and b_campus and campus != b_campus:
+            # 用户说了校区，但匹配到的楼在别的校区：照实说这栋楼在哪个校区
+            note += f"；这栋楼在{b_campus}"
+        matches.append({
+            "building_id": bid,
+            "label": name,
+            "category": cat,
+            "campus": b_campus or "中区",
+            "note": note,
+        })
     action["matches"] = matches
     action["ambiguous"] = len(matches) > 1
     note = "已匹配沙盘建筑: " + "、".join(f"{m['label']}({m['building_id']})" for m in matches if m["building_id"])
     logger.info("tool locate_campus_place q=%r hits=%d", text, len(matches))
     return {"note": note + "。可在回答中引导用户点「在沙盘查看」定位建筑；"
-                      "不提供路线长度/步行时间/楼层入口（无依据数据）。",
+                      "不提供路线长度/步行时间/楼层入口（无依据数据）。"
+                      "注意：楼号来自沙盘楼名登记，只用于定位；它不能作为「学院设在哪个校区」的行政依据，"
+                      "学院所在校区以官方简介为准，简介没写就如实说未登记。",
             "evidence": [], "action": action}
 
 
@@ -499,7 +548,7 @@ def student_card_reissue(
                          "state": "needs_office"})
 
     place = {"building": building, "room": room, "building_id": building_id,
-             "campus": "中区", "evidence_id": cid}
+             "campus": _campus_of(building_id or "") or "中区", "evidence_id": cid}
     fields = {
         "kind": "errand",
         "title": "学生证 / 乘车优惠卡补办 · 办事单",
@@ -520,7 +569,8 @@ def student_card_reissue(
         place_action = {
             "kind": "place", "title": "地点定位", "ambiguous": False,
             "matches": [{"building_id": building_id, "label": building or "大学生活动中心（南楼）",
-                         "category": "办公", "campus": "中区", "note": "办事单定位"}],
+                         "category": "办公", "campus": _campus_of(building_id) or "中区",
+                         "note": "办事单定位"}],
             "fallback_text": None,
         }
     else:
@@ -647,9 +697,12 @@ def triage_network_issue(
         building_name = hits[0][1]
         place_action = {
             "kind": "place", "title": "位置定位", "ambiguous": len(hits) > 1,
-            "matches": [{"building_id": bid if not campus or campus == "中区" else None,
-                         "label": name, "category": cat, "campus": "中区",
-                         "note": f"匹配词「{term}」"} for bid, name, cat, term in hits[:3]],
+            "matches": [{"building_id": bid,
+                         "label": name, "category": cat,
+                         "campus": _campus_of(bid) or "中区",
+                         "note": f"匹配词「{term}」" + (f"；这栋楼在{_campus_of(bid)}"
+                                                        if campus and _campus_of(bid) and campus != _campus_of(bid) else "")}
+                        for bid, name, cat, term in hits[:3]],
             "fallback_text": None,
         }
     else:
@@ -658,8 +711,8 @@ def triage_network_issue(
             building_name = f"{m.group(1)}号楼宿舍"
             place_action = {
                 "kind": "place", "title": "位置定位", "ambiguous": not campus, "matches": [],
-                "fallback_text": (f"{campus or ''} {m.group(1)} 号楼不在沙盘登记范围（沙盘登记了中区 "
-                                  "6/7/16/17/18 号学生公寓等）；位置以官方通知或学院确认为准。"),
+                "fallback_text": (f"{campus or ''} {m.group(1)} 号楼不在沙盘登记范围；"
+                                  "位置以官方通知或学院确认为准。"),
             }
 
     # ---- 指南依据（官方页面）----

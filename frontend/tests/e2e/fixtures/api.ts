@@ -416,64 +416,73 @@ export async function mockApi(page: Page): Promise<void> {
     }
 
     // 学生证丢了 → 办事单场景（errand 卡 + 沙盘定位 action，照后端 student_card_reissue 的取值）
-    if (msg.includes("学生证丢了")) {
-      await ok({
-        ...base,
-        status: "answer",
-        answer: {
-          blocks: [
-            { kind: "office", text: "学生证补办：到大学生活动中心南楼301-302室学生事务管理办公室窗口办理，可同时补办乘车优惠卡。", citation_ids: ["xg-ks-c1"] },
-            { kind: "note", text: "所需材料与办公时间请以办公室当期公示为准。", citation_ids: ["xg-ks-c1"] },
-          ],
-          unknown_fields: [],
+    // 追问「怎么补办卡」选「学生证」时也走这份响应（choice-xsz 分支在下面）
+    const studentCardErrand = (payloadBase: Record<string, unknown>) => ({
+      ...payloadBase,
+      status: "answer",
+      answer: {
+        blocks: [
+          { kind: "office", text: "学生证补办：到大学生活动中心南楼301-302室学生事务管理办公室窗口办理，可同时补办乘车优惠卡。", citation_ids: ["xg-ks-c1"] },
+          { kind: "note", text: "所需材料与办公时间请以办公室当期公示为准。", citation_ids: ["xg-ks-c1"] },
+        ],
+        unknown_fields: [],
+      },
+      citations: [
+        {
+          id: "xg-ks-c1",
+          title: "学生事务管理办公室窗口说明",
+          issuer: "石河子大学学生处",
+          url: "https://www.shzu.edu.cn/xg/ks",
+          published_at: "2025-09-01",
+          locator: "第 2 条",
+          excerpt: "学生事务管理办公室（大学生活动中心南楼301-302室）电话0993-2058029，负责学生证、乘车优惠卡办理。",
+          time_condition: null,
         },
-        citations: [
-          {
-            id: "xg-ks-c1",
-            title: "学生事务管理办公室窗口说明",
-            issuer: "石河子大学学生处",
-            url: "https://www.shzu.edu.cn/xg/ks",
-            published_at: "2025-09-01",
-            locator: "第 2 条",
-            excerpt: "学生事务管理办公室（大学生活动中心南楼301-302室）电话0993-2058029，负责学生证、乘车优惠卡办理。",
-            time_condition: null,
-          },
-          {
-            id: "xg-ks-c2",
-            title: "学生事务服务指南",
-            issuer: "石河子大学学生处",
-            url: "https://www.shzu.edu.cn/xg/guide",
-            published_at: "2025-09-01",
-            locator: null,
-            excerpt: null,
-            time_condition: null,
-          },
-        ],
-        actions: [
-          {
-            kind: "errand",
-            title: "学生证 / 乘车优惠卡补办 · 办事单",
-            place: { building: "大学生活动中心（南楼）", room: "301-302室", building_id: "ZQ-B023", campus: "中区", evidence_id: "xg-ks-c1" },
-            dept: "学生事务管理办公室（学生处）",
-            service_scope: "学生证、乘车优惠卡的办理",
-            phone: "0993-2058029",
-            hours: null,
-            materials_confirmed: false,
-            confirms: [
-              { text: "补办所需材料（如身份证明、照片等）目前没有官方文件确认，请打办公楼电话核实后再去", state: "needs_user" },
-              { text: "办公时间尚未在官方资料中登记，建议去电确认（避免白跑）", state: "needs_office" },
-            ],
-          },
-          {
-            kind: "place",
-            title: "地点定位",
-            ambiguous: false,
-            matches: [{ building_id: "ZQ-B023", label: "大学生活动中心（南楼）", category: "办公", campus: "中区", note: "办事单定位" }],
-            fallback_text: null,
-          },
-        ],
-        timing_ms: 1800,
-      });
+        {
+          id: "xg-ks-c2",
+          title: "学生事务服务指南",
+          issuer: "石河子大学学生处",
+          url: "https://www.shzu.edu.cn/xg/guide",
+          published_at: "2025-09-01",
+          locator: null,
+          excerpt: null,
+          time_condition: null,
+        },
+      ],
+      actions: [
+        {
+          kind: "errand",
+          title: "学生证 / 乘车优惠卡补办 · 办事单",
+          place: { building: "大学生活动中心（南楼）", room: "301-302室", building_id: "ZQ-B023", campus: "中区", evidence_id: "xg-ks-c1" },
+          dept: "学生事务管理办公室（学生处）",
+          service_scope: "学生证、乘车优惠卡的办理",
+          phone: "0993-2058029",
+          hours: null,
+          materials_confirmed: false,
+          confirms: [
+            { text: "补办所需材料（如身份证明、照片等）目前没有官方文件确认，请打办公楼电话核实后再去", state: "needs_user" },
+            { text: "办公时间尚未在官方资料中登记，建议去电确认（避免白跑）", state: "needs_office" },
+          ],
+        },
+        {
+          kind: "place",
+          title: "地点定位",
+          ambiguous: false,
+          matches: [{ building_id: "ZQ-B023", label: "大学生活动中心（南楼）", category: "办公", campus: "中区", note: "办事单定位" }],
+          fallback_text: null,
+        },
+      ],
+      timing_ms: 1800,
+    });
+
+    // 追问选「学生证」：POST 带 choice_id（没有 message），返回办事单响应
+    if (body.choice_id === "choice-xsz") {
+      await ok(studentCardErrand(base));
+      return;
+    }
+
+    if (msg.includes("学生证丢了")) {
+      await ok(studentCardErrand(base));
       return;
     }
 
